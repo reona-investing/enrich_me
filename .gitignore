@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Data, Deliverables, and Temporary Files
+project/debug_files
+project/downloaded_files
+project/ml_datasets
+project/execution_scripts/experimental
+project/execution_scripts/old_version
+project/other_files
+project/processed_data_JQuantsAPI
+project/rawdata_JQuantsAPI
+project/scraped_data
+project/sector_redefinitions/experimental
+project/sector_redefinitions/sector_price
+project/summary_reports
+project/temp_files
+project/trade_history
+
