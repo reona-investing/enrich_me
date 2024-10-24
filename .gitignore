@@ -9,6 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+# env file
+project/modules/.env
+
 # Data, Deliverables, and Temporary Files
 project/debug_files
 project/downloaded_files
