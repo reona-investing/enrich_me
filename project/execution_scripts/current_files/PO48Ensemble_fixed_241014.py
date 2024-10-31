@@ -123,7 +123,6 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
             )
 
         if should_learn or now_this_model.should_update_historical_data:
-
             '''10. LASSOでの予測結果をlightGBMの特徴量として追加'''
             features_df2 = features_calculator.calculate_features(new_sector_price_df, pd.read_csv(NEW_SECTOR_LIST_CSV), stock_dfs_dict,
                                                                 adopts_features_indices = True, adopts_features_price = True,
@@ -142,7 +141,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
                                    train_start_day, train_end_day, test_start_day, test_end_day,
                                    outlier_theshold = 3, 
                                    raw_target_df=raw_target_df, order_price_df=order_price_df,
-                                   no_shift_features=['LASSO_pred'], add_next_business_day=False)
+                                   no_shift_features=['LASSO_pred'], reuse_features_df_of_others=True)
 
         if should_learn or should_predict:
             '''12. lightGBM（学習は必要時、予測は毎回）'''
