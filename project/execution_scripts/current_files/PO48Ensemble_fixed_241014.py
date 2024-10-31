@@ -107,12 +107,6 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
                                                                 adopt_1d_return = True, mom_duration = None, vola_duration = None,
                                                                 adopt_size_factor = False, adopt_eps_factor = False, 
                                                                 adopt_sector_categorical = False, add_rank = False)
-            features_df2 = features_calculator.calculate_features(new_sector_price_df, pd.read_csv(NEW_SECTOR_LIST_CSV), stock_dfs_dict,
-                                                                adopts_features_indices = True, adopts_features_price = True,
-                                                                groups_setting = None, names_setting = None, currencies_type = 'relative',
-                                                                adopt_1d_return = True, mom_duration = [5, 21], vola_duration = [5, 21],
-                                                                adopt_size_factor = True, adopt_eps_factor = True, 
-                                                                adopt_sector_categorical = True, add_rank = True)
             '''8. 機械学習用データセットの更新(1)'''
             # 目的変数・特徴量dfをデータセットに登録
             ml_dataset1.archive_dfs(target_df, features_df1,
@@ -129,6 +123,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
             )
 
         if should_learn or now_this_model.should_update_historical_data:
+
             '''10. LASSOでの予測結果をlightGBMの特徴量として追加'''
             features_df2 = features_calculator.calculate_features(new_sector_price_df, pd.read_csv(NEW_SECTOR_LIST_CSV), stock_dfs_dict,
                                                                 adopts_features_indices = True, adopts_features_price = True,
@@ -137,7 +132,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
                                                                 adopt_size_factor = True, adopt_eps_factor = True, 
                                                                 adopt_sector_categorical = True, add_rank = True)
 
-            features_df2 = pd.merge(features_df2, ml_dataset1.pred_result_df[['Pred']], how='left',
+            features_df2 = pd.merge(features_df2, ml_dataset1.pred_result_df[['Pred']], how='outer',
                                 left_index=True, right_index=True)
             features_df2 = features_df2.rename(columns={'Pred':'LASSO_pred'})
 
@@ -147,21 +142,21 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
                                    train_start_day, train_end_day, test_start_day, test_end_day,
                                    outlier_theshold = 3, 
                                    raw_target_df=raw_target_df, order_price_df=order_price_df,
-                                   no_shift_features=['LASSO_pred'])
+                                   no_shift_features=['LASSO_pred'], add_next_business_day=False)
 
         if should_learn or should_predict:
             '''12. lightGBM（学習は必要時、予測は毎回）'''
             ml_dataset2 = machine_learning.lgbm(ml_dataset = ml_dataset2, dataset_path = ML_DATASET_PATH2, 
                                                 learn = should_learn, categorical_features = ['Sector_cat'])
             LINE.send_message(
-                message = '2段階目の機械学習（lightGBM）が完了しました。'
-            )        
+                message = f'2段階目の機械学習（lightGBM）が完了しました。'
+            )
 
         if should_learn or should_predict:            
             '''13. アンサンブル'''
             ensembled_pred_df = ml_dataset2.pred_result_df[['Target']]
             ensembled_pred_df['Pred'] = machine_learning.ensemble_by_rank(ml_datasets = [ml_dataset1, ml_dataset2], 
-                                                            ensemble_rates = [6.1, 1.9])
+                                                            ensemble_rates = [6.1, 2.1])
             ml_dataset_ensembled.archive_raw_target(ml_dataset2.raw_target_df)
             ml_dataset_ensembled.archive_pred_result(ensembled_pred_df)
             ml_dataset_ensembled.save_instance(ML_DATASET_EMSEMBLED_PATH)
@@ -169,11 +164,11 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
             
         '''14. 新規注文'''
         if now_this_model.should_take_positions:
-            _, long_orders, short_orders, todays_pred_df = \
+            tab, long_orders, short_orders, todays_pred_df = \
                 await order_to_SBI.select_stocks(ml_dataset1.order_price_df, NEW_SECTOR_LIST_CSV, ml_dataset_ensembled.pred_result_df,
                                                 trading_sector_num, candidate_sector_num, 
                                                 top_slope=top_slope)
-            _, take_position, failed_order_list = await order_to_SBI.make_new_order(long_orders, short_orders)
+            _, take_position, failed_order_list = await order_to_SBI.make_new_order(long_orders, short_orders, tab)
             LINE.send_message(
                 message = 
                     f'発注が完了しました。\n' +

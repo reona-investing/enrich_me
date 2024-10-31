@@ -12,7 +12,7 @@ from IPython.display import display
 
 import os
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(f'{paths.MODULES_FOLDER}/.env')
 
 #%% J-quants APIのクライアントを立てる（インポート時）
 # リフレッシュトークンの取得。

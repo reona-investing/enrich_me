@@ -93,14 +93,18 @@ class MLDataset:
                     train_start_day:datetime, train_end_day:datetime,
                     test_start_day:datetime, test_end_day:datetime,
                     raw_target_df: pd.DataFrame, order_price_df: pd.DataFrame,
-                    outlier_theshold:float = 0, no_shift_features:list = []):
+                    outlier_theshold:float = 0, no_shift_features:list = [], 
+                    add_next_business_day:bool = True):
         '''
         目的変数と特徴量を格納 :param float outlier_theshold: 外れ値除去の閾値（±何σ）？
         '''
         # 次の営業日の行を追加して、featuresの行を1日ぶん後ろにずらす
-        target_df, features_df = self._append_next_business_day_row(target_df, features_df)
+        if add_next_business_day:
+            target_df, features_df = self._append_next_business_day_row(target_df, features_df)
         shift_features = [col for col in features_df.columns if col not in no_shift_features]
-        features_df[shift_features] = features_df.groupby('Sector')[shift_features].shift(1) #trainとtestに分割する
+        features_df[shift_features] = features_df.groupby('Sector')[shift_features].shift(1) 
+        features_df = features_df.loc[target_df.index, :] # features_dfのインデックスをtarget_dfにそろえる
+        # trainとtestに分割する
         self.target_train_df, self.target_test_df = self._split_train_test(target_df, train_start_day, train_end_day, test_start_day, test_end_day)
         self.features_train_df, self.features_test_df = self._split_train_test(features_df, train_start_day, train_end_day, test_start_day, test_end_day)
         # 外れ値除去の閾値が設定されている場合は処理

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastparquet>=2024.5.0",
+    "ipykernel>=6.29.5",
     "ipython>=8.28.0",
     "ipywidgets>=8.1.5",
     "jquants-api-client>=1.7.2",
@@ -20,4 +21,5 @@ dependencies = [
     "quantstats>=0.0.62",
     "scikit-learn>=1.5.2",
     "scipy>=1.14.1",
+    "torch>=2.5.0",
 ]
