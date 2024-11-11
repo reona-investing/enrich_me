@@ -17,9 +17,11 @@ dependencies = [
     "pandas>=2.2.3",
     "plotly>=5.24.1",
     "pyarrow>=17.0.0",
+    "pyclustering>=0.10.1.2",
     "python-dotenv>=1.0.1",
     "quantstats>=0.0.62",
     "scikit-learn>=1.5.2",
     "scipy>=1.14.1",
     "torch>=2.5.0",
+    "umap-learn>=0.5.7",
 ]

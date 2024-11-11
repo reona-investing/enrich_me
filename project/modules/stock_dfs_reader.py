@@ -35,7 +35,7 @@ def read_stock_price(end_date:datetime = datetime.today()) ->pd.DataFrame: # 価
         if os.path.exists(paths.STOCK_PRICE_PARQUET.replace('0000', str(my_year))):
             stock_price = pd.read_parquet(paths.STOCK_PRICE_PARQUET.replace('0000', str(my_year)))
             stock_price = stock_price[['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume',
-                                        'AdjustmentFactor', 'CumulativeAdjustmentFactor']]
+                                        'AdjustmentFactor', 'CumulativeAdjustmentFactor', 'TurnoverValue']]
             stock_prices.append(stock_price)
     stock_prices = pd.concat(stock_prices, axis=0)
     stock_prices = stock_prices.drop_duplicates(subset=['Date', 'Code'], keep='last')

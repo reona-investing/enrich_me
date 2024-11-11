@@ -26,14 +26,18 @@ class MLDataset:
 
     def __init__(self, dataset_folder_path:str=None):
         # データセット用フォルダが存在しない場合，新規作成
-        if dataset_folder_path is None:
-            os.mkdir(dataset_folder_path)
+        #if dataset_folder_path is None:
+        #    os.mkdir(dataset_folder_path)
         # 各インスタンス変数を格納していく
-        for attr_name, ext in MLDataset.instance_vars.items():
-            file_path = f'{dataset_folder_path}/{attr_name}{ext}'
-            obj = self._load(file_path)
-            setattr(self, attr_name, obj)
-        print('インスタンス情報を読み込みました。')
+        if dataset_folder_path is not None:
+            for attr_name, ext in MLDataset.instance_vars.items():
+                file_path = f'{dataset_folder_path}/{attr_name}{ext}'
+                obj = self._load(file_path)
+                setattr(self, attr_name, obj)
+            print('インスタンス情報を読み込みました。')
+        else:
+            for attr_name, ext in MLDataset.instance_vars.items():
+                setattr(self, attr_name, None)
 
     def _load(self, file_path):
         '''ファイルが存在する場合のみ，適した方法で開く'''
@@ -129,9 +133,9 @@ class MLDataset:
             self.target_train_df = self.target_train_df.groupby('Sector').apply(self._filter_outliers, coef=outlier_theshold).droplevel(0, axis=0)
             self.target_train_df = self.target_train_df.sort_index()
             self.features_train_df = self.features_train_df.loc[self.features_train_df.index.isin(self.target_train_df.index), :]
-            # raw_target_dfとorder_price_dfも格納
-            self.raw_target_df = raw_target_df
-            self.order_price_df = order_price_df
+        # raw_target_dfとorder_price_dfも格納
+        self.raw_target_df = raw_target_df
+        self.order_price_df = order_price_df
 
     def archive_ml_objects(self, ml_models:list, ml_scalers:list):
         self.ml_models = ml_models
@@ -145,12 +149,15 @@ class MLDataset:
 
     def save_instance(self, dataset_folder_path:str):
         # 各インスタンス変数を格納していく
+        if not os.path.exists(dataset_folder_path):
+            os.mkdir(dataset_folder_path)
         existing_var = self.__dict__.keys()
         for attr_name, ext in MLDataset.instance_vars.items():
             if getattr(self, attr_name) is not None:
                 file_path = f'{dataset_folder_path}/{attr_name}{ext}'
                 self._dump(attr_name, file_path)
         print('インスタンス情報を保存しました。')
+
 
     def retrieve_target_and_features(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         return self.target_train_df, self.target_test_df, self.features_train_df, self.features_test_df

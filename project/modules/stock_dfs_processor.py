@@ -119,6 +119,7 @@ def process_stock_price(codes_to_replace_dict:dict=codes_to_replace_dict): # 価
             raw_stock_price = pd.read_parquet(my_raw_path)
             #型変換：str
             stock_price = raw_stock_price[['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume', 'TurnoverValue', 'AdjustmentFactor']].copy()
+            stock_price['Code']  = stock_price['Code'].astype(str)
             '''銘柄コード関連の処理'''
             # 普通株 (5桁で末尾が0) の銘柄コードを4桁にします
             stock_price['Code'] = _convert_code_format(stock_price)['Code']
@@ -138,7 +139,7 @@ def process_stock_price(codes_to_replace_dict:dict=codes_to_replace_dict): # 価
             stock_price = stock_price.loc[stock_price['Code'].notnull(), :] #場中にデータ取得すると，インデックス情報のみの列ができるため、それを除去
             stock_price = stock_price.sort_values(by=['Date', 'Code']).reset_index(drop=True)
             stock_price = stock_price.drop_duplicates(subset=['Date', 'Code'], keep='last')
-            stock_price = stock_price[['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume', 'AdjustmentFactor', 'CumulativeAdjustmentFactor']]
+            stock_price = stock_price[['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume', 'AdjustmentFactor', 'CumulativeAdjustmentFactor', 'TurnoverValue']]
             #csvファイルの出力
             stock_price.to_parquet(paths.STOCK_PRICE_PARQUET.replace('0000', str(my_year)))
     
