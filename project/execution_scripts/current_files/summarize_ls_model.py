@@ -28,7 +28,7 @@ def calculate_return_topix(start_date: datetime, end_date: datetime) -> pd.DataF
     topix_folder = df.loc[df['Name']=='TOPIX', 'Group'].values[0]
     topix_pkl = df.loc[df['Name']=='TOPIX', 'Path'].values[0]
     topix_path = paths.SCRAPED_DATA_FOLDER + '/' + topix_folder + '/' + topix_pkl
-    topix_df = data_pickler.load_from_records(topix_path)
+    topix_df = pd.read_parquet(topix_path)
     #リターン算出
     return_topix = pd.DataFrame()
     return_topix['Date'] = pd.to_datetime(topix_df['Date'])
@@ -53,8 +53,8 @@ def summarize_ls_model(strategy1_name: str, strategy2_name: str, apply_benchmark
     start_date: 開始日
     end_date: 終了日
     '''
-    model1 = data_pickler.load_from_records(model1_path)
-    model2 = data_pickler.load_from_records(model2_path)
+    model1 = MLDataset.MLDataset(model1_path)
+    model2 = MLDataset.MLDataset(model2_path)
 
     model1_obj = evaluate_model.LongShortModel(model_name = strategy1_name, pred_result_df = model1.pred_result_df, raw_target_df = model1.raw_target_df,
                                 start_date = start_date, end_date = end_date, bin_num = 5)
@@ -88,16 +88,16 @@ def summarize_ls_model(strategy1_name: str, strategy2_name: str, apply_benchmark
 #%% パラメータの設定
 if __name__ == '__main__':
     #ストラテジーの名前
-    strategy1_name = '48Sectors'
-    strategy2_name = '48Sectors_Ensembled'
+    strategy1_name = '48Sectors_Ensembled'
+    strategy2_name = '48Sectors'
     #ベンチマークの採否
     apply_benchmark = True
     #モデルのデータセットのパス
-    model1_path = f'{paths.ML_DATASETS_FOLDER}/New48sectors.pkl.gz'
-    model2_path = f'{paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled.pkl.gz'
+    model1_path = f'{paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
+    model2_path = f'{paths.ML_DATASETS_FOLDER}/New48sectors'
     #テストの開始日と終了日
     start_date = datetime(2022,1,1)
-    end_date = datetime(2024,3,31)
+    end_date = datetime.today()
 
 #%% htmlの出力
 if __name__ == '__main__':

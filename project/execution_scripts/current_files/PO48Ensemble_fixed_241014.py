@@ -225,7 +225,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
 #%% パラメータ類
 if __name__ == '__main__':
     '''パス類'''
-    NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_list.csv' #別でファイルを作っておく
+    NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
     NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
     ML_DATASET_PATH1 = f'{paths.ML_DATASETS_FOLDER}/New48sectors'
     ML_DATASET_PATH2 = f'{paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors'
