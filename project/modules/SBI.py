@@ -1,6 +1,7 @@
 #%% モジュールのインポート
 import paths
 import file_utilities
+import error_handler
 
 import pandas as pd
 import time
@@ -60,6 +61,21 @@ def _get_order_param_dicts() -> dict:
                           }
                         }
     return order_param_dicts
+
+# リトライを設定するためのデコレーター
+def _retry(max_attempts: int = 3, delay: float = 3.0):
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            attempts = 0
+            while attempts < max_attempts:
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    attempts += 1
+                    print(f"エラーが発生しました: {e}. リトライ中... (試行回数: {attempts})")
+            print(f"{func.__name__}は最大試行回数に達しました。")
+        return wrapper
+    return decorator
 
 #%% サブ関数
 async def select_pulldown(tab: uc.core.tab.Tab, css_selector:str) -> uc.core.tab.Tab:
@@ -419,7 +435,8 @@ async def _extract_margin_list(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Ta
 
     return tab, margin_list_df
 
-#%% メイン関数
+#%% 
+@_retry()
 async def sign_in(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
     '''未サインインの場合のみサインイン操作を行う'''
     if tab is None:
@@ -443,6 +460,7 @@ async def sign_in(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
         await tab.wait(3)
     return tab
 
+@_retry()
 async def fetch_deal_history(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFrame=None, mydate:datetime=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
     '''過去の信用約定情報を取得'''
     myyear = f'{mydate.year}'
@@ -495,6 +513,7 @@ async def fetch_deal_history(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFra
 
     return tab, deal_history_df
 
+@_retry()
 async def fetch_in_out(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
     '''入出金明細ページへ遷移'''
     tab = await sign_in(tab)
@@ -549,6 +568,7 @@ async def fetch_in_out(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.Da
 
     return tab, in_out_df
 
+@_retry()
 async def fetch_today_contracts(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFrame=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
     '''当日の信用約定情報を取得'''
     #当日約定一覧ページへ遷移
@@ -592,6 +612,7 @@ async def fetch_today_contracts(tab:uc.core.tab.Tab=None, sector_list_df:pd.Data
 
     return tab, today_margin_df
 
+@_retry()
 async def fetch_today_spots(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
     '''当日の現物取引による増減を確認'''
     #当日約定一覧ページへ遷移
@@ -640,6 +661,7 @@ async def fetch_today_spots(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, 
 
     return tab, today_spots_df
 
+@_retry()
 async def get_buying_power(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, int, int]:
     '''信用建余力と買付余力(2営業日後)の取得'''
     # 口座管理ページへ遷移
@@ -664,6 +686,7 @@ async def get_buying_power(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, i
 
     return tab, margin_buying_power, buying_power
 
+@_retry()
 async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, list, list]:
     '''日計り信用可能銘柄かを判定'''
     # 何らかのエラーで前回downloads.htmが残ってしまった場合に削除する処理
@@ -710,6 +733,7 @@ async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.T
 
     return tab, buy_possibility, sell_possibility
 
+@_retry()
 async def make_order(tab: uc.core.tab.Tab = None,
                      trade_type: str = "信用新規買", ticker: str = None, unit: int = 100, order_type: str = "成行", nariyuki_value: str = '寄成',
                      limit_order_price: float = None, stop_order_trigger_price: float = None, stop_order_type: str = "成行", stop_order_price: float = None,
@@ -772,6 +796,7 @@ async def make_order(tab: uc.core.tab.Tab = None,
 
     return tab, has_successfully_ordered
 
+@_retry()
 async def settle_all_margins(tab:uc.core.tab.Tab=None) -> tuple[uc.core.tab.Tab, list]:
     '''
     信用建玉の一括決済
@@ -781,6 +806,7 @@ async def settle_all_margins(tab:uc.core.tab.Tab=None) -> tuple[uc.core.tab.Tab,
     '''
     retry = 0
     error_tickers = []
+
 
     tab = await sign_in(tab)
     tab, margin_list = await _extract_margin_list(tab)
@@ -870,6 +896,7 @@ async def settle_all_margins(tab:uc.core.tab.Tab=None) -> tuple[uc.core.tab.Tab,
     
     return tab, error_tickers
 
+@_retry()
 async def cancel_all_orders(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
     '''すべての注文をキャンセル'''
     # 注文一覧を取得

@@ -218,9 +218,8 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
     
     except:
         '''エラーログの出力'''
-        error_log_path = f'{paths.DEBUG_FILES_FOLDER}/error_log.csv'
-        error_handler.handle_exception(error_log_path)
-        LINE.send_message(f'エラーが発生しました。\n詳細は{error_log_path}を確認してください。')
+        error_handler.handle_exception(paths.ERROR_LOG_CSV)
+        LINE.send_message(f'エラーが発生しました。\n詳細は{paths.ERROR_LOG_CSV}を確認してください。')
 
 #%% パラメータ類
 if __name__ == '__main__':
