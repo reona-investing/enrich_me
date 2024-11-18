@@ -266,7 +266,7 @@ async def _determine_orders(long_df:pd.DataFrame, short_df:pd.DataFrame,
     #業種ごとの発注限度額の算出
     tab = await SBI.sign_in(tab)
     tab, margin_buying_power, _ = await SBI.get_buying_power(tab)
-    maxcost = margin_buying_power / 1.2
+    maxcost = margin_buying_power / 1.15
     maxcost_per_sector = maxcost / (sectors_to_trade_num * 2)
     #トップ業種に傾斜をつけない場合
     if top_slope == 1:

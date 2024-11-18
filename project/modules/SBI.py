@@ -804,6 +804,7 @@ async def settle_all_margins(tab:uc.core.tab.Tab=None) -> tuple[uc.core.tab.Tab,
     while i < len(margin_tickers):
         if margin_tickers[i] in ordered_tickers:
             print(f'{margin_tickers[i]}はすでに決済発注済です。')
+            i += 1
             continue
         else:
             # 決済注文処理を実装
