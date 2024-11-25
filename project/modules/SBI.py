@@ -189,6 +189,7 @@ def _append_order_to_list(tr:object, data:list) -> list:
     row.append(tr.findNext("tr").findAll("td")[2].getText().replace(" ", "").strip().splitlines()[0])
     row.append(tr.findNext("tr").findAll("td")[2].getText().replace(" ", "").strip().splitlines()[-1])
     # 執行条件
+    
     row.append(tr.findNext("tr").findAll("td")[3].getText().strip())
     # 注文単価、現在値
     row.extend(tr.findNext("tr").findAll("td")[4].getText().strip().replace(" ", "").splitlines())
