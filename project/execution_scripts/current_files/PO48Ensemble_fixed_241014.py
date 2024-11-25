@@ -8,10 +8,10 @@ if __name__ == '__main__':
     sys.path.append(ORIGINAL_MODULES)
 
 #プログラム開始のライン通知
-import LineNortifier
+import SlackNotifier
 import os
-LINE = LineNortifier.LINEnotifier(program_name=os.path.basename(__file__))
-LINE.start(
+Slack = SlackNotifier.SlackNotifier(program_name=os.path.basename(__file__))
+Slack.start(
     message = 'プログラムを開始します。',
     should_send_program_name = True
 )
@@ -96,7 +96,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
 
             '''6. 各種金融データ取得or読み込み'''
             await scraper.scrape_all_indices(should_scrape_features=now_this_model.should_update_historical_data)
-            LINE.send_message(
+            Slack.send_message(
                 message = 'データの更新が完了しました。'
             )
 
@@ -118,7 +118,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
             '''9. LASSO（学習は必要時、予測は毎回）'''
             ml_dataset1 = machine_learning.lasso(ml_dataset1, dataset_path = ML_DATASET_PATH1, learn = should_learn,
                                                 min_features = 3, max_features = 5)
-            LINE.send_message(
+            Slack.send_message(
                 message = '1段階目の機械学習（LASSO）が完了しました。'
             )
 
@@ -147,7 +147,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
             '''12. lightGBM（学習は必要時、予測は毎回）'''
             ml_dataset2 = machine_learning.lgbm(ml_dataset = ml_dataset2, dataset_path = ML_DATASET_PATH2, 
                                                 learn = should_learn, categorical_features = ['Sector_cat'])
-            LINE.send_message(
+            Slack.send_message(
                 message = f'2段階目の機械学習（lightGBM）が完了しました。'
             )
 
@@ -168,14 +168,14 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
                                                 trading_sector_num, candidate_sector_num, 
                                                 top_slope=top_slope)
             _, take_position, failed_order_list = await order_to_SBI.make_new_order(long_orders, short_orders, tab)
-            LINE.send_message(
+            Slack.send_message(
                 message = 
                     f'発注が完了しました。\n' +
                     f'買： {long_orders["Sector"].unique()}\n' +
                     f'売： {short_orders["Sector"].unique()}'
             )
             if len(failed_order_list) > 0:
-                LINE.send_message(
+                Slack.send_message(
                     message = 
                         f'以下の注文の発注に失敗しました。\n' +
                         f'{failed_order_list}'
@@ -185,9 +185,9 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
         if now_this_model.should_settle_positions:
             _, error_tickers = await order_to_SBI.settle_all_margins()
             if len(error_tickers) == 0:
-                LINE.send_message(message = '全銘柄の決済注文が完了しました。')
+                Slack.send_message(message = '全銘柄の決済注文が完了しました。')
             else:
-                LINE.send_message(
+                Slack.send_message(
                     message = 
                         f'全銘柄の決済注文を試みました。\n' +
                         f'銘柄コード{error_tickers}の決済注文に失敗しました。'
@@ -200,7 +200,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
                                                     paths.TRADE_HISTORY_CSV, 
                                                     paths.BUYING_POWER_HISTORY_CSV, 
                                                     paths.DEPOSIT_HISTORY_CSV)
-            LINE.send_message(
+            Slack.send_result(
                 message = 
                     f'取引履歴等の更新が完了しました。\n' +
                     f'{trade_history["日付"].iloc[-1].strftime("%Y-%m-%d")}の取引結果：{amount}円'
@@ -212,14 +212,14 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_EMSEMBLED_
                                                     paths.BUYING_POWER_HISTORY_CSV, 
                                                     paths.DEPOSIT_HISTORY_CSV)
 
-        LINE.finish(message = 'すべての処理が完了しました。')
+        Slack.finish(message = 'すべての処理が完了しました。')
 
         return ml_dataset1, ml_dataset2
     
     except:
         '''エラーログの出力'''
         error_handler.handle_exception(paths.ERROR_LOG_CSV)
-        LINE.send_message(f'エラーが発生しました。\n詳細は{paths.ERROR_LOG_CSV}を確認してください。')
+        Slack.send_error_log(f'エラーが発生しました。\n詳細は{paths.ERROR_LOG_CSV}を確認してください。')
 
 #%% パラメータ類
 if __name__ == '__main__':

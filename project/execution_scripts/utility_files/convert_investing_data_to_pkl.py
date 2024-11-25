@@ -7,7 +7,6 @@ sys.path.append(ORIGINAL_MODULES)
 
 import os
 import pandas as pd
-import data_pickler
 
 # %%関数の定義
 def convert(file_to_convert: str):
@@ -18,12 +17,13 @@ def convert(file_to_convert: str):
     # ここに処理を追加
     a = pd.read_csv(file_to_convert)
     a['Date'] = pd.to_datetime(a['Date'])
-    new_file_name = file_to_convert.replace('.csv', '.pkl')
-    data_pickler.dump_as_records(a, new_file_name)
+    new_file_name = file_to_convert.replace('.csv', '.parquet')
+    a.to_parquet(new_file_name, index=False)
     # ここに処理が終わった後、元のCSVファイルを削除するコードを追加
     os.remove(file_to_convert)
 
 
 if __name__ == "__main__":
-    file_to_convert = "H:/マイドライブ/enrich_me/scraped_data/commodity/raw_Nikkei_Rubber_price.csv"
-    convert(file_to_convert)
+    for x in ['VDE']:
+        file_to_convert = f"C:/Users/ryosh/enrich_me/project/scraped_data/us_sector_etf/{x}_historical.csv"
+        convert(file_to_convert)
