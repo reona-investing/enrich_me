@@ -750,7 +750,6 @@ async def make_order(tab: uc.core.tab.Tab = None,
 
     # 注文ページへ遷移
     tab = await sign_in(tab)
-    await tab.save_screenshot(f'{paths.DEBUG_FILES_FOLDER}/before_clicking_trade_button.png') #debug用
     trade_button = await tab.wait_for('img[title="取引"]')
     await trade_button.click()
     await tab.wait(2)  # 2秒待機
@@ -793,6 +792,7 @@ async def make_order(tab: uc.core.tab.Tab = None,
         has_successfully_ordered = True
     else:
         print(f"{ticker} {unit}株 {trade_type} {order_type}：発注できませんでした。")
+        await tab.save_screenshot(f'{paths.DEBUG_FILES_FOLDER}/{ticker}_error.png') #debug用
         has_successfully_ordered = False
 
     return tab, has_successfully_ordered
