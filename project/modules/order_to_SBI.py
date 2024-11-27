@@ -490,7 +490,7 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
             trade_type = '信用新規買'
         else:
             trade_type = '信用新規売'
-        has_successfully_ordered = await SBI.make_order(tab=tab,
+        _, has_successfully_ordered = await SBI.make_order(tab=tab,
                        trade_type=trade_type, ticker=ticker, unit=unit, order_type="成行", nariyuki_value='寄成',
                         limit_order_price=None, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                         period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
