@@ -42,6 +42,14 @@ TRADE_HISTORY_CSV = f'{TRADE_HISTORY_FOLDER}/trade_history.csv'
 BUYING_POWER_HISTORY_CSV = f'{TRADE_HISTORY_FOLDER}/buying_power_history.csv'
 DEPOSIT_HISTORY_CSV = f'{TRADE_HISTORY_FOLDER}/deposit_history.csv'
 
+# オンラインバックアップのパス
+ONLINE_BACKUP_FOLDER = 'H:/マイドライブ/enrich_me'
+LONG_ORDERS_BACKUP = f'{ONLINE_BACKUP_FOLDER}/long_list.csv'
+SHORT_ORDERS_BACKUP = f'{ONLINE_BACKUP_FOLDER}/short_list.csv'
+TRADE_HISTORY_BACKUP = f'{ONLINE_BACKUP_FOLDER}/trade_history.csv'
+BUYING_POWER_HISTORY_BACKUP = f'{ONLINE_BACKUP_FOLDER}/buying_power_history.csv'
+DEPOSIT_HISTORY_BACKUP = f'{ONLINE_BACKUP_FOLDER}/deposit_history.csv'
+
 #%%
 if __name__ == '__main__':
     import pandas as pd

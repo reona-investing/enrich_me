@@ -3,6 +3,7 @@ import paths
 import file_utilities
 import error_handler
 
+import shutil
 import pandas as pd
 import time
 from bs4 import BeautifulSoup as soup
@@ -793,6 +794,7 @@ async def make_order(tab: uc.core.tab.Tab = None,
     else:
         print(f"{ticker} {unit}株 {trade_type} {order_type}：発注できませんでした。")
         await tab.save_screenshot(f'{paths.DEBUG_FILES_FOLDER}/{ticker}_error.png') #debug用
+        shutil.copy(f'{paths.DEBUG_FILES_FOLDER}/{ticker}_error.png', f'{paths.ONLINE_BACKUP_FOLDER}/{ticker}_error.png')
         has_successfully_ordered = False
 
     return tab, has_successfully_ordered
