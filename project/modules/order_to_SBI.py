@@ -3,6 +3,7 @@ import jquants_api_fetcher as fetcher #JQuantsAPIでのデータ取得
 import SBI
 import paths
 
+import shutil
 import pandas as pd
 from typing import Tuple
 from datetime import datetime
@@ -330,6 +331,7 @@ async def _update_trade_history(trade_history_path: str, sector_list_path: str,
     trade_history = pd.read_csv(trade_history_path).drop_duplicates(keep='last') # なぜか読み込み直さないとdrop_duplicatesが効かない（データ型の問題？要検討）
     trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date
     trade_history.to_csv(trade_history_path, index=False)
+    shutil.copy(trade_history_path, paths.TRADE_HISTORY_BACKUP)
 
     return tab, trade_history
 
@@ -363,6 +365,7 @@ async def _update_buying_power_history(buying_power_history_path: str, trade_his
     print('買付余力の履歴')
     display(buying_power_history.tail(5))
     buying_power_history.to_csv(buying_power_history_path)
+    shutil.copy(buying_power_history_path, paths.BUYING_POWER_HISTORY_BACKUP)
 
     return tab, buying_power_history
 
@@ -400,6 +403,7 @@ async def _update_deposit_history(deposit_history_df_path: str, buying_power_his
     print('総入金額の履歴')
     display(deposit_history_df.tail(5))
     deposit_history_df.to_csv(deposit_history_df_path)
+    shutil.copy(deposit_history_df_path, paths.DEPOSIT_HISTORY_BACKUP)
 
     return tab, deposit_history_df
 
@@ -450,6 +454,9 @@ async def select_stocks(order_price_df:pd.DataFrame, new_sector_list_csv:str, y_
     # Long, Shortの選択銘柄をCSVとして出力しておく
     long_orders.to_csv(paths.LONG_ORDERS_CSV)
     short_orders.to_csv(paths.SHORT_ORDERS_CSV)
+    # Google Drive上にバックアップ
+    shutil.copy(paths.LONG_ORDERS_CSV, paths.LONG_ORDERS_BACKUP)
+    shutil.copy(paths.SHORT_ORDERS_CSV, paths.SHORT_ORDERS_BACKUP)
 
     return tab, long_orders, short_orders, todays_pred_df
 
