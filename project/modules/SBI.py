@@ -731,7 +731,7 @@ async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.T
 
     #日計り信用売り可の銘柄
     buy_possibility = margin_df['コード'].astype(str).tolist()
-    sell_possibility = margin_df.loc[margin_df['売建受注枠']!='受付不可', 'コード'].astype(str).tolist()
+    sell_possibility = margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), 'コード'].astype(str).tolist()
 
     return tab, buy_possibility, sell_possibility
 
