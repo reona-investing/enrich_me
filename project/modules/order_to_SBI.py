@@ -451,9 +451,12 @@ async def select_stocks(order_price_df:pd.DataFrame, new_sector_list_csv:str, y_
     long_df, short_df = _calculate_ETF_orders(long_df, short_df, buy_adjuster_num, sell_adjuster_num)
     # 注文する銘柄と注文単位数を算出
     tab, long_orders, short_orders = await _determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, tab)
+    # Long, Shortそれぞれの累積コストを算出
+    long_orders['CumCost_byLS'] = long_orders['TotalCost'].cumsum()
+    short_orders['CumCost_byLS'] = short_orders['TotalCost'].cumsum()
     # Long, Shortの選択銘柄をCSVとして出力しておく
-    long_orders.to_csv(paths.LONG_ORDERS_CSV)
-    short_orders.to_csv(paths.SHORT_ORDERS_CSV)
+    long_orders.to_csv(paths.LONG_ORDERS_CSV, index=False)
+    short_orders.to_csv(paths.SHORT_ORDERS_CSV, index=False)
     # Google Drive上にバックアップ
     shutil.copy(paths.LONG_ORDERS_CSV, paths.LONG_ORDERS_BACKUP)
     shutil.copy(paths.SHORT_ORDERS_CSV, paths.SHORT_ORDERS_BACKUP)
@@ -479,32 +482,29 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
     
     failed_order_list = []
 
-    #ロングの発注
-    for ticker, unit in zip(long_orders['Code'], long_orders['Unit']):
-        unit = int(unit * 100)
-        has_successfully_ordered = await SBI.make_order(tab=tab,
-                        trade_type="信用新規買", ticker=ticker, unit=unit, order_type="成行", nariyuki_value='寄成',
-                        limit_order_price=None, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
-                        period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
-                        margin_trade_section="制度")
-        if has_successfully_ordered == False:
-            failed_order_list.append(f'信用新規買: {ticker} {unit}株')
+    # Long, Shortそれぞれの発注リストの結合
+    long_orders['LorS'] = 'Long'
+    short_orders['LorS']= 'Short'
+    orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
 
-    #ショートの発注
-    for ticker, unit in zip(short_orders['Code'], short_orders['Unit']):
+    #ポジションの発注
+    for ticker, unit, L_or_S in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS']):
         unit = int(unit * 100)
-        if ticker == '1356': #TOPIXベア2倍上場投信の場合は買いポジションを取る
+        if L_or_S == 'Long':
             trade_type = '信用新規買'
-        else:
-            trade_type = '信用新規売'
-        _, has_successfully_ordered = await SBI.make_order(tab=tab,
-                       trade_type=trade_type, ticker=ticker, unit=unit, order_type="成行", nariyuki_value='寄成',
-                        limit_order_price=None, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
-                        period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
-                        margin_trade_section="制度")
-        if has_successfully_ordered == False:
-            failed_order_list.append(f'{trade_type}: {ticker} {unit}株')
-    #ポジションを取ったフラグ
+        elif L_or_S == 'Short':
+            if ticker == '1356': #TOPIXベア2倍上場投信の場合は買いポジションを取る
+                trade_type = '信用新規買'
+            else:
+                trade_type = '信用新規売'
+    _, has_successfully_ordered = await SBI.make_order(tab=tab,
+                    trade_type=trade_type, ticker=ticker, unit=unit, order_type="成行", nariyuki_value='寄成',
+                    limit_order_price=None, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
+                    period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
+                    margin_trade_section="制度")
+    if has_successfully_ordered == False:
+        failed_order_list.append(f'{trade_type}: {ticker} {unit}株')
+    # ポジションを取ったフラグ
     take_position = True
 
     return tab, take_position, failed_order_list
