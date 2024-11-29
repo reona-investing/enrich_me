@@ -66,20 +66,6 @@ async def read_and_update_data(should_learn, should_update_historical_data, univ
         await scraper.scrape_all_indices(should_scrape_features=should_update_historical_data)
     return stock_dfs_dict
 
-def ensemble_pred_results(dataset_ensembled, datasets, ensemble_rates, ENSEMBLED_DATASET_PATH):
-    if len(datasets) == 0 or len(datasets) == 0:
-        raise ValueError('datasetsとensemble_ratesには1つ以上の要素を指定してください。')
-    if len(datasets) != len(ensemble_rates):
-        raise ValueError('datasetsとensemble_ratesの要素数を同じにしてください。')
-    ensembled_pred_df = datasets[0].pred_result_df[['Target']]
-    ensembled_pred_df['Pred'] = machine_learning.ensemble_by_rank(ml_datasets = datasets, 
-                                                    ensemble_rates = ensemble_rates)
-    dataset_ensembled.archive_raw_target(datasets[0].raw_target_df)
-    dataset_ensembled.archive_pred_result(ensembled_pred_df)
-    dataset_ensembled.save_instance(ENSEMBLED_DATASET_PATH)
-    dataset_ensembled = MLDataset.MLDataset(ENSEMBLED_DATASET_PATH)
-    return dataset_ensembled
-
 def get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET):
     '''セクターインデックスの計算'''
     new_sector_price_df, order_price_df = \
@@ -94,9 +80,9 @@ def get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR
             'raw_target_df': raw_target_df,
             'target_df': target_df}
 
-def update_1st_model(ml_dataset, necessary_dfs_dict, should_update_data, should_update_model,
+def update_1st_model(ml_dataset, necessary_dfs_dict, 
+                     should_learn, should_update_data, should_update_model,
                      train_start_day, train_end_day, test_start_day, test_end_day):
-    should_learn = should_update_data and should_update_model
     if should_update_data:
         '''LASSO用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
@@ -117,9 +103,9 @@ def update_1st_model(ml_dataset, necessary_dfs_dict, should_update_data, should_
                                             min_features = 3, max_features = 5)
     return ml_dataset
 
-def update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dict, should_update_data, should_update_model,
+def update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dict, 
+                     should_learn, should_update_data, should_update_model,
                      train_start_day, train_end_day, test_start_day, test_end_day):
-    should_learn = should_update_data and should_update_model
     if should_update_data:
         '''lightGBM用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
@@ -147,6 +133,64 @@ def update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dic
         ml_dataset2 = machine_learning.lgbm(ml_dataset = ml_dataset2, dataset_path = ML_DATASET_PATH2, 
                                             learn = should_learn, categorical_features = ['Sector_cat'])
     return ml_dataset2
+
+def ensemble_pred_results(dataset_ensembled, datasets, ensemble_rates, ENSEMBLED_DATASET_PATH):
+    if len(datasets) == 0 or len(datasets) == 0:
+        raise ValueError('datasetsとensemble_ratesには1つ以上の要素を指定してください。')
+    if len(datasets) != len(ensemble_rates):
+        raise ValueError('datasetsとensemble_ratesの要素数を同じにしてください。')
+    ensembled_pred_df = datasets[0].pred_result_df[['Target']]
+    ensembled_pred_df['Pred'] = machine_learning.ensemble_by_rank(ml_datasets = datasets, 
+                                                    ensemble_rates = ensemble_rates)
+    dataset_ensembled.archive_raw_target(datasets[0].raw_target_df)
+    dataset_ensembled.archive_pred_result(ensembled_pred_df)
+    dataset_ensembled.save_instance(ENSEMBLED_DATASET_PATH)
+    dataset_ensembled = MLDataset.MLDataset(ENSEMBLED_DATASET_PATH)
+    return dataset_ensembled
+
+async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df, 
+                         trading_sector_num, candidate_sector_num,
+                         top_slope):
+    tab, long_orders, short_orders, todays_pred_df = \
+        await order_to_SBI.select_stocks(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
+                                        trading_sector_num, candidate_sector_num, 
+                                        top_slope=top_slope)
+    _, failed_order_list = await order_to_SBI.make_new_order(long_orders, short_orders, tab)
+    Slack.send_message(
+        message = 
+            f'発注が完了しました。\n' +
+            f'買： {long_orders["Sector"].unique()}\n' +
+            f'売： {short_orders["Sector"].unique()}'
+    )
+    if len(failed_order_list) > 0:
+        Slack.send_message(
+            message = 
+                f'以下の注文の発注に失敗しました。\n' +
+                f'{failed_order_list}'
+        )
+
+async def settle_positions():
+    _, error_tickers = await order_to_SBI.settle_all_margins()
+    if len(error_tickers) == 0:
+        Slack.send_message(message = '全銘柄の決済注文が完了しました。')
+    else:
+        Slack.send_message(
+            message = 
+                f'全銘柄の決済注文を試みました。\n' +
+                f'銘柄コード{error_tickers}の決済注文に失敗しました。'
+                )
+
+async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
+    _, trade_history = \
+        await order_to_SBI.update_information(NEW_SECTOR_LIST_CSV,
+                                              paths.TRADE_HISTORY_CSV, 
+                                              paths.BUYING_POWER_HISTORY_CSV,
+                                              paths.DEPOSIT_HISTORY_CSV)
+    Slack.send_result(
+        message = 
+            f'取引履歴等の更新が完了しました。\n' +
+            f'{trade_history["日付"].iloc[-1].strftime("%Y-%m-%d")}の取引結果：{amount}円'
+            )
 
 #%% メイン関数
 async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_PATH:str,
@@ -178,91 +222,52 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         # データセットの読み込み
         ml_dataset1, ml_dataset2, ml_dataset_ensembled = \
             load_datasets(should_learn, ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
-        
         '''データの更新・読み込み'''
         stock_dfs_dict = await read_and_update_data(should_learn, now_this_model.should_update_historical_data, universe_filter)
-
-        '''1段階目の学習・予測'''
+        '''学習・予測'''
         should_update_data = should_learn or now_this_model.should_update_historical_data
         should_update_model = should_learn or should_predict
         ensemble_rates = [6.7, 1.3]
         if should_update_data:
             necessary_dfs_dict = get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET)
             Slack.send_message(message = 'データの更新が完了しました。')
-            ml_dataset1 = update_1st_model(ml_dataset1, necessary_dfs_dict, should_update_data, should_update_model,
-                             train_start_day, train_end_day, test_start_day, test_end_day)
-            ml_dataset2 = update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dict, should_update_data, should_update_model,
-                             train_start_day, train_end_day, test_start_day, test_end_day)
+            ml_dataset1 = update_1st_model(ml_dataset1, necessary_dfs_dict, 
+                                           should_learn, should_update_data, should_update_model,
+                                           train_start_day, train_end_day, test_start_day, test_end_day)
+            ml_dataset2 = update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dict, 
+                                           should_learn, should_update_data, should_update_model,
+                                           train_start_day, train_end_day, test_start_day, test_end_day)
             ml_dataset_ensembled = ensemble_pred_results(dataset_ensembled = ml_dataset_ensembled,
                                                          datasets = [ml_dataset1, ml_dataset2], 
                                                          ensemble_rates = ensemble_rates,
                                                          ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH) 
-        elif should_update_model:
-            ml_dataset1 = update_1st_model(necessary_dfs_dict, should_update_data, should_update_model, now_this_model.should_update_historical_data,
-                             train_start_day, train_end_day, test_start_day, test_end_day)
-            ml_dataset2 = update_2nd_model(stock_dfs_dict, necessary_dfs_dict, ml_dataset1, should_update_data, should_update_model,
-                             train_start_day, train_end_day, test_start_day, test_end_day)
+        elif should_predict:
+            ml_dataset1 = update_1st_model(necessary_dfs_dict, should_update_data, 
+                                           should_learn, should_update_data, should_update_model,
+                                           train_start_day, train_end_day, test_start_day, test_end_day)
+            ml_dataset2 = update_2nd_model(stock_dfs_dict, necessary_dfs_dict, ml_dataset1,
+                                           should_learn, should_update_data, should_update_model,
+                                           train_start_day, train_end_day, test_start_day, test_end_day)
             ml_dataset_ensembled = ensemble_pred_results(dataset_ensembled = ml_dataset_ensembled,
                                                          datasets = [ml_dataset1, ml_dataset2], 
                                                          ensemble_rates = ensemble_rates,
                                                          ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)            
             Slack.send_message(message = f'予測が完了しました。')
-
         '''新規注文'''
         if now_this_model.should_take_positions:
-            tab, long_orders, short_orders, todays_pred_df = \
-                await order_to_SBI.select_stocks(ml_dataset1.order_price_df, NEW_SECTOR_LIST_CSV, ml_dataset_ensembled.pred_result_df,
-                                                trading_sector_num, candidate_sector_num, 
-                                                top_slope=top_slope)
-            _, take_position, failed_order_list = await order_to_SBI.make_new_order(long_orders, short_orders, tab)
-            Slack.send_message(
-                message = 
-                    f'発注が完了しました。\n' +
-                    f'買： {long_orders["Sector"].unique()}\n' +
-                    f'売： {short_orders["Sector"].unique()}'
-            )
-            if len(failed_order_list) > 0:
-                Slack.send_message(
-                    message = 
-                        f'以下の注文の発注に失敗しました。\n' +
-                        f'{failed_order_list}'
-                )
-        
+            await take_positions(order_price_df = necessary_dfs_dict['order_price_df'],
+                                 NEW_SECTOR_LIST_CSV = NEW_SECTOR_LIST_CSV,
+                                 pred_result_df = ml_dataset_ensembled.pred_result_df,
+                                 trading_sector_num = trading_sector_num,
+                                 candidate_sector_num = candidate_sector_num,
+                                 top_slope = top_slope) 
         '''決済注文'''
         if now_this_model.should_settle_positions:
-            _, error_tickers = await order_to_SBI.settle_all_margins()
-            if len(error_tickers) == 0:
-                Slack.send_message(message = '全銘柄の決済注文が完了しました。')
-            else:
-                Slack.send_message(
-                    message = 
-                        f'全銘柄の決済注文を試みました。\n' +
-                        f'銘柄コード{error_tickers}の決済注文に失敗しました。'
-                        )
-
-        if now_this_model.should_fetch_invest_result:
-            '''取引結果の取得'''
-            _, trade_history, buying_power_history, deposit_history, return_rate, amount = \
-                await order_to_SBI.update_information(NEW_SECTOR_LIST_CSV, 
-                                                    paths.TRADE_HISTORY_CSV, 
-                                                    paths.BUYING_POWER_HISTORY_CSV, 
-                                                    paths.DEPOSIT_HISTORY_CSV)
-            Slack.send_result(
-                message = 
-                    f'取引履歴等の更新が完了しました。\n' +
-                    f'{trade_history["日付"].iloc[-1].strftime("%Y-%m-%d")}の取引結果：{amount}円'
-                    )
-        else:
-            '''データの読み込み'''
-            trade_history, buying_power_history, deposit_history, return_rate, amount = \
-                order_to_SBI.load_information(paths.TRADE_HISTORY_CSV, 
-                                                    paths.BUYING_POWER_HISTORY_CSV, 
-                                                    paths.DEPOSIT_HISTORY_CSV)
-
+            await settle_positions()
+        '''取引結果の取得'''
+        if now_this_model.should_fetch_invest_result:    
+            await fetch_invest_result(NEW_SECTOR_LIST_CSV)
         Slack.finish(message = 'すべての処理が完了しました。')
-
-        return ml_dataset1, ml_dataset2
-    
     except:
         '''エラーログの出力'''
         error_handler.handle_exception(paths.ERROR_LOG_CSV)
@@ -300,8 +305,3 @@ if __name__ == '__main__':
                      universe_filter, trading_sector_num, candidate_sector_num,
                      train_start_day, train_end_day, test_start_day, test_end_day,
                      top_slope, should_learn, should_predict, should_update_historical_data))
-
-'''
-同じモデルを使っても。こちらで実行すると、モデルの性能が落ちた。
-なぜ？学習時に使用したデータが不適切だった？要検討
-'''
