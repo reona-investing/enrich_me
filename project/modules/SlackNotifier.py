@@ -17,7 +17,7 @@ class SlackNotifier:
         payload = {'text': message}  # Slack用のペイロード形式
         requests.post(self.SLACK_GENERAL, json=payload)  # JSON形式でPOSTリクエストを送信
 
-    def send_error_log(self, message: str, file_path: str):
+    def send_error_log(self, message: str):
         payload = {'text': message}  # Slack用のペイロード形式
         requests.post(self.SLACK_ERROR_LOG, json=payload)  # JSON形式でPOSTリクエストを送信
 
