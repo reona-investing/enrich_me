@@ -480,6 +480,7 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
             return tab, None, None
     
     failed_order_list = []
+    failed_tickers = []
 
     # Long, Shortそれぞれの発注リストの結合
     long_orders['LorS'] = 'Long'
@@ -503,10 +504,13 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
                         margin_trade_section="制度")
         if has_successfully_ordered == False:
             failed_order_list.append(f'{trade_type}: {ticker} {unit}株')
+            failed_tickers.append(ticker)
         # ポジションを取ったフラグ
-        take_position = True
+    failed_orders_df = orders_df.loc[orders_df['Code'].isin(failed_tickers), :]
+    failed_orders_df.to_csv(paths.FAILED_ORDERS_CSV)
+    failed_orders_df.to_csv(paths.FAILED_ORDERS_BACKUP)
 
-    return tab, take_position, failed_order_list
+    return tab, failed_order_list
 
 async def settle_all_margins(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
     '''
