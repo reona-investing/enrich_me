@@ -39,8 +39,8 @@ import asyncio
 def set_flags(should_update_historical_data, should_predict):
     now_this_model = FlagManager.launch()
     set_time_flags.set_time_flags(should_update_historical_data=should_update_historical_data)
-    if should_predict is None:
-        should_predict = now_this_model.should_update_historical_data
+    if should_predict is None and now_this_model.should_update_historical_data:
+        should_predict = True
     return now_this_model, should_predict
 
 def load_datasets(should_learn, ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH):
@@ -60,9 +60,9 @@ async def read_and_update_data(should_learn, should_update_historical_data, univ
         '''個別銘柄のデータ更新（取得→成型）'''
         fetcher.update_stock_dfs()
         processor.process_stock_dfs()
-    '''個別銘柄のデータ読み込み'''
-    stock_dfs_dict = reader.read_stock_dfs(filter = universe_filter)
-    if should_learn or should_update_historical_data:    
+    if should_learn or should_update_historical_data:
+        '''個別銘柄のデータ読み込み'''
+        stock_dfs_dict = reader.read_stock_dfs(filter = universe_filter)    
         '''各種金融データ取得or読み込み'''
         await scraper.scrape_all_indices(should_scrape_features=should_update_historical_data)
     return stock_dfs_dict
@@ -120,9 +120,6 @@ def update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dic
                             left_index=True, right_index=True) # LASSOでの予測結果をlightGBMの特徴量として追加
         features_df = features_df.rename(columns={'Pred':'1stModel_pred'})
 
-        print(necessary_dfs_dict['target_df'])
-        print(features_df)
-
         '''lightGBM用データセットの更新'''
         # 目的変数・特徴量dfをデータセットに登録
         ml_dataset2.archive_dfs(necessary_dfs_dict['target_df'], features_df,
@@ -173,21 +170,8 @@ async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
                 f'{failed_order_list}'
         )
 
-async def take_additionals():
-    _, failed_order_list = await order_to_SBI.make_additional_order()
-    Slack.send_message(
-        message = 
-            f'追加発注が完了しました。'
-    )
-    if len(failed_order_list) > 0:
-        Slack.send_message(
-            message = 
-                f'以下の注文の発注に失敗しました。\n' +
-                f'{failed_order_list}'
-        )
-
 async def settle_positions():
-    _, error_tickers = await order_to_SBI.settle_all+rgins()
+    _, error_tickers = await order_to_SBI.settle_all_margins()
     if len(error_tickers) == 0:
         Slack.send_message(message = '全銘柄の決済注文が完了しました。')
     else:
@@ -236,7 +220,6 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         '''初期設定'''
         # 最初に各種フラグをセットしておく。データ更新の要否を引数に入力している場合は、フラグをその値で上書き。
         now_this_model, should_predict = set_flags(should_update_historical_data, should_predict)
-        now_this_model.should_take_additionals = True
         # データセットの読み込み
         ml_dataset1, ml_dataset2, ml_dataset_ensembled = \
             load_datasets(should_learn, ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
@@ -244,10 +227,9 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         stock_dfs_dict = await read_and_update_data(should_learn, now_this_model.should_update_historical_data, universe_filter)
         '''学習・予測'''
         should_update_data = should_learn or now_this_model.should_update_historical_data
-        should_update_model = should_learn or should_predict or \
-            now_this_model.should_take_positions or now_this_model.should_take_additionals
+        should_update_model = should_learn or should_predict
         ensemble_rates = [6.7, 1.3]
-        if should_update_data or should_update_model:
+        if should_update_data:
             necessary_dfs_dict = get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET)
             Slack.send_message(message = 'データの更新が完了しました。')
             ml_dataset1 = update_1st_model(ml_dataset1, necessary_dfs_dict, 
@@ -259,19 +241,27 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             ml_dataset_ensembled = ensemble_pred_results(dataset_ensembled = ml_dataset_ensembled,
                                                          datasets = [ml_dataset1, ml_dataset2], 
                                                          ensemble_rates = ensemble_rates,
-                                                         ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)          
+                                                         ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH) 
+        elif should_predict:
+            ml_dataset1 = update_1st_model(necessary_dfs_dict, should_update_data, 
+                                           should_learn, should_update_data, should_update_model,
+                                           train_start_day, train_end_day, test_start_day, test_end_day)
+            ml_dataset2 = update_2nd_model(stock_dfs_dict, necessary_dfs_dict, ml_dataset1,
+                                           should_learn, should_update_data, should_update_model,
+                                           train_start_day, train_end_day, test_start_day, test_end_day)
+            ml_dataset_ensembled = ensemble_pred_results(dataset_ensembled = ml_dataset_ensembled,
+                                                         datasets = [ml_dataset1, ml_dataset2], 
+                                                         ensemble_rates = ensemble_rates,
+                                                         ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)            
             Slack.send_message(message = f'予測が完了しました。')
-        '''新規建'''
+        '''新規注文'''
         if now_this_model.should_take_positions:
             await take_positions(order_price_df = necessary_dfs_dict['order_price_df'],
                                  NEW_SECTOR_LIST_CSV = NEW_SECTOR_LIST_CSV,
                                  pred_result_df = ml_dataset_ensembled.pred_result_df,
                                  trading_sector_num = trading_sector_num,
                                  candidate_sector_num = candidate_sector_num,
-                                 top_slope = top_slope)
-        '''追加建'''
-        if now_this_model.should_take_additionals:
-            await take_additionals()
+                                 top_slope = top_slope) 
         '''決済注文'''
         if now_this_model.should_settle_positions:
             await settle_positions()
@@ -289,9 +279,9 @@ if __name__ == '__main__':
     '''パス類'''
     NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
     NEW_SECTOR_PRICE_PARQUET = f'{paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
-    ML_DATASET_PATH1 = f'{paths.ML_DATASETS_FOLDER}/New48sectors'
-    ML_DATASET_PATH2 = f'{paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors'
-    ML_DATASET_EMSEMBLED_PATH = f'{paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
+    ML_DATASET_PATH1 = f'{paths.ML_DATASETS_FOLDER}/New48sectors_backup'
+    ML_DATASET_PATH2 = f'{paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors_backup'
+    ML_DATASET_EMSEMBLED_PATH = f'{paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled_backup'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''
@@ -306,7 +296,7 @@ if __name__ == '__main__':
     test_end_day = datetime(2099, 12, 31) #ずっと先の未来を指定
     '''学習するか否か'''
     should_learn = False
-    should_predict = None
+    should_predict = True
     should_update_historical_data = None
 
 #%% 実行
