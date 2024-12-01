@@ -16,7 +16,7 @@ else:
 print(_nowtime)
 
 def _get_market_open_day(nowtime:datetime=_nowtime) -> str:
-    #今日が営業日かどうかの判定
+    # 今日が営業日かどうかの判定
     market_open_day_df = fetcher.cli.get_markets_trading_calendar(
             from_yyyymmdd=(nowtime).strftime('%Y%m%d'),
             to_yyyymmdd=(nowtime).strftime('%Y%m%d')
@@ -25,12 +25,18 @@ def _get_market_open_day(nowtime:datetime=_nowtime) -> str:
     return is_market_open_day
 
 def _determine_whether_take_positions(nowtime:datetime=_nowtime) -> bool:
-    #発注時刻（朝7時台～8時台）かどうかの判定
+    # 発注時刻（朝7時台～8時台）かどうかの判定
     should_take_positions = (nowtime.hour >= 7) & (nowtime.hour <= 8)
     print(f'予測＆新規建：{should_take_positions}')
 
     return should_take_positions
 
+def _determine_whether_take_additionals(nowtime:datetime=_nowtime) -> bool:
+    # 追加発注（朝9時～9時半）かどうかの判定
+    should_take_additionals = (nowtime.hour == 9) & (nowtime.minute <= 30)
+    print(f'追加の新規建：{should_take_additionals}')
+
+    return should_take_additionals
 
 def _determine_whether_settle_positions(nowtime:datetime=_nowtime) -> bool:
     #決済時刻（11時台半～14時台）かどうかの判定
@@ -53,6 +59,7 @@ def _determine_whether_fetch_invest_result(nowtime:datetime=_nowtime):
 
 #%% フラグの読み込み
 def set_time_flags(should_take_positions: bool = None,
+                   should_take_additionals: bool = None,
                    should_update_historical_data: bool = None,
                    should_settle_positions: bool = None,
                    should_fetch_invest_result: bool = None):
@@ -65,20 +72,24 @@ def set_time_flags(should_take_positions: bool = None,
     # マーケット開場日であれば、時刻に応じたフラグを設定
     if is_market_open_day:
         now_this_model.should_take_positions = \
-            now_this_model.should_update_historical_data =\
-                _determine_whether_take_positions()
+        now_this_model.should_update_historical_data =\
+            _determine_whether_take_positions()
+        now_this_model.should_take_additionals = _determine_whether_take_additionals
         now_this_model.should_settle_positions = _determine_whether_settle_positions()
         now_this_model.should_fetch_invest_result = _determine_whether_fetch_invest_result()
     # 閉場日以外はすべてFalse
     else:
         now_this_model.should_take_positions = \
-            now_this_model.should_update_historical_data = \
-                now_this_model.should_settle_positions = \
-                    now_this_model.should_fetch_invest_result = \
-                        False
+        now_this_model.should_take_addiionals = \
+        now_this_model.should_update_historical_data = \
+        now_this_model.should_settle_positions = \
+        now_this_model.should_fetch_invest_result = \
+            False
     # 引数で個別指定がある場合は上書き
     if should_take_positions is not None:
         now_this_model.should_take_positions = should_take_positions
+    if should_take_additionals is not None:
+        now_this_model.should_take_additionals = should_take_additionals
     if should_update_historical_data is not None:
         now_this_model.should_update_historical_data = should_update_historical_data
     if should_settle_positions is not None:

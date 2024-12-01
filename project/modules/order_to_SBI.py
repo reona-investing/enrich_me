@@ -227,7 +227,7 @@ def _get_tickers_to_trade_df(new_sector_list_df:pd.DataFrame,
     tickers_to_trade_df['Code'] = tickers_to_trade_df['Code'].astype(str)
     tickers_to_trade_df = pd.merge(tickers_to_trade_df, weight_df[['Code', 'Weight', 'EstimatedCost']], on='Code', how='left')
     tickers_to_trade_df = tickers_to_trade_df[tickers_to_trade_df['Code'].isin(tradable_tickers_df['Code'])]
-    tickers_to_trade_df['Weight'] = tickers_to_trade_df['Weight'] / tickers_to_trade_df.groupby('Sector')['Weight'].transform(sum)
+    tickers_to_trade_df['Weight'] = tickers_to_trade_df['Weight'] / tickers_to_trade_df.groupby('Sector')['Weight'].transform('sum')
     return tickers_to_trade_df
 
 
@@ -462,32 +462,9 @@ async def select_stocks(order_price_df:pd.DataFrame, new_sector_list_csv:str, y_
 
     return tab, long_orders, short_orders, todays_pred_df
 
-
-async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame, 
-                         tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, bool, list]:
-    '''
-    新規注文を発注する。
-    '''
-    #現時点での注文リストをSBI証券から取得
-    tab = await SBI.sign_in(tab)
-    tab, orders = await SBI._extract_order_list(tab)
-
-    #発注処理の条件に当てはまるときのみ処理実行
-    if len(orders) > 0:
-        position_list = [x[:2] for x in orders['取引'].unique()]
-        #信用新規がある場合のみ注文キャンセル
-        if '信新' in position_list:
-            return tab, None, None
-    
+async def _make_orders(orders_df, tab):
     failed_order_list = []
     failed_tickers = []
-
-    # Long, Shortそれぞれの発注リストの結合
-    long_orders['LorS'] = 'Long'
-    short_orders['LorS']= 'Short'
-    orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
-
-    #ポジションの発注
     for ticker, unit, L_or_S in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS']):
         unit = int(unit * 100)
         if L_or_S == 'Long':
@@ -505,10 +482,44 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
         if has_successfully_ordered == False:
             failed_order_list.append(f'{trade_type}: {ticker} {unit}株')
             failed_tickers.append(ticker)
-        # ポジションを取ったフラグ
     failed_orders_df = orders_df.loc[orders_df['Code'].isin(failed_tickers), :]
+    # 発注失敗した銘柄をdfとして保存
     failed_orders_df.to_csv(paths.FAILED_ORDERS_CSV)
     failed_orders_df.to_csv(paths.FAILED_ORDERS_BACKUP)
+    return failed_order_list
+
+async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame, 
+                         tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, bool, list]:
+    '''
+    新規注文を発注する。
+    '''
+    #現時点での注文リストをSBI証券から取得
+    tab = await SBI.sign_in(tab)
+    tab, orders = await SBI._extract_order_list(tab)
+
+    #発注処理の条件に当てはまるときのみ処理実行
+    if len(orders) > 0:
+        position_list = [x[:2] for x in orders['取引'].unique()]
+        #信用新規がある場合のみ注文キャンセル
+        if '信新' in position_list:
+            return tab, None, None
+
+    # Long, Shortそれぞれの発注リストの結合
+    long_orders['LorS'] = 'Long'
+    short_orders['LorS']= 'Short'
+    orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
+    # ポジションを発注
+    failed_order_list = await _make_orders(orders_df = orders_df, tab = tab)
+
+    return tab, failed_order_list
+
+async def make_additional_order(tab:uc.core.tab.Tab=None):
+    #現時点での注文リストをSBI証券から取得
+    tab = await SBI.sign_in(tab)
+    orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)
+    orders_df['Code'] = orders_df['Code'].astype(str)
+    #ポジションの発注
+    failed_order_list = await _make_orders(orders_df = orders_df, tab = tab)
 
     return tab, failed_order_list
 

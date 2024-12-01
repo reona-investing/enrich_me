@@ -10,6 +10,7 @@ class _FlagManager(Singleton):
         '''定義されていないフラグを初期化'''
         self.flags = [
             'should_take_positions',
+            'should_take_additionals',
             'should_process_stock_price',
             'should_update_historical_data',
             'should_settle_positions',
