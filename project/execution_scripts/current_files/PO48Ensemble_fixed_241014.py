@@ -65,6 +65,7 @@ async def read_and_update_data(should_learn, should_update_historical_data, univ
     if should_learn or should_update_historical_data:    
         '''各種金融データ取得or読み込み'''
         await scraper.scrape_all_indices(should_scrape_features=should_update_historical_data)
+        Slack.send_message(message = 'データの更新が完了しました。')
     return stock_dfs_dict
 
 def get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET):
@@ -187,7 +188,7 @@ async def take_additionals():
         )
 
 async def settle_positions():
-    _, error_tickers = await order_to_SBI.settle_all+rgins()
+    _, error_tickers = await order_to_SBI.settle_all_margins()
     if len(error_tickers) == 0:
         Slack.send_message(message = '全銘柄の決済注文が完了しました。')
     else:
@@ -236,7 +237,6 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         '''初期設定'''
         # 最初に各種フラグをセットしておく。データ更新の要否を引数に入力している場合は、フラグをその値で上書き。
         now_this_model, should_predict = set_flags(should_update_historical_data, should_predict)
-        now_this_model.should_take_additionals = True
         # データセットの読み込み
         ml_dataset1, ml_dataset2, ml_dataset_ensembled = \
             load_datasets(should_learn, ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
@@ -249,7 +249,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         ensemble_rates = [6.7, 1.3]
         if should_update_data or should_update_model:
             necessary_dfs_dict = get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET)
-            Slack.send_message(message = 'データの更新が完了しました。')
+            
             ml_dataset1 = update_1st_model(ml_dataset1, necessary_dfs_dict, 
                                            should_learn, should_update_data, should_update_model,
                                            train_start_day, train_end_day, test_start_day, test_end_day)

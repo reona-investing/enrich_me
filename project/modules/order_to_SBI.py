@@ -462,7 +462,7 @@ async def select_stocks(order_price_df:pd.DataFrame, new_sector_list_csv:str, y_
 
     return tab, long_orders, short_orders, todays_pred_df
 
-async def _make_orders(orders_df, tab):
+async def _make_orders(orders_df, nariyuki_value, tab):
     failed_order_list = []
     failed_tickers = []
     for ticker, unit, L_or_S in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS']):
@@ -475,7 +475,7 @@ async def _make_orders(orders_df, tab):
             else:
                 trade_type = '信用新規売'
         _, has_successfully_ordered = await SBI.make_order(tab=tab,
-                        trade_type=trade_type, ticker=ticker, unit=unit, order_type="成行", nariyuki_value='寄成',
+                        trade_type=trade_type, ticker=ticker, unit=unit, order_type="成行", nariyuki_value=nariyuki_value,
                         limit_order_price=None, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                         period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
                         margin_trade_section="制度")
@@ -509,7 +509,7 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
     short_orders['LorS']= 'Short'
     orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
     # ポジションを発注
-    failed_order_list = await _make_orders(orders_df = orders_df, tab = tab)
+    failed_order_list = await _make_orders(orders_df = orders_df, nariyuki_value='寄成', tab = tab)
 
     return tab, failed_order_list
 
@@ -519,7 +519,7 @@ async def make_additional_order(tab:uc.core.tab.Tab=None):
     orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)
     orders_df['Code'] = orders_df['Code'].astype(str)
     #ポジションの発注
-    failed_order_list = await _make_orders(orders_df = orders_df, tab = tab)
+    failed_order_list = await _make_orders(orders_df = orders_df, nariyuki_value='条件なし', tab = tab)
 
     return tab, failed_order_list
 
