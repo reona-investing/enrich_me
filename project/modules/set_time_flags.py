@@ -74,7 +74,7 @@ def set_time_flags(should_take_positions: bool = None,
         now_this_model.should_take_positions = \
         now_this_model.should_update_historical_data =\
             _determine_whether_take_positions()
-        now_this_model.should_take_additionals = _determine_whether_take_additionals
+        now_this_model.should_take_additionals = _determine_whether_take_additionals()
         now_this_model.should_settle_positions = _determine_whether_settle_positions()
         now_this_model.should_fetch_invest_result = _determine_whether_fetch_invest_result()
     # 閉場日以外はすべてFalse
