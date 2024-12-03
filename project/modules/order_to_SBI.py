@@ -478,6 +478,8 @@ async def _make_orders(orders_df, order_type_value, tab):
 
     for ticker, unit, L_or_S, cost in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS'], orders_df['EstimatedCost']):
         order_type = '成行'
+        if order_type_value is not None:
+            order_type_value = order_type_value.replace('指', '成')
         limit_order_price = None
         unit = int(unit * 100)
         if L_or_S == 'Long':
@@ -504,6 +506,7 @@ async def _make_orders(orders_df, order_type_value, tab):
                         limit_order_price = str(math.ceil(cost * 0.905 / 50) * 50)
                     else:
                         limit_order_price = str(math.ceil(cost * 0.905 / 100) * 100)
+        print(order_type_value)
         _, has_successfully_ordered = await SBI.make_order(tab=tab,
                         trade_type=trade_type, ticker=ticker, unit=unit, order_type=order_type, order_type_value=order_type_value,
                         limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
@@ -519,7 +522,7 @@ async def _make_orders(orders_df, order_type_value, tab):
     return failed_order_list
 
 async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame, 
-                         tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, bool, list]:
+                         tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, list]:
     '''
     新規注文を発注する。
     '''
@@ -532,7 +535,7 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
         position_list = [x[:2] for x in orders['取引'].unique()]
         #信用新規がある場合のみ注文キャンセル
         if '信新' in position_list:
-            return tab, None, None
+            return tab, None
 
     # Long, Shortそれぞれの発注リストの結合
     long_orders['LorS'] = 'Long'
@@ -543,7 +546,7 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
 
     return tab, failed_order_list
 
-async def make_additional_order(tab:uc.core.tab.Tab=None):
+async def make_additional_order(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, list]:
     #現時点での注文リストをSBI証券から取得
     tab = await SBI.sign_in(tab)
     orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)

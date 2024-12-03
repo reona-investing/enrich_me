@@ -729,25 +729,26 @@ async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.T
         if len(filelist) > 0:
             for file in filelist:
                 if file.endswith('.csv'):
-                    print(file)
                     csv_path = f'{paths.DOWNLOAD_FOLDER}/{file}'
                     break
         if csv_path is not None:
             break
     #元のcsvから必要行のみを切り出してデータフレーム化
     margin_df = _convert_margin_csv_to_df(csv_path)
+    margin_df.loc[margin_df['一人あたり建玉上限数'] == '-', '一人あたり建玉上限数'] = '1000000' # intに変換できるように
     #ダウンロードしたcsvを削除しておく。
     #for file in filelist:
     #    os.remove(f'{paths.DOWNLOAD_FOLDER}/{file}')
 
     #日計り信用売り可の銘柄と上限単位数を辞書で格納
-    buy_possibility = {margin_df['コード'].astype(str): margin_df['一人あたり建玉上限数'].astype(int)}
-    sell_possibility = {margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), 'コード'].astype(str):
-                        margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), '一人あたり建玉上限数'].astype(int)}
+    buy_possibility = {key: value for key, value in zip(margin_df['コード'].astype(str), margin_df['一人あたり建玉上限数'].astype(int))}
+    sell_possibility = {key: value for key, value in zip(
+        margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), 'コード'].astype(str),
+        margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), '一人あたり建玉上限数'].astype(int))}
 
     return tab, buy_possibility, sell_possibility
 
-@_retry()
+#@_retry()
 async def make_order(tab: uc.core.tab.Tab = None,
                      trade_type: str = "信用新規買", ticker: str = None, unit: int = 100, order_type: str = "成行", order_type_value: str = '寄成',
                      limit_order_price: float = None, stop_order_trigger_price: float = None, stop_order_type: str = "成行", stop_order_price: float = None,
