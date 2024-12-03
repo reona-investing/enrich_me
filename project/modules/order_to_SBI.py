@@ -519,7 +519,7 @@ async def make_additional_order(tab:uc.core.tab.Tab=None):
     orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)
     orders_df['Code'] = orders_df['Code'].astype(str)
     #ポジションの発注
-    failed_order_list = await _make_orders(orders_df = orders_df, nariyuki_value='条件なし', tab = tab)
+    failed_order_list = await _make_orders(orders_df = orders_df, nariyuki_value=None, tab = tab)
 
     return tab, failed_order_list
 
@@ -528,7 +528,6 @@ async def settle_all_margins(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
     決済注文を発注する。
     [返り値]
     tab: nodriverのタブ
-    error_tickers: 決済注文できなかった銘柄のリスト
     '''
     tab = await SBI.sign_in(tab)
     _, error_list = await SBI.settle_all_margins(tab)

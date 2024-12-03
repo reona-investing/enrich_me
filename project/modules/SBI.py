@@ -96,8 +96,9 @@ async def _input_sashinari_params(tab:uc.core.tab.Tab, order_param_dicts:dict,
     '''指値・成行関係のパラメータを入力'''
     button = await tab.find(order_type)
     await button.click() # 注文タイプ
-    selector = f'select[name="nariyuki_condition"] option[value="{order_param_dicts["成行タイプ"][nariyuki_type]}"]'
-    tab = await select_pulldown(tab, selector)
+    if nariyuki_type is not None:
+        selector = f'select[name="nariyuki_condition"] option[value="{order_param_dicts["成行タイプ"][nariyuki_type]}"]'
+        tab = await select_pulldown(tab, selector)
 
     if order_type == "指値":
         if limit_order_price is None:
