@@ -3,6 +3,7 @@ import jquants_api_fetcher as fetcher #JQuantsAPIでのデータ取得
 import SBI
 import paths
 
+import math
 import shutil
 import pandas as pd
 from typing import Tuple
@@ -471,10 +472,13 @@ async def select_stocks(order_price_df:pd.DataFrame, new_sector_list_csv:str, y_
 
     return tab, long_orders, short_orders, todays_pred_df
 
-async def _make_orders(orders_df, nariyuki_value, tab):
+async def _make_orders(orders_df, order_type_value, tab):
     failed_order_list = []
     failed_tickers = []
-    for ticker, unit, L_or_S in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS']):
+
+    for ticker, unit, L_or_S, cost in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS'], orders_df['EstimatedCost']):
+        order_type = '成行'
+        limit_order_price = None
         unit = int(unit * 100)
         if L_or_S == 'Long':
             trade_type = '信用新規買'
@@ -483,9 +487,26 @@ async def _make_orders(orders_df, nariyuki_value, tab):
                 trade_type = '信用新規買'
             else:
                 trade_type = '信用新規売'
+                if unit > 5000: # 51単元以上のときは、空売り規制を回避するために指値注文を出す。
+                    print('51単元以上の信用売りは、指値注文で発注されます。')
+                    order_type = '指値'
+                    if order_type_value is not None:
+                        order_type_value = order_type_value.replace('成', '指')
+                    cost = cost / 100
+                    # 呼び値を考慮した指値価格を設定
+                    if cost <= 3000:
+                        limit_order_price = str(math.ceil(cost * 0.905))
+                    elif cost <= 5000:
+                        limit_order_price = str(math.ceil(cost * 0.905 / 5) * 5)
+                    elif cost <= 30000:
+                        limit_order_price = str(math.ceil(cost * 0.905 / 10) * 10)
+                    elif cost <= 50000:
+                        limit_order_price = str(math.ceil(cost * 0.905 / 50) * 50)
+                    else:
+                        limit_order_price = str(math.ceil(cost * 0.905 / 100) * 100)
         _, has_successfully_ordered = await SBI.make_order(tab=tab,
-                        trade_type=trade_type, ticker=ticker, unit=unit, order_type="成行", nariyuki_value=nariyuki_value,
-                        limit_order_price=None, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
+                        trade_type=trade_type, ticker=ticker, unit=unit, order_type=order_type, order_type_value=order_type_value,
+                        limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                         period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
                         margin_trade_section="制度")
         if has_successfully_ordered == False:
@@ -518,7 +539,7 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
     short_orders['LorS']= 'Short'
     orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
     # ポジションを発注
-    failed_order_list = await _make_orders(orders_df = orders_df, nariyuki_value='寄成', tab = tab)
+    failed_order_list = await _make_orders(orders_df = orders_df, order_type_value='寄成', tab = tab)
 
     return tab, failed_order_list
 
@@ -528,7 +549,7 @@ async def make_additional_order(tab:uc.core.tab.Tab=None):
     orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)
     orders_df['Code'] = orders_df['Code'].astype(str)
     #ポジションの発注
-    failed_order_list = await _make_orders(orders_df = orders_df, nariyuki_value=None, tab = tab)
+    failed_order_list = await _make_orders(orders_df = orders_df, order_type_value=None, tab = tab)
 
     return tab, failed_order_list
 
@@ -593,6 +614,5 @@ if __name__ == '__main__':
         asyncio.run(select_stocks(order_price_df, NEW_SECTOR_LIST_CSV, ml_dataset.pred_result_df, trading_sector_num=3, candidate_sector_num=5, top_slope = 1.5))
     tab, take_position, failed_order_list = asyncio.run(make_new_order(long_orders, short_orders, tab))
     '''
-    tab = asyncio.run(SBI.sign_in())
-    tab = asyncio.run(SBI.cancel_all_orders(tab))
+    tab = asyncio.run(make_additional_order())
     #tab = asyncio.run(settle_all_margins(tab))
