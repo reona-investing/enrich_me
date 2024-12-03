@@ -19,6 +19,7 @@ Slack.start(
 #%% モジュールのインポート
 from datetime import datetime
 import pandas as pd
+from typing import Tuple
 
 import paths #パス一覧
 import jquants_api_fetcher as fetcher #JQuantsAPIでのデータ取得
@@ -36,14 +37,15 @@ import order_to_SBI
 import error_handler
 import asyncio
 
-def set_flags(should_update_historical_data, should_predict):
+def set_flags(should_update_historical_data: bool, should_predict: bool) -> Tuple[FlagManager._FlagManager, bool]:
     now_this_model = FlagManager.launch()
     set_time_flags.set_time_flags(should_update_historical_data=should_update_historical_data)
     if should_predict is None:
         should_predict = now_this_model.should_update_historical_data
     return now_this_model, should_predict
 
-def load_datasets(should_learn, ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH):
+def load_datasets(should_learn: bool, ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
+    -> Tuple[MLDataset.MLDataset, MLDataset.MLDataset, MLDataset.MLDataset]:
     if should_learn:
         ml_dataset1 = MLDataset.MLDataset()
         ml_dataset2 = MLDataset.MLDataset()
@@ -54,7 +56,7 @@ def load_datasets(should_learn, ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_E
         ml_dataset_ensembled = MLDataset.MLDataset(ML_DATASET_ENSEMBLED_PATH)
     return ml_dataset1, ml_dataset2, ml_dataset_ensembled
 
-async def read_and_update_data(should_learn, should_update_historical_data, universe_filter):
+async def read_and_update_data(should_learn: bool, should_update_historical_data: bool, universe_filter: str) -> dict:
     stock_dfs_dict = None
     if should_update_historical_data:
         '''個別銘柄のデータ更新（取得→成型）'''
@@ -68,7 +70,8 @@ async def read_and_update_data(should_learn, should_update_historical_data, univ
         Slack.send_message(message = 'データの更新が完了しました。')
     return stock_dfs_dict
 
-def get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET):
+def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end_day: datetime, 
+                      NEW_SECTOR_LIST_CSV: str, NEW_SECTOR_PRICE_PARQUET: str) -> dict:
     '''セクターインデックスの計算'''
     new_sector_price_df, order_price_df = \
         sector_index_calculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET)
@@ -82,9 +85,10 @@ def get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR
             'raw_target_df': raw_target_df,
             'target_df': target_df}
 
-def update_1st_model(ml_dataset, necessary_dfs_dict, 
-                     should_learn, should_update_data, should_update_model,
-                     train_start_day, train_end_day, test_start_day, test_end_day):
+def update_1st_model(ml_dataset: MLDataset.MLDataset, necessary_dfs_dict: dict, 
+                     should_learn: bool, should_update_data: bool, should_update_model: bool,
+                     train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
+                        -> MLDataset.MLDataset:
     if should_update_data:
         '''LASSO用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
@@ -105,9 +109,11 @@ def update_1st_model(ml_dataset, necessary_dfs_dict,
                                             min_features = 3, max_features = 5)
     return ml_dataset
 
-def update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dict, 
-                     should_learn, should_update_data, should_update_model,
-                     train_start_day, train_end_day, test_start_day, test_end_day):
+def update_2nd_model(ml_dataset1: MLDataset.MLDataset, ml_dataset2: MLDataset.MLDataset, 
+                     stock_dfs_dict: dict, necessary_dfs_dict: dict, 
+                     should_learn: bool, should_update_data: bool, should_update_model: bool,
+                     train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
+                        -> MLDataset.MLDataset:
     if should_update_data:
         '''lightGBM用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
@@ -139,7 +145,8 @@ def update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dic
                                             learn = should_learn, categorical_features = ['Sector_cat'])
     return ml_dataset2
 
-def ensemble_pred_results(dataset_ensembled, datasets, ensemble_rates, ENSEMBLED_DATASET_PATH):
+def ensemble_pred_results(dataset_ensembled: MLDataset.MLDataset, datasets: list, ensemble_rates: list, ENSEMBLED_DATASET_PATH: str) \
+    -> MLDataset.MLDataset:
     if len(datasets) == 0 or len(datasets) == 0:
         raise ValueError('datasetsとensemble_ratesには1つ以上の要素を指定してください。')
     if len(datasets) != len(ensemble_rates):
