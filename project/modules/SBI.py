@@ -36,6 +36,12 @@ def _get_order_param_dicts() -> dict:
                           "成行": 1,
                           "逆指値": 2,
                           },
+                        '指値タイプ':{
+                          "寄指":'Z',
+                          "引指":'I',
+                          "不成":'F',
+                          "IOC指":'P'
+                          },
                         '成行タイプ':{
                           "寄成":'Y',
                           "引成":'H',
@@ -91,14 +97,15 @@ async def select_pulldown(tab: uc.core.tab.Tab, css_selector:str) -> uc.core.tab
     return tab
 
 async def _input_sashinari_params(tab:uc.core.tab.Tab, order_param_dicts:dict,
-                            order_type:str, nariyuki_type:str, limit_order_price:float,
+                            order_type:str, order_type_value:str, limit_order_price:float,
                             stop_order_type:str, stop_order_trigger_price:float, stop_order_price:float):
     '''指値・成行関係のパラメータを入力'''
     button = await tab.find(order_type)
     await button.click() # 注文タイプ
-    if nariyuki_type is not None:
-        selector = f'select[name="nariyuki_condition"] option[value="{order_param_dicts["成行タイプ"][nariyuki_type]}"]'
-        tab = await select_pulldown(tab, selector)
+    if order_type == '成行':
+        if order_type_value is not None:
+            selector = f'select[name="nariyuki_condition"] option[value="{order_param_dicts["成行タイプ"][order_type_value]}"]'
+            tab = await select_pulldown(tab, selector)
 
     if order_type == "指値":
         if limit_order_price is None:
@@ -106,7 +113,10 @@ async def _input_sashinari_params(tab:uc.core.tab.Tab, order_param_dicts:dict,
         else:
             form = await tab.select('#gsn0 > input[type=text]')
             await form.send_keys(limit_order_price) # 指値価格
-
+        if order_type_value is not None:
+            selector = f'select[name="sasine_condition"] option[value="{order_param_dicts["指値タイプ"][order_type_value]}"]'
+            tab = await select_pulldown(tab, selector)
+            
     if order_type == "逆指値":
         choice = await tab.select('#gsn2 > table > tbody > tr > td:nth-child(2) > label:nth-child(5) > input[type=radio]')
         await choice.click()
@@ -739,7 +749,7 @@ async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.T
 
 @_retry()
 async def make_order(tab: uc.core.tab.Tab = None,
-                     trade_type: str = "信用新規買", ticker: str = None, unit: int = 100, order_type: str = "成行", nariyuki_value: str = '寄成',
+                     trade_type: str = "信用新規買", ticker: str = None, unit: int = 100, order_type: str = "成行", order_type_value: str = '寄成',
                      limit_order_price: float = None, stop_order_trigger_price: float = None, stop_order_type: str = "成行", stop_order_price: float = None,
                      period_type: str = "当日中", period_value: str = None, period_index: int = None, trade_section: str = "特定預り",
                      margin_trade_section: str = "制度"):
@@ -767,8 +777,8 @@ async def make_order(tab: uc.core.tab.Tab = None,
 
 
     # 指値・成行関係のパラメータ設定
-    await _input_sashinari_params(tab, order_param_dicts, order_type, nariyuki_value, limit_order_price,
-                                  stop_order_type, stop_order_trigger_price, stop_order_price)
+    await _input_sashinari_params(tab, order_param_dicts, order_type, order_type_value, limit_order_price,
+                                      stop_order_type, stop_order_trigger_price, stop_order_price)
 
     # 期間指定関係のパラメータ設定
     await _get_duration_params(tab, order_param_dicts, period_type, period_value, period_index)
