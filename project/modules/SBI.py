@@ -690,7 +690,7 @@ async def get_buying_power(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, i
     return tab, margin_buying_power, buying_power
 
 @_retry()
-async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, list, list]:
+async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, dict, dict]:
     '''日計り信用可能銘柄かを判定'''
     # 何らかのエラーで前回downloads.htmが残ってしまった場合に削除する処理
     filelist = os.listdir(paths.DOWNLOAD_FOLDER)
@@ -730,9 +730,10 @@ async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.T
     #for file in filelist:
     #    os.remove(f'{paths.DOWNLOAD_FOLDER}/{file}')
 
-    #日計り信用売り可の銘柄
-    buy_possibility = margin_df['コード'].astype(str).tolist()
-    sell_possibility = margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), 'コード'].astype(str).tolist()
+    #日計り信用売り可の銘柄と上限単位数を辞書で格納
+    buy_possibility = {margin_df['コード'].astype(str): margin_df['一人あたり建玉上限数'].astype(int)}
+    sell_possibility = {margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), 'コード'].astype(str):
+                        margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), '一人あたり建玉上限数'].astype(int)}
 
     return tab, buy_possibility, sell_possibility
 

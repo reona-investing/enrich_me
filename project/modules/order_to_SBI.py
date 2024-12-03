@@ -57,7 +57,13 @@ def _reduce_units(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
     #候補銘柄の抜き取り
     candidate_tickers_df = \
           df.loc[(df['ReductionRate'] >= 1) & (df['Unit'] != 0), :].sort_values('ReductionRate', ascending=False)
-    #候補銘柄の数だけ繰り返し
+    # 'MaxUnit'が存在する場合、'Unit'を制限
+    for i in range(len(candidate_tickers_df)):
+        if 'MaxUnit' in df.columns:
+            index_to_reduce = candidate_tickers_df.index[i]
+            if df.loc[index_to_reduce, 'Unit'] > df.loc[index_to_reduce, 'MaxUnit']:
+                df.loc[index_to_reduce, 'Unit'] = df.loc[index_to_reduce, 'MaxUnit']
+    # 予算オーバーの場合、予算内に収まるまで購入数量を減らす。
     for i in range(len(candidate_tickers_df)):
         if df['TotalCost'].sum() <= maxcost:
             break # トータルコストが予算内に収まったら繰り返し終了
@@ -140,15 +146,16 @@ def _get_todays_pred_df(y_test_df:pd.DataFrame) -> pd.DataFrame:
 async def _get_tradable_dfs(new_sector_list_df:pd.DataFrame, tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame, pd.DataFrame]:
     '''売買それぞれについて、可能な銘柄を算出する。'''
     tab = await SBI.sign_in(tab)
-    tab, buyable_list, sellable_list = await SBI.get_trade_possibility(tab)
-    buyable_tickers_df = new_sector_list_df[new_sector_list_df['Code'].isin(buyable_list)].copy()
-    sellable_tickers_df = new_sector_list_df[new_sector_list_df['Code'].isin(sellable_list)].copy()
+    tab, buyable_dict, sellable_dict = await SBI.get_trade_possibility(tab)
+    buyable_tickers_df = new_sector_list_df[new_sector_list_df['Code'].isin(buyable_dict.keys())].copy()
+    sellable_tickers_df = new_sector_list_df[new_sector_list_df['Code'].isin(sellable_dict.keys())].copy()
     buyable_tickers_df['Code'] = buyable_tickers_df['Code'].astype(str)
     sellable_tickers_df['Code'] = sellable_tickers_df['Code'].astype(str)
+    sellable_tickers_df['MaxUnit'] = sellable_tickers_df['Code'].map(sellable_dict)
     return tab, buyable_tickers_df, sellable_tickers_df
 
 
-def _append_tradility(todays_pred_df:pd.DataFrame, new_sector_list_df:pd.DataFrame,
+def _append_tradability(todays_pred_df:pd.DataFrame, new_sector_list_df:pd.DataFrame,
                       buyable_tickers_df:pd.DataFrame, sellable_tickers_df:pd.DataFrame) -> pd.DataFrame:
     '''売買それぞれについて、可能な業種一覧を追加'''
     #売買可能業種数と、全体の業種数を算出
@@ -227,6 +234,8 @@ def _get_tickers_to_trade_df(new_sector_list_df:pd.DataFrame,
     tickers_to_trade_df['Code'] = tickers_to_trade_df['Code'].astype(str)
     tickers_to_trade_df = pd.merge(tickers_to_trade_df, weight_df[['Code', 'Weight', 'EstimatedCost']], on='Code', how='left')
     tickers_to_trade_df = tickers_to_trade_df[tickers_to_trade_df['Code'].isin(tradable_tickers_df['Code'])]
+    if 'MaxUnit' in tradable_tickers_df.columns:
+        tickers_to_trade_df = pd.merge(tickers_to_trade_df, tradable_tickers_df[['Code', 'MaxUnit']], how='left', on='Code')
     tickers_to_trade_df['Weight'] = tickers_to_trade_df['Weight'] / tickers_to_trade_df.groupby('Sector')['Weight'].transform('sum')
     return tickers_to_trade_df
 
@@ -438,7 +447,7 @@ async def select_stocks(order_price_df:pd.DataFrame, new_sector_list_csv:str, y_
     # 売買それぞれについて、可能な銘柄をdfとして抽出
     tab, buyable_tickers_df, sellable_tickers_df = await _get_tradable_dfs(new_sector_list_df, tab)
     # その業種の半分以上の銘柄が売買可能であれば、売買可能業種に設定
-    todays_pred_df = _append_tradility(todays_pred_df, new_sector_list_df, buyable_tickers_df, sellable_tickers_df)
+    todays_pred_df = _append_tradability(todays_pred_df, new_sector_list_df, buyable_tickers_df, sellable_tickers_df)
     # 売買対象の業種をdfとして抽出
     buy_sectors_df, sell_sectors_df = _determine_sectors_to_trade(todays_pred_df, trading_sector_num, candidate_sector_num)
     # 売買対象銘柄をdfとして抽出
