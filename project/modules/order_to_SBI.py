@@ -95,8 +95,9 @@ def _increase_units(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
         df.loc[min_rate_row, 'ReductionRate'] = \
           abs(df.loc[min_rate_row, 'IdealCost'] - df.loc[min_rate_row, 'MaxCostWithinIdeal']) / \
             abs(df.loc[min_rate_row, 'IdealCost'] - df.loc[min_rate_row, 'MinCostExceedingIdeal'])
-        if df.loc[min_rate_row, 'Unit'] == df.loc[min_rate_row, 'MaxUnit']:
-            df.loc[min_rate_row, 'isMaxUnit'] = True
+        if 'MaxUnit' in df.columns:
+            if df.loc[min_rate_row, 'Unit'] == df.loc[min_rate_row, 'MaxUnit']:
+                df.loc[min_rate_row, 'isMaxUnit'] = True
         
         #print(f'現在の発注見込み金額：{df["TotalCost"].sum()}円')
 
@@ -114,7 +115,7 @@ def _get_unit(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
     df = _draft_portfolio(df) #仮ポートフォリオ（最もインデックスに近い購入単位数）を作成
     df = _reduce_units(df, maxcost)
     df = _increase_units(df, maxcost)
-    df = df.drop(['MaxUnitWithinIdeal', 'MaxCostWithinIdeal',	'MinCostExceedingIdeal', 'ReductionRate'], axis=1)
+    df = df.drop(['MaxUnitWithinIdeal', 'MaxCostWithinIdeal', 'MinCostExceedingIdeal', 'ReductionRate'], axis=1)
 
     return df
 
