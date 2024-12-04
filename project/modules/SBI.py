@@ -868,7 +868,6 @@ async def settle_all_margins(tab:uc.core.tab.Tab=None) -> tuple[uc.core.tab.Tab,
                     await position_link.click()
                     break
                 except:
-                    await tab.save_screenshot('debug.png')
                     n += 1
             # "全株指定"ボタンをクリック
             all_shares_button = await tab.wait_for('input[value="全株指定"]')
