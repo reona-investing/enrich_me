@@ -51,24 +51,26 @@ def _draft_portfolio(df:pd.DataFrame) -> pd.DataFrame:
 
 def _reduce_units(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
     '''
-    金額がオーバーしているとき、購入数量を減らす。
-    購入対象銘柄の購入コストが全て理想コスト以内，かつトータルコストが予算内に収まるまで繰り返し。
-    ReductionRate：大きいほど優先的に購入数量を減らす。小さいほど優先的に購入数量を増やす。
+    金額がオーバーしているとき、発注数量を減らす。
+    発注対象銘柄の購入コストが全て理想コスト以内，かつトータルコストが予算内に収まるまで繰り返し。
+    ReductionRate：大きいほど優先的に発注数量を減らす。
     '''
     #候補銘柄の抜き取り
     candidate_tickers_df = \
           df.loc[(df['ReductionRate'] >= 1) & (df['Unit'] != 0), :].sort_values('ReductionRate', ascending=False)
     # 'MaxUnit'が存在する場合、'Unit'を制限
+    df['isMaxUnit'] = False
     for i in range(len(candidate_tickers_df)):
         if 'MaxUnit' in df.columns:
             index_to_reduce = candidate_tickers_df.index[i]
-            if df.loc[index_to_reduce, 'Unit'] > df.loc[index_to_reduce, 'MaxUnit']:
+            if df.loc[index_to_reduce, 'Unit'] >= df.loc[index_to_reduce, 'MaxUnit']:
                 df.loc[index_to_reduce, 'Unit'] = df.loc[index_to_reduce, 'MaxUnit']
+                df.loc[index_to_reduce, 'isMaxUnit'] = True
     # 予算オーバーの場合、予算内に収まるまで購入数量を減らす。
     for i in range(len(candidate_tickers_df)):
         if df['TotalCost'].sum() <= maxcost:
             break # トータルコストが予算内に収まったら繰り返し終了
-        #ReductionRateの値が最も大きい銘柄について、購入数量を1単位減らす。
+        #ReductionRateの値が最も大きい銘柄について、発注数量を1単位減らす。
         index_to_reduce = candidate_tickers_df.index[i]
         df.loc[index_to_reduce, 'TotalCost'] -= df.loc[index_to_reduce, 'EstimatedCost']
         df.loc[index_to_reduce, 'Unit'] -= 1
@@ -77,23 +79,26 @@ def _reduce_units(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
 
 def _increase_units(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
     '''
-    maxcostギリギリまで購入数量を増やす。
+    maxcostギリギリまで発注数量を増やす。
     diff_within < diff_overかつ、差が最小になる場合を判定したい。
     '''
     while True:
         free_cost = maxcost - df['TotalCost'].sum() #余裕コスト（最大これだけ増やせる）
-        #購入数量を増やす銘柄を選定
-        filtered_df = df[df['EstimatedCost'] <= free_cost]
+        #発注数量を増やす銘柄を選定
+        filtered_df = df[(df['EstimatedCost'] <= free_cost) & (df['isMaxUnit'] == False)]
         if filtered_df.empty:
-            break #購入数量を増やせる銘柄がなくなったら繰り返し終了。
+            break #発注数量を増やせる銘柄がなくなったら繰り返し終了。
         min_rate_row = filtered_df['ReductionRate'].idxmin()
-        #購入数量とコスト、ReductionRateを更新
+        #発注数量とコスト、ReductionRateを更新
         df.loc[min_rate_row, ['TotalCost', 'MaxCostWithinIdeal', 'MinCostExceedingIdeal']] += df.loc[min_rate_row, 'EstimatedCost']
         df.loc[min_rate_row, 'Unit'] += 1
         df.loc[min_rate_row, 'ReductionRate'] = \
           abs(df.loc[min_rate_row, 'IdealCost'] - df.loc[min_rate_row, 'MaxCostWithinIdeal']) / \
             abs(df.loc[min_rate_row, 'IdealCost'] - df.loc[min_rate_row, 'MinCostExceedingIdeal'])
-        #print(f'現在の購入金額：{df["TotalCost"].sum()}円')
+        if df.loc[min_rate_row, 'Unit'] == df.loc[min_rate_row, 'MaxUnit']:
+            df.loc[min_rate_row, 'isMaxUnit'] = True
+        
+        #print(f'現在の発注見込み金額：{df["TotalCost"].sum()}円')
 
     return df
 
