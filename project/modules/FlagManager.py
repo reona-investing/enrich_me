@@ -86,7 +86,7 @@ class FlagManager(metaclass=SingletonMeta):
     def _update_dependent_flags(self):
         # update_datasetとupdate_modelsのフラグを他のフラグに基づいて更新
         self.flags["update_dataset"] = self.flags["learn"] or self.flags["fetch_data"]
-        self.flags["update_models"] = any(self.flags[flag] for flag in ["learn", "predict", "take_new_positions", "take_additional_positions"])
+        self.flags["update_models"] = any(self.flags[flag] for flag in ["learn", "predict", "take_new_positions"])
   
     def get_flags(self):
         """現在のフラグ状態を取得"""
