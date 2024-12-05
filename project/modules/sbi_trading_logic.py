@@ -1,6 +1,6 @@
 #%% モジュールのインポート
 import jquants_api_fetcher as fetcher #JQuantsAPIでのデータ取得
-import SBI
+import sbi_operations
 import paths
 
 import math
@@ -152,8 +152,8 @@ def _get_todays_pred_df(y_test_df:pd.DataFrame) -> pd.DataFrame:
 
 async def _get_tradable_dfs(new_sector_list_df:pd.DataFrame, tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame, pd.DataFrame]:
     '''売買それぞれについて、可能な銘柄を算出する。'''
-    tab = await SBI.sign_in(tab)
-    tab, buyable_dict, sellable_dict = await SBI.get_trade_possibility(tab)
+    tab = await sbi_operations.sign_in(tab)
+    tab, buyable_dict, sellable_dict = await sbi_operations.get_trade_possibility(tab)
     buyable_tickers_df = new_sector_list_df[new_sector_list_df['Code'].isin(buyable_dict.keys())].copy()
     sellable_tickers_df = new_sector_list_df[new_sector_list_df['Code'].isin(sellable_dict.keys())].copy()
     buyable_tickers_df['Code'] = buyable_tickers_df['Code'].astype(str)
@@ -281,8 +281,8 @@ async def _determine_orders(long_df:pd.DataFrame, short_df:pd.DataFrame,
                             tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame, pd.DataFrame]:
     '''発注銘柄と発注単位の算出'''
     #業種ごとの発注限度額の算出
-    tab = await SBI.sign_in(tab)
-    tab, margin_buying_power, _ = await SBI.get_buying_power(tab)
+    tab = await sbi_operations.sign_in(tab)
+    tab, margin_buying_power, _ = await sbi_operations.get_buying_power(tab)
     maxcost_per_sector = margin_buying_power / (sectors_to_trade_num * 2)
     #トップ業種に傾斜をつけない場合
     if top_slope == 1:
@@ -336,8 +336,8 @@ async def _update_trade_history(trade_history_path: str, sector_list_path: str,
     trade_history = pd.read_csv(trade_history_path)
     sector_list = pd.read_csv(sector_list_path)
     trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date # 後で同じ変換をするが、この処理いる？
-    tab = await SBI.sign_in(tab)
-    tab, today_contracts = await SBI.fetch_today_contracts(tab, sector_list)
+    tab = await sbi_operations.sign_in(tab)
+    tab, today_contracts = await sbi_operations.fetch_today_contracts(tab, sector_list)
     trade_history = pd.concat([trade_history, today_contracts], axis=0).reset_index(drop=True)
     trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date
     trade_history = trade_history.sort_values(['日付', '売or買', '業種', '銘柄コード']).reset_index(drop=True)
@@ -361,8 +361,8 @@ async def _update_buying_power_history(buying_power_history_path: str, trade_his
     buying_power_history['日付'] = pd.to_datetime(buying_power_history['日付']).dt.date
 
     # 買付余力の取得
-    tab = await SBI.sign_in(tab)
-    tab, _, buying_power = await SBI.get_buying_power(tab)
+    tab = await sbi_operations.sign_in(tab)
+    tab, _, buying_power = await sbi_operations.get_buying_power(tab)
     # 今日の日付の行がなければ追加、あれば更新
     today = datetime.today().date()
     if buying_power_history[buying_power_history['日付'] == today].empty:
@@ -395,15 +395,15 @@ async def _update_deposit_history(deposit_history_df_path: str, buying_power_his
     deposit_history_df['日付'] = pd.to_datetime(deposit_history_df['日付']).dt.date
     deposit_history_df = deposit_history_df.set_index('日付', drop=True)
     # 当日の入出金履歴をとる
-    tab = await SBI.sign_in(tab)
-    tab, in_out_df = await SBI.fetch_in_out(tab)
+    tab = await sbi_operations.sign_in(tab)
+    tab, in_out_df = await sbi_operations.fetch_in_out(tab)
     if in_out_df is None:
         capital_diff = 0
     else:
         in_out_df = in_out_df[(in_out_df['日付']>buying_power_history.index[-2])&(in_out_df['日付']<=buying_power_history.index[-1])]
         capital_diff = in_out_df['入出金額'].sum()
     # 現物の売買による資金の増減をとる
-    tab, spots_df = await SBI.fetch_today_spots(tab) #現物の売買
+    tab, spots_df = await sbi_operations.fetch_today_spots(tab) #現物の売買
     if spots_df is None:
         spots_diff = 0
     else:
@@ -513,7 +513,7 @@ async def _make_orders(orders_df, order_type_value, tab):
                     else:
                         limit_order_price = str(math.ceil(cost * 0.905 / 100) * 100)
         print(order_type_value)
-        _, has_successfully_ordered = await SBI.make_order(tab=tab,
+        _, has_successfully_ordered = await sbi_operations.make_order(tab=tab,
                         trade_type=trade_type, ticker=ticker, unit=unit, order_type=order_type, order_type_value=order_type_value,
                         limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                         period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
@@ -532,9 +532,9 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
     '''
     新規注文を発注する。
     '''
-    #現時点での注文リストをSBI証券から取得
-    tab = await SBI.sign_in(tab)
-    tab, orders = await SBI._extract_order_list(tab)
+    #現時点での注文リストをsbi_operations証券から取得
+    tab = await sbi_operations.sign_in(tab)
+    tab, orders = await sbi_operations._extract_order_list(tab)
 
     #発注処理の条件に当てはまるときのみ処理実行
     if len(orders) > 0:
@@ -553,8 +553,8 @@ async def make_new_order(long_orders:pd.DataFrame, short_orders:pd.DataFrame,
     return tab, failed_order_list
 
 async def make_additional_order(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, list]:
-    #現時点での注文リストをSBI証券から取得
-    tab = await SBI.sign_in(tab)
+    #現時点での注文リストをsbi_operations証券から取得
+    tab = await sbi_operations.sign_in(tab)
     orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)
     orders_df['Code'] = orders_df['Code'].astype(str)
     #ポジションの発注
@@ -568,8 +568,8 @@ async def settle_all_margins(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
     [返り値]
     tab: nodriverのタブ
     '''
-    tab = await SBI.sign_in(tab)
-    _, error_list = await SBI.settle_all_margins(tab)
+    tab = await sbi_operations.sign_in(tab)
+    _, error_list = await sbi_operations.settle_all_margins(tab)
 
     return tab, error_list
 
@@ -577,7 +577,7 @@ async def update_information(sector_list_df_path: str, trade_history_path: str,
                              buying_power_history_path: str, deposit_history_df_path: str, 
                              tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame, pd.DataFrame, pd.DataFrame, float, str]:
     '''
-    SBI証券からスクレイピングして、取引情報、買付余力、総入金額を更新
+    sbi_operations証券からスクレイピングして、取引情報、買付余力、総入金額を更新
     '''
     tab, trade_history = await _update_trade_history(trade_history_path, sector_list_df_path, tab)
     tab, buying_power_history = await _update_buying_power_history(buying_power_history_path, trade_history, tab)
