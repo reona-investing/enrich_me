@@ -244,7 +244,6 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         '''初期設定'''
         # 最初に各種フラグをセットしておく。データ更新の要否を引数に入力している場合は、フラグをその値で上書き。
         now_this_model, should_predict = set_flags(should_update_historical_data, should_predict)
-        now_this_model.should_take_positions = True
         # データセットの読み込み
         ml_dataset1, ml_dataset2, ml_dataset_ensembled = \
             load_datasets(should_learn, ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
