@@ -106,11 +106,9 @@ def update_stock_price(): # 価格情報の更新
         raw_last_stock_price, should_process2 = _fetch_stock_price_from_API(end_date.year - 1, raw_stock_price)
         raw_last_stock_price = raw_last_stock_price.drop_duplicates().dropna()
         raw_stock_price.to_parquet(prev_year_path)
-        now_this_model = FlagManager.launch()
+        FlgMng = FlagManager.FlagManager()
         if should_process1 or should_process2:
-            now_this_model.should_process_stock_price = True
-        else:
-            now_this_model.should_process_stock_price = False
+            FlgMng.flags['process_stock_price'] = True
     display(raw_stock_price.tail(2))
 
 def get_next_open_date(latest_date:datetime, cli:object = cli) -> datetime: # 翌開場日の取得
