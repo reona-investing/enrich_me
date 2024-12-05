@@ -26,7 +26,7 @@ class FlagManager(metaclass=SingletonMeta):
             "take_additional_positions": False,
             "settle_positions": False,
             "fetch_result": False,
-            "train": False,
+            "learn": False,
             "process_stock_price": False,
             "update_dataset": False,
             "update_models": False,
@@ -65,8 +65,9 @@ class FlagManager(metaclass=SingletonMeta):
                 raise ValueError(f"Invalid flag name: {flag_name}")
             if flag_name in ["update_dataset", "update_models"]:
                 raise ValueError(f"Connot set the flag manually: {flag_name}")
-            self.set_flag(flag_name, value)
-            self._update_dependent_flags()
+            if value is not None:
+                self.set_flag(flag_name, value)
+                self._update_dependent_flags()
 
     def _is_between(self, current_time, start_time, end_time):
         """現在時刻が指定した時間範囲内にあるかを判定"""
@@ -84,8 +85,8 @@ class FlagManager(metaclass=SingletonMeta):
 
     def _update_dependent_flags(self):
         # update_datasetとupdate_modelsのフラグを他のフラグに基づいて更新
-        self.flags["update_dataset"] = self.flags["train"] or self.flags["fetch_data"]
-        self.flags["update_models"] = any(self.flags[flag] for flag in ["train", "predict", "take_new_positions", "take_additional_positions"])
+        self.flags["update_dataset"] = self.flags["learn"] or self.flags["fetch_data"]
+        self.flags["update_models"] = any(self.flags[flag] for flag in ["learn", "predict", "take_new_positions", "take_additional_positions"])
   
     def get_flags(self):
         """現在のフラグ状態を取得"""
