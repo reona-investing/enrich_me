@@ -8,9 +8,9 @@ if __name__ == '__main__':
     sys.path.append(ORIGINAL_MODULES)
 #モジュールのインポート
 import asyncio
-import SBI
+import sbi_operations
 async def main():
-    tab = await SBI.sign_in()
-    await SBI.cancel_all_orders(tab)
+    tab = await sbi_operations.sign_in()
+    await sbi_operations.cancel_all_orders(tab)
 
 asyncio.run(main())

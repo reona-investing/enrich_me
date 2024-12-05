@@ -32,7 +32,7 @@ import features_calculator
 import target_calculator
 import MLDataset
 import machine_learning
-import order_to_SBI
+import sbi_trading_logic
 import error_handler
 import asyncio
 
@@ -156,10 +156,10 @@ async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
                          trading_sector_num, candidate_sector_num,
                          top_slope):
     tab, long_orders, short_orders, todays_pred_df = \
-        await order_to_SBI.select_stocks(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
+        await sbi_trading_logic.select_stocks(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
                                         trading_sector_num, candidate_sector_num, 
                                         top_slope=top_slope)
-    _, failed_order_list = await order_to_SBI.make_new_order(long_orders, short_orders, tab)
+    _, failed_order_list = await sbi_trading_logic.make_new_order(long_orders, short_orders, tab)
     Slack.send_message(
         message = 
             f'発注が完了しました。\n' +
@@ -174,7 +174,7 @@ async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
         )
 
 async def take_additionals():
-    _, failed_order_list = await order_to_SBI.make_additional_order()
+    _, failed_order_list = await sbi_trading_logic.make_additional_order()
     Slack.send_message(
         message = 
             f'追加発注が完了しました。'
@@ -187,7 +187,7 @@ async def take_additionals():
         )
 
 async def settle_positions():
-    _, error_tickers = await order_to_SBI.settle_all_margins()
+    _, error_tickers = await sbi_trading_logic.settle_all_margins()
     if len(error_tickers) == 0:
         Slack.send_message(message = '全銘柄の決済注文が完了しました。')
     else:
@@ -199,7 +199,7 @@ async def settle_positions():
 
 async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
     _, trade_history, _, _, _, amount = \
-        await order_to_SBI.update_information(NEW_SECTOR_LIST_CSV,
+        await sbi_trading_logic.update_information(NEW_SECTOR_LIST_CSV,
                                               paths.TRADE_HISTORY_CSV, 
                                               paths.BUYING_POWER_HISTORY_CSV,
                                               paths.DEPOSIT_HISTORY_CSV)

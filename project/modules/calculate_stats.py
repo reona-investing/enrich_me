@@ -1,15 +1,21 @@
 #%% モジュールのインポート
 import pandas as pd
 from scipy.stats import t, chi2
+from typing import Tuple
 
 #%% 関数群
-def estimate_population_mean(mean: float, std: float, CI: float, deg_freedom: int):
+def estimate_population_mean(mean: float, std: float, CI: float, deg_freedom: int) -> Tuple[float, float]:
     '''
-    指定した信頼区間での母平均のベストケースとワーストケースを推定。
-    mean: 標本平均
-    std: 標本標準偏差
-    CI：信頼区間（両側）
-    deg_freedom: 自由度
+    指定した信頼区間での母平均のベストケースとワーストケースを推定します。
+    
+    Parameters:
+    mean (float): 標本平均
+    std (float): 標本標準偏差
+    CI (float): 信頼区間（両側）
+    deg_freedom (int): 自由度
+    
+    Returns:
+    tuple (float, float): ワーストケースとベストケースの母平均
     '''
     lower = (1 - CI) / 2
     upper = 1 - lower
@@ -18,13 +24,18 @@ def estimate_population_mean(mean: float, std: float, CI: float, deg_freedom: in
     return mean_worst, mean_best
 
 
-def estimate_population_std(std: float, CI: float, deg_freedom: int):
+
+def estimate_population_std(std: float, CI: float, deg_freedom: int) -> Tuple[float, float]:
     '''
-    指定した信頼区間での母標準偏差のベストケースとワーストケースを推定。
-    mean: 標本平均
-    std: 標本標準偏差
-    CI：信頼区間（両側）
-    deg_freedom: 自由度
+    指定した信頼区間での母標準偏差のベストケースとワーストケースを推定します。
+    
+    Parameters:
+    std (float): 標本標準偏差
+    CI (float): 信頼区間（両側）
+    deg_freedom (int): 自由度
+    
+    Returns:
+    tuple (float, float): ワーストケースとベストケースの母標準偏差
     '''
     lower = (1 - CI) / 2
     upper = 1 - lower
@@ -32,16 +43,32 @@ def estimate_population_std(std: float, CI: float, deg_freedom: int):
     std_best = (deg_freedom * std ** 2 / chi2.ppf(upper, deg_freedom)) ** 0.5
     return std_worst, std_best
 
-def calculate_DD(mean: float, std: float):
+def calculate_DD(mean: float, std: float) -> Tuple[float, int]:
+    '''
+    ドローダウンを計算します。
+    
+    Parameters:
+    mean (float): 標本平均
+    std (float): 標本標準偏差
+    
+    Returns:
+    tuple (float, int): 最大ドローダウンと日数
+    '''
     maxdd = 9 / 4 * (std ** 2) / mean
     maxdd_days = round(9 * (std ** 2) / (mean ** 2))
     return maxdd, maxdd_days
 
-def estimate_population(series: pd.Series, CI: float = 0.997, commentout: bool=False):
+def estimate_population(series: pd.Series, CI: float = 0.997, commentout: bool = False) -> pd.DataFrame:
     '''
-    標本から母平均と母標準偏差を区間推定する。
-    series：標本
-    CI：信頼区間
+    標本から母平均と母標準偏差を区間推定します。
+    
+    Parameters:
+    series (pd.Series): 標本
+    CI (float): 信頼区間
+    commentout (bool): 結果を出力するかどうか
+    
+    Returns:
+    pd.DataFrame: 推定結果のデータフレーム
     '''
     # 基本的な統計量を算出する。
     mean = series.mean()

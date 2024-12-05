@@ -32,7 +32,7 @@ import features_calculator
 import target_calculator
 import MLDataset
 import machine_learning
-import order_to_SBI
+import sbi_trading_logic
 import error_handler
 import asyncio
 
@@ -70,10 +70,10 @@ async def main(ML_DATASET_PATH:str,
         
         '''10. 新規注文'''
         _, long_orders, short_orders, todays_pred_df = \
-            await order_to_SBI.select_stocks(ml_dataset.order_price_df, NEW_SECTOR_LIST_CSV, ml_dataset.pred_result_df,
+            await sbi_trading_logic.select_stocks(ml_dataset.order_price_df, NEW_SECTOR_LIST_CSV, ml_dataset.pred_result_df,
                                             trading_sector_num, candidate_sector_num, 
                                             top_slope=top_slope)
-        _, take_position, failed_order_list = await order_to_SBI.make_new_order(long_orders, short_orders)
+        _, take_position, failed_order_list = await sbi_trading_logic.make_new_order(long_orders, short_orders)
         LINE.send_message(
             message = 
                 f'発注が完了しました。\n' +
