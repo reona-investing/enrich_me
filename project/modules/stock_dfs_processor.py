@@ -113,8 +113,8 @@ def process_stock_price(codes_to_replace_dict:dict=codes_to_replace_dict): # 価
     temp_cumprod = None
     for my_year in range(end_date.year, 2012, -1):
         is_latest_file = my_year == end_date.year
-        now_this_model = FlagManager.launch()
-        if is_latest_file or now_this_model.should_process_stock_price:
+        FlgMng = FlagManager.FlagManager()
+        if is_latest_file or FlgMng.flags['process_stock_price']:
             my_raw_path = paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(my_year))
             raw_stock_price = pd.read_parquet(my_raw_path)
             #型変換：str
