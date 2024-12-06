@@ -90,6 +90,10 @@ class SBIOperations:
                                 }
                                 }
 
+<<<<<<< HEAD
+=======
+    #%% サインイン
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
     @_retry()
     async def sign_in(self):
         '''未サインインの場合のみサインイン操作を行う'''
@@ -107,6 +111,23 @@ class SBIOperations:
             except Exception as e:
                 print(f"サインイン中にエラーが発生しました: {e}")
 
+<<<<<<< HEAD
+=======
+
+    async def _input_credentials(self):
+        '''ユーザーネームとパスワードを入力するヘルパーメソッド'''
+        username = await self.tab.wait_for('input[name="user_id"]')
+        await username.send_keys(os.getenv('SBI_USERNAME'))
+        
+        password = await self.tab.wait_for('input[name="user_password"]')
+        await password.send_keys(os.getenv('SBI_LOGINPASS'))
+
+        login = await self.tab.wait_for('input[name="ACT_login"]')
+        await login.click()
+
+
+    #%% 信用約定情報の取得
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
     @_retry()
     async def fetch_deal_history(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
         '''過去の信用約定情報を取得'''
@@ -123,6 +144,7 @@ class SBIOperations:
         self.deal_history_df['日付'] = pd.to_datetime(self.deal_history_df['日付']).dt.date
 
 
+<<<<<<< HEAD
     #%% ここからヘルパー関数
     async def _input_credentials(self):
         '''ユーザーネームとパスワードを入力するヘルパーメソッド'''
@@ -136,6 +158,8 @@ class SBIOperations:
         await login.click()
 
 
+=======
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
     async def _fetch_deal_history_csv(self, mydate: datetime):
         myyear = f'{mydate.year}'
         mymonth = f'{mydate.month:02}'
@@ -175,6 +199,10 @@ class SBIOperations:
         self.deal_history_df = pd.read_csv(deal_history_csv, header=None, skiprows=8)
         os.remove(deal_history_csv)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
     def _format_deal_history_df(self, sector_list_df:pd.DataFrame):
         '''
         信用取引結果データフレームを成型する。
@@ -224,8 +252,70 @@ class SBIOperations:
             self.deal_history_df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
 
 
+<<<<<<< HEAD
  
 
+=======
+    #%% 入出金履歴の取得
+    @_retry()
+    async def fetch_in_out(self):
+        '''入出金明細ページへ遷移'''
+        await self.sign_in()
+        button = await self.tab.find('入出金明細')
+        await button.click()
+        await self.tab.wait(1)
+        #検索期間を3ヶ月に指定
+        button = await self.tab.find('3ヶ月')
+        await button.click()
+        await self.tab.wait(1)
+        #表示件数を200件に設定
+        pulldown_selector = 'select[name=in_v_list_count] option[value="200"]'
+        await self._select_pulldown(pulldown_selector)
+        button = await self.tab.select('img[title=照会]')
+        await button.click()
+        await self.tab.wait(1)
+        # htmlを取得
+        html_content = await self.tab.get_content()
+        html = soup(html_content, "html.parser")
+        # tableを抽出, 「入出金日」というカラムを検索して、そのtableを取得
+        table = html.find("th", string=re.compile("区分"))
+
+        if table is None:
+            print('直近1週間の入出金履歴はありません。')
+            return
+        table = table.findParent("table")
+
+        self._format_in_out(table)
+        print('入出金の履歴')
+        display(self.in_out_df)
+
+    def _format_in_out(self, table):
+        # データを格納する変数を定義
+        data = []
+        # tableの各行を処理する
+        for tr in table.find("tbody").findAll("tr"): #tbodyの全行（tr）を取得
+            row = [] # 行のデータを格納する変数を定義
+            row.append(tr.findAll("td")[0].getText().strip()) # 日付
+            row.append(tr.findAll("td")[2].getText().strip()) # 摘要
+            row.append(tr.findAll("td")[3].getText().replace("-", "0").replace(",", "").strip()) # 出金額
+            row.append(tr.findAll("td")[4].getText().replace("-", "0").replace(",", "").strip()) # 入金額
+            row.append(tr.findAll("td")[5].getText().replace("-", "0").replace(",", "").strip()) # 振替出金額
+            row.append(tr.findAll("td")[6].getText().replace("-", "0").replace(",", "").strip()) # 振替入金額
+            data.append(row) #dataに行データを追加
+
+        columns = ["日付", "摘要", "出金額", "入金額", "振替入金額", "振替出金額"] # カラム名を定義
+        self.in_out_df = pd.DataFrame(data, columns=columns) # DataFrameに変換
+        # データ型の設定
+        self.in_out_df['日付'] = pd.to_datetime(self.in_out_df['日付']).dt.date
+        for x in ['入金額', '出金額', '振替入金額', '振替出金額']:
+            self.in_out_df[x] = self.in_out_df[x].astype(int)
+        self.in_out_df['入出金額'] = \
+            self.in_out_df['入金額'] + self.in_out_df['振替入金額'] - self.in_out_df['出金額'] - self.in_out_df['振替出金額']
+        self.in_out_df = self.in_out_df.loc[~self.in_out_df['摘要'].str.contains('譲渡益税')]
+        self.in_out_df = self.in_out_df[['日付', '摘要', '入出金額']]
+
+    #%% 
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
 
     async def _select_pulldown(self, css_selector:str):
         # オプションをJavaScriptを使用してクリック
@@ -444,7 +534,10 @@ class SBIOperations:
     async def _extract_order_list(self):
         '''注文リストの抽出'''
         # 注文ページへ遷移
+<<<<<<< HEAD
         await self.sign_in()
+=======
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
         trade_button = await self.tab.wait_for('img[title="取引"]')
         await trade_button.click()
         # 注文照会、取り消し・訂正ページへ遷移
@@ -484,7 +577,10 @@ class SBIOperations:
     async def _extract_margin_list(self):
         '''信用建玉リストの抽出'''
         # 信用建玉ページへ遷移
+<<<<<<< HEAD
         await self.sign_in()
+=======
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
         button = await self.tab.wait_for('img[title=口座管理]')
         await button.click()
         button = await self.tab.wait_for('area[title=信用建玉]')
@@ -525,6 +621,7 @@ class SBIOperations:
         self.margin_list_df.loc[self.margin_list_df['売・買建'] == '売建', '評価損益'] = \
             self.margin_list_df["建価格"] - self.margin_list_df["評価額"]
         
+<<<<<<< HEAD
     # TODO ここから！！
 
     @_retry()
@@ -581,6 +678,11 @@ class SBIOperations:
         display(in_out_df)
 
         return tab, in_out_df
+=======
+
+    # TODO ここから
+
+>>>>>>> 41dfd44b1e236d20f050396f766787750780fbe7
 
     @_retry()
     async def fetch_today_contracts(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFrame=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
