@@ -7,7 +7,7 @@ sys.path.append(ORIGINAL_MODULES)
 
 import os
 import pandas as pd
-import data_pickler
+
 
 folder = 'C:/Users/ryosh/OneDrive/デスクトップ/enrich-me/project/'
 

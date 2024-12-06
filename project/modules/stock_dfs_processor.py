@@ -1,7 +1,6 @@
 #%% モジュールのインポート
 import paths
 import FlagManager
-import data_pickler
 
 import pandas as pd
 import numpy as np

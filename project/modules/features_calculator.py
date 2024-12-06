@@ -1,6 +1,6 @@
 #%% モジュールのインポート
 import paths
-import data_pickler
+
 import jquants_api_fetcher as fetcher
 import sector_index_calculator
 

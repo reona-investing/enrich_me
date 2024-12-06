@@ -1,6 +1,6 @@
 #%% モジュールのインポート
 import paths
-import data_pickler
+
 
 from datetime import datetime
 import os

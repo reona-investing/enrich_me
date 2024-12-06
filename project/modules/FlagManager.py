@@ -37,7 +37,7 @@ class FlagManager(metaclass=SingletonMeta):
         """現在時刻に基づいてフラグを更新する"""
         current_time = datetime.now().time()
         if self._is_market_open_day():
-            self.flags["update_data"] = self._is_between(current_time, time(7, 0), time(8, 59))
+            self.flags["fetch_data"] = self._is_between(current_time, time(7, 0), time(8, 59))
             self.flags["predict"] = self._is_between(current_time, time(7, 0), time(8, 59))
             self.flags["take_new_positions"] = self._is_between(current_time, time(7, 0), time(8, 59))
             self.flags["take_additional_positions"] = self._is_between(current_time, time(9, 0), time(9, 29))

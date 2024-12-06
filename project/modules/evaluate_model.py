@@ -1,6 +1,5 @@
 #%% モジュールのインポート
 import paths
-import data_pickler
 import MLDataset
 import calculate_stats
 
@@ -330,7 +329,6 @@ class LongShortModel:
 #%% デバッグ
 if __name__ == '__main__':
     ML_DATASET_PATH = f'{paths.ML_DATASETS_FOLDER}/New48sectors.pkl.gz'
-    ml_dataset = data_pickler.load_from_records(ML_DATASET_PATH)
     model_stats = LongShortModel('48Sector', ml_dataset.pred_result_df, ml_dataset.raw_target_df, 
                                  start_date=datetime(2022,1,1), end_date=datetime.today(), bin_num=5, top_slope=1.5)
     model_stats.display_result()

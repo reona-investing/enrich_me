@@ -236,6 +236,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         # 最初に各種フラグをセットしておく。データ更新の要否を引数に入力している場合は、フラグをその値で上書き。
         FlgMng = FlagManager.FlagManager()
         FlgMng.set_flags(learn=learn, predict=predict)
+        print(FlgMng.get_flags())
         # データセットの読み込み
         if FlgMng.flags['update_dataset'] or FlgMng.flags['update_models']:
             ml_dataset1, ml_dataset2, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)

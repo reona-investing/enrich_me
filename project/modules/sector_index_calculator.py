@@ -1,6 +1,6 @@
 #%% モジュールのインポート
 import paths
-import data_pickler
+
 
 import pandas as pd
 import numpy as np
