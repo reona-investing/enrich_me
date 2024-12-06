@@ -43,7 +43,9 @@ class SBIOperations:
         load_dotenv()
         self.browser = None
         self.tab = None
-        self.margin_df = pd.DataFrame()
+        self.deal_history_df = pd.DataFrame()
+        self.order_list_df = pd.DataFrame()
+        self.margin_list_df = pd.DataFrame()
         self.order_param_dicts = {
                                 '取引':{
                                 "現物買": "genK",
@@ -105,6 +107,23 @@ class SBIOperations:
             except Exception as e:
                 print(f"サインイン中にエラーが発生しました: {e}")
 
+    @_retry()
+    async def fetch_deal_history(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
+        '''過去の信用約定情報を取得'''
+        await self.sign_in()
+        # 指定日付の信用約定情報データフレームの取得
+        await self._fetch_deal_history_csv(mydate = mydate)
+
+        #データフレームの形を整える
+        self.deal_history_df.columns = self.deal_history_df.iloc[0]
+        self.deal_history_df = self.deal_history_df.iloc[1:]
+        self.deal_history_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
+        self.deal_history_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
+        self.deal_history_df = self._format_deal_history_df(sector_list_df)
+        self.deal_history_df['日付'] = pd.to_datetime(self.deal_history_df['日付']).dt.date
+
+
+    #%% ここからヘルパー関数
     async def _input_credentials(self):
         '''ユーザーネームとパスワードを入力するヘルパーメソッド'''
         username = await self.tab.wait_for('input[name="user_id"]')
@@ -116,7 +135,98 @@ class SBIOperations:
         login = await self.tab.wait_for('input[name="ACT_login"]')
         await login.click()
 
-    #%% サブ関数
+
+    async def _fetch_deal_history_csv(self, mydate: datetime):
+        myyear = f'{mydate.year}'
+        mymonth = f'{mydate.month:02}'
+        myday = f'{mydate.day:02}'
+        button = await self.tab.find('取引履歴')
+        await button.click()
+        await self.tab.wait(1)
+        #「信用取引」をクリック
+        button = await self.tab.select('#shinT')
+        await button.click()
+        #表示する日時を設定
+        # 年の選択
+        element_num = {'from_yyyy':myyear, 'from_mm':mymonth, 'from_dd':myday, 
+                    'to_yyyy':myyear, 'to_mm':mymonth, 'to_dd':myday}
+        for key, value in element_num.items():
+            pulldown_selector = f'select[name="ref_{key}"] option[value="{value}"]'
+            await self._select_pulldown(pulldown_selector)
+
+        #「照会」をクリック
+        button = await self.tab.find('照会')
+        await button.click()
+        await self.tab.wait(1)
+        #CSVをダウンロード
+        button = await self.tab.find('CSVダウンロード')
+        await button.click()
+        await self.tab.wait(3)
+
+        #ダウンロードしたファイルのファイル名を取得。
+        deal_history_csv = ""
+        #ダウンロード完了まで待機（リトライ上限10回）
+        for i in range(10):
+            deal_history_csv, _ = file_utilities.get_newest_two_files(paths.DOWNLOAD_FOLDER)
+            await self.tab.wait(1)
+            if deal_history_csv.endswith('.csv'):
+                break
+        #元のcsvから必要行のみを切り出してデータフレーム化
+        self.deal_history_df = pd.read_csv(deal_history_csv, header=None, skiprows=8)
+        os.remove(deal_history_csv)
+
+    def _format_deal_history_df(self, sector_list_df:pd.DataFrame):
+        '''
+        信用取引結果データフレームを成型する。
+        '''
+        self.deal_history_df = \
+            self.deal_history_df[['約定日', '取引', '銘柄コード', '銘柄', '約定数量', '約定単価', '手数料/諸経費等']].copy()
+        self.deal_history_df = \
+            self.deal_history_df.rename(columns={'約定日':'日付', '銘柄':'社名', '約定数量':'株数', '手数料/諸経費等':'手数料'})
+        self.deal_history_df['取得単価'] = 0
+        self.deal_history_df.loc[self.deal_history_df['取引'].isin(['信用新規買', '信用新規売']), '取得単価'] = \
+            self.deal_history_df['約定単価']
+        self.deal_history_df['決済単価'] = 0
+        self.deal_history_df.loc[self.deal_history_df['取引'].isin(['信用返済買', '信用返済売']), '決済単価'] = \
+            self.deal_history_df['約定単価']
+        self.deal_history_df['売or買'] = '売'
+        self.deal_history_df.loc[self.deal_history_df['取引'].isin(['信用新規買', '信用返済売']), '売or買'] = '買'
+        self.deal_history_df = self.deal_history_df.drop(['取引', '約定単価'], axis=1)
+        self.deal_history_df[['取得単価', '決済単価']] = self.deal_history_df[['取得単価', '決済単価']].astype(float)
+        self.deal_history_df[['株数', '手数料']] = self.deal_history_df[['株数', '手数料']].astype(int)
+        self.deal_history_df = self.deal_history_df.groupby(['日付', '銘柄コード', '社名', '株数', '売or買']).sum().reset_index(drop=False)
+
+        #データ型を整える
+        self.deal_history_df['銘柄コード'] = self.deal_history_df['銘柄コード'].astype(str)
+        self.deal_history_df['株数'] = self.deal_history_df['株数'].astype(int)
+        self.deal_history_df['取得単価'] = self.deal_history_df['取得単価'].astype(float)
+        self.deal_history_df['決済単価'] = self.deal_history_df['決済単価'].astype(float)
+
+        #必要な数値を計算する
+        self.deal_history_df['取得価格'] = (self.deal_history_df['取得単価'] * self.deal_history_df['株数']).astype(int)
+        self.deal_history_df['決済価格'] = (self.deal_history_df['決済単価'] * self.deal_history_df['株数']).astype(int)
+        self.deal_history_df['手数料'] = 0
+        self.deal_history_df['利益（税引前）'] = 0
+        self.deal_history_df.loc[self.deal_history_df['売or買']=='買', '利益（税引前）'] = \
+            self.deal_history_df['決済価格'] - self.deal_history_df['取得価格'] - self.deal_history_df['手数料']
+        self.deal_history_df.loc[self.deal_history_df['売or買']=='売', '利益（税引前）'] = \
+            self.deal_history_df['取得価格'] - self.deal_history_df['決済価格'] - self.deal_history_df['手数料']
+        self.deal_history_df['利率（税引前）'] = self.deal_history_df['利益（税引前）'] / self.deal_history_df['取得価格']
+
+        #sector_list_dfの型変換
+        sector_list_df['Code'] = sector_list_df['Code'].astype(str)
+
+        #業種一覧と結合
+        self.deal_history_df = \
+            pd.merge(self.deal_history_df, sector_list_df[['Code', 'Sector']], left_on='銘柄コード', right_on='Code', how='left')
+        self.deal_history_df = self.deal_history_df.drop('Code', axis=1).rename(columns={'Sector':'業種'})
+        self.deal_history_df = \
+            self.deal_history_df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
+
+
+ 
+
+
     async def _select_pulldown(self, css_selector:str):
         # オプションをJavaScriptを使用してクリック
         await self.tab.evaluate(f'''
@@ -315,7 +425,7 @@ class SBIOperations:
         data.append(row)
         return data
 
-    def _convert_margin_csv_to_df(self, margin_csv:str) -> pd.DataFrame:
+    def _convert_margin_csv_to_df(self, margin_csv:str):
         #元のcsvから必要行のみを切り出してデータフレーム化
         extracted_rows = []
         found_code = False
@@ -328,63 +438,10 @@ class SBIOperations:
                         columns = row
                 else:
                     extracted_rows.append(row)
-        self.margin_df = pd.DataFrame(extracted_rows, columns=columns)
+        self.deal_history_df = pd.DataFrame(extracted_rows, columns=columns)
 
-    def _format_margin_df(self, sector_list_df:pd.DataFrame) -> pd.DataFrame:
-        '''
-        信用取引結果データフレームを成型する。
-        '''
-        #データ型を整える
-        self.margin_df['銘柄コード'] = self.margin_df['銘柄コード'].astype(str)
-        self.margin_df['株数'] = self.margin_df['株数'].astype(int)
-        self.margin_df['取得単価'] = self.margin_df['取得単価'].astype(float)
-        self.margin_df['決済単価'] = self.margin_df['決済単価'].astype(float)
 
-        #必要な数値を計算する
-        self.margin_df['取得価格'] = (self.margin_df['取得単価'] * self.margin_df['株数']).astype(int)
-        self.margin_df['決済価格'] = (self.margin_df['決済単価'] * self.margin_df['株数']).astype(int)
-        self.margin_df['手数料'] = 0
-        self.margin_df['利益（税引前）'] = 0
-        self.margin_df.loc[self.margin_df['売or買']=='買', '利益（税引前）'] = \
-            self.margin_df['決済価格'] - self.margin_df['取得価格'] - self.margin_df['手数料']
-        self.margin_df.loc[self.margin_df['売or買']=='売', '利益（税引前）'] = \
-            self.margin_df['取得価格'] - self.margin_df['決済価格'] - self.margin_df['手数料']
-        self.margin_df['利率（税引前）'] = self.margin_df['利益（税引前）'] / self.margin_df['取得価格']
-
-        #sector_list_dfの型変換
-        sector_list_df['Code'] = sector_list_df['Code'].astype(str)
-
-        #業種一覧と結合
-        self.margin_df = \
-            pd.merge(self.margin_df, sector_list_df[['Code', 'Sector']], left_on='銘柄コード', right_on='Code', how='left')
-        self.margin_df = self.margin_df.drop('Code', axis=1).rename(columns={'Sector':'業種'})
-        self.margin_df = \
-            self.margin_df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
-
-    def _get_deal_history_df(self, sector_list_df:pd.DataFrame) -> pd.DataFrame:
-        '''
-        '''
-        self.margin_df = \
-            self.margin_df[['約定日', '取引', '銘柄コード', '銘柄', '約定数量', '約定単価', '手数料/諸経費等']].copy()
-        self.margin_df = \
-            self.margin_df.rename(columns={'約定日':'日付', '銘柄':'社名', '約定数量':'株数', '手数料/諸経費等':'手数料'})
-        self.margin_df['取得単価'] = 0
-        self.margin_df.loc[self.margin_df['取引'].isin(['信用新規買', '信用新規売']), '取得単価'] = \
-            self.margin_df['約定単価']
-        self.margin_df['決済単価'] = 0
-        self.margin_df.loc[self.margin_df['取引'].isin(['信用返済買', '信用返済売']), '決済単価'] = \
-            self.margin_df['約定単価']
-        self.margin_df['売or買'] = '売'
-        self.margin_df.loc[self.margin_df['取引'].isin(['信用新規買', '信用返済売']), '売or買'] = '買'
-        self.margin_df = self.margin_df.drop(['取引', '約定単価'], axis=1)
-        self.margin_df[['取得単価', '決済単価']] = self.margin_df[['取得単価', '決済単価']].astype(float)
-        self.margin_df[['株数', '手数料']] = self.margin_df[['株数', '手数料']].astype(int)
-        self.margin_df = self.margin_df.groupby(['日付', '銘柄コード', '社名', '株数', '売or買']).sum().reset_index(drop=False)
-
-        #データを成型して最終的なデータフレームを得る。
-        self._format_margin_df(sector_list_df)
-
-    async def _extract_order_list(self) -> pd.DataFrame:
+    async def _extract_order_list(self):
         '''注文リストの抽出'''
         # 注文ページへ遷移
         await self.sign_in()
@@ -416,34 +473,32 @@ class SBIOperations:
         columns = ["注文番号", "注文状況", "注文種別", "銘柄", "コード", "取引", "預り", "手数料", "注文日",
                 "注文期間", "注文株数", "（未約定）", "執行条件", "注文単価", "現在値", "条件"]
         # DataFrameに変換
-        order_list_df = pd.DataFrame(data, columns=columns)
+        self.order_list_df = pd.DataFrame(data, columns=columns)
         # 型変換
-        order_list_df["注文番号"] = order_list_df["注文番号"].astype(int)
-        order_list_df["コード"] = order_list_df["コード"].astype(str)
+        self.order_list_df["注文番号"] = self.order_list_df["注文番号"].astype(int)
+        self.order_list_df["コード"] = self.order_list_df["コード"].astype(str)
         # 注文状況が取消中の行を削除してindexをリセット
-        order_list_df = order_list_df[order_list_df["注文状況"]!="取消中"].reset_index(drop=True)
+        self.order_list_df = self.order_list_df[self.order_list_df["注文状況"]!="取消中"].reset_index(drop=True)
 
-        return order_list_df
-    # TODO kokokara
 
-    async def _extract_margin_list(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
+    async def _extract_margin_list(self):
         '''信用建玉リストの抽出'''
         # 信用建玉ページへ遷移
-        tab = await sign_in(tab)
-        button = await tab.wait_for('img[title=口座管理]')
+        await self.sign_in()
+        button = await self.tab.wait_for('img[title=口座管理]')
         await button.click()
-        button = await tab.wait_for('area[title=信用建玉]')
+        button = await self.tab.wait_for('area[title=信用建玉]')
         await button.click()
-        await tab.wait(3)
+        await self.tab.wait(3)
         # htmlを取得
-        html_content = await tab.get_content()
+        html_content = await self.tab.get_content()
         html = soup(html_content, "html.parser")
         # tableを抽出, 「銘柄」というカラムを検索して、そのtableを取得
         table = html.find("td", string=re.compile("銘柄"))
 
         if table is None:
             print('保有建玉はありません。')
-            return tab, pd.DataFrame()
+            return
         table = table.findParent("table")
 
         # データを格納する変数を定義
@@ -452,77 +507,25 @@ class SBIOperations:
         for tr in table.find("tbody").findAll("tr"): #tbodyの全行（tr）を取得
             #最初のtdにa要素があれば信用建玉があると判断する
             if tr.find("td").find("a"):
-                data = _append_margin_to_list(tr, data)
+                data = self._append_margin_to_list(tr, data)
         # カラム名を定義
         columns = ["証券コード", "銘柄", "売・買建", "建株数", "建単価", "現在値"]
         # DataFrameに変換
-        margin_list_df = pd.DataFrame(data, columns=columns)
+        self.margin_list_df = pd.DataFrame(data, columns=columns)
         # 型変換
-        margin_list_df["証券コード"] = margin_list_df["証券コード"].astype(str)
-        margin_list_df["建株数"] = margin_list_df["建株数"].str.replace(',', '').astype(int)
-        margin_list_df["建単価"] = margin_list_df["建単価"].str.replace(',', '').astype(float)
-        margin_list_df["現在値"] = margin_list_df["現在値"].str.replace(',', '').astype(float)
+        self.margin_list_df["証券コード"] = self.margin_list_df["証券コード"].astype(str)
+        self.margin_list_df["建株数"] = self.margin_list_df["建株数"].str.replace(',', '').astype(int)
+        self.margin_list_df["建単価"] = self.margin_list_df["建単価"].str.replace(',', '').astype(float)
+        self.margin_list_df["現在値"] = self.margin_list_df["現在値"].str.replace(',', '').astype(float)
         # 評価額
-        margin_list_df["建価格"] = margin_list_df["建株数"] * margin_list_df["建単価"]
-        margin_list_df["評価額"] = margin_list_df["建株数"] * margin_list_df["現在値"]
+        self.margin_list_df["建価格"] = self.margin_list_df["建株数"] * self.margin_list_df["建単価"]
+        self.margin_list_df["評価額"] = self.margin_list_df["建株数"] * self.margin_list_df["現在値"]
         #評価損益
-        margin_list_df['評価損益'] = margin_list_df["評価額"] - margin_list_df["建価格"]
-        margin_list_df.loc[margin_list_df['売・買建'] == '売建', '評価損益'] = margin_list_df["建価格"] - margin_list_df["評価額"]
-
-        return tab, margin_list_df
-
-    @_retry()
-    async def fetch_deal_history(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFrame=None, mydate:datetime=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
-        '''過去の信用約定情報を取得'''
-        myyear = f'{mydate.year}'
-        mymonth = f'{mydate.month:02}'
-        myday = f'{mydate.day:02}'
-        tab = await sign_in(tab)
-        button = await tab.find('取引履歴')
-        await button.click()
-        await tab.wait(1)
-        #「信用取引」をクリック
-        button = await tab.select('#shinT')
-        await button.click()
-        #表示する日時を設定
-        # 年の選択
-        element_num = {'from_yyyy':myyear, 'from_mm':mymonth, 'from_dd':myday, 
-                    'to_yyyy':myyear, 'to_mm':mymonth, 'to_dd':myday}
-        for key, value in element_num.items():
-            pulldown_selector = f'select[name="ref_{key}"] option[value="{value}"]'
-            tab = await _select_pulldown(tab, pulldown_selector)
-
-        #「照会」をクリック
-        button = await tab.find('照会')
-        await button.click()
-        await tab.wait(1)
-        #CSVをダウンロード
-        button = await tab.find('CSVダウンロード')
-        await button.click()
-        await tab.wait(3)
-
-        #ダウンロードしたファイルのファイル名を取得。
-        deal_history_csv = ""
-        #ダウンロード完了まで待機（リトライ上限10回）
-        for i in range(10):
-            deal_history_csv, _ = file_utilities.get_newest_two_files(paths.DOWNLOAD_FOLDER)
-            await tab.wait(1)
-            if deal_history_csv.endswith('.csv'):
-                break
-        #元のcsvから必要行のみを切り出してデータフレーム化
-        deal_history_df = pd.read_csv(deal_history_csv, header=None, skiprows=8)
-
-        #データフレームの形を整える
-        deal_history_df.columns = deal_history_df.iloc[0]
-        deal_history_df = deal_history_df.iloc[1:]
-        deal_history_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
-        deal_history_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
-        deal_history_df = _get_deal_history_df(deal_history_df, sector_list_df)
-        deal_history_df['日付'] = pd.to_datetime(deal_history_df['日付']).dt.date
-
-        os.remove(deal_history_csv)
-
-        return tab, deal_history_df
+        self.margin_list_df['評価損益'] = self.margin_list_df["評価額"] - self.margin_list_df["建価格"]
+        self.margin_list_df.loc[self.margin_list_df['売・買建'] == '売建', '評価損益'] = \
+            self.margin_list_df["建価格"] - self.margin_list_df["評価額"]
+        
+    # TODO ここから！！
 
     @_retry()
     async def fetch_in_out(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
