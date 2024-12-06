@@ -68,7 +68,7 @@ def daytime_return_PCAresiduals(df:pd.DataFrame, # PCAで残差をとった日�
 #%% デバッグ
 if __name__ == '__main__':
     import paths
-    import data_pickler
+    
     from IPython.display import display
     NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz'
     df = pd.read_parquet(NEW_SECTOR_PRICE_PKLGZ)

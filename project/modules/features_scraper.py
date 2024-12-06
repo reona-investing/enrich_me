@@ -1,5 +1,4 @@
 import paths
-import data_pickler
 import asyncio
 import nodriver as uc
 import os
@@ -79,11 +78,7 @@ async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame
     features_to_scrape_df = _get_features_to_scrape_df()
 
     if should_scrape_features:
-        if os.name == 'nt':
-            browser = await uc.start(browser_executable_path='C:\Program Files\Google\Chrome\Application\chrome.exe')
-        else:
-            import virtual_display_installer
-            browser = await uc.start(browser_executable_path='/opt/google/chrome/chrome')
+        browser = await uc.start(browser_executable_path='C:\Program Files\Google\Chrome\Application\chrome.exe')
 
     for _, row in features_to_scrape_df.iterrows():
         start_time = time.time()

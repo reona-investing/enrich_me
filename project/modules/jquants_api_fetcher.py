@@ -2,7 +2,6 @@
 #自作モジュール
 import paths
 import FlagManager
-import data_pickler
 #既存モジュール
 import pandas as pd
 import jquantsapi

@@ -459,14 +459,14 @@ async def sign_in(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
             browser = await uc.start(browser_executable_path='/opt/google/chrome/chrome', headless=True)
         
         #sbi_operations証券のログインページにアクセス
-        url = "https://www.sbi_operationssec.co.jp/ETGate"
+        url = "https://www.sbisec.co.jp/ETGate"
         tab = await browser.get(url)
         await tab.wait(2)
         #ユーザーネームとパスワードを送信
         username = await tab.wait_for('input[name="user_id"]')
-        await username.send_keys(os.getenv('sbi_operations_USERNAME'))
+        await username.send_keys(os.getenv('SBI_USERNAME'))
         password = await tab.wait_for('input[name="user_password"]')
-        await password.send_keys(os.getenv('sbi_operations_LOGINPASS'))
+        await password.send_keys(os.getenv('SBI_LOGINPASS'))
         # ログインボタンをクリック
         login = await tab.wait_for('input[name="ACT_login"]')
         await login.click()
@@ -790,7 +790,7 @@ async def make_order(tab: uc.core.tab.Tab = None,
     credit_trade_type_button = await tab.find(margin_trade_section)
     await credit_trade_type_button.click()  # 信用取引区分
     trade_password_input = await tab.select('input[id="pwd3"]')
-    await trade_password_input.send_keys(os.getenv('sbi_operations_TRADEPASS'))  # 取引パスワード
+    await trade_password_input.send_keys(os.getenv('SBI_TRADEPASS'))  # 取引パスワード
 
     # 注文画面を省略
     skip_button = await tab.select('input[id="shouryaku"]')
@@ -884,7 +884,7 @@ async def settle_all_margins(tab:uc.core.tab.Tab=None) -> tuple[uc.core.tab.Tab,
             tab = await select_pulldown(tab, selector)
             # 取引パスワード
             trade_password_input = await tab.wait_for('input[id="pwd3"]')
-            await trade_password_input.send_keys(os.getenv('sbi_operations_TRADEPASS'))            
+            await trade_password_input.send_keys(os.getenv('SBI_TRADEPASS'))            
             # 注文画面を省略
             skip_button = await tab.wait_for('input[id="shouryaku"]')
             await skip_button.click()
@@ -935,7 +935,7 @@ async def cancel_all_orders(tab:uc.core.tab.Tab=None) -> uc.core.tab.Tab:
         await tab.wait(1)
         # 取引パスワード
         input = await tab.select('input[id="pwd3"]')
-        await input.send_keys(os.getenv('sbi_operations_TRADEPASS'))
+        await input.send_keys(os.getenv('SBI_TRADEPASS'))
         # 注文取消を確定
         button = await tab.select('input[value=注文取消]')
         await button.click()

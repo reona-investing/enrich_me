@@ -1,7 +1,6 @@
 #%% モジュールのインポート
 # 自作モジュール
 import jquants_api_fetcher as fetcher
-import data_pickler
 # 既存モジュール
 from typing import Tuple
 import pandas as pd
