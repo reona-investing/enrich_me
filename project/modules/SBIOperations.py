@@ -980,10 +980,14 @@ async def main():
     #print(sbi.sell_possibility)
     #await sbi.make_order(order_type_value='寄成',ticker='4502')
     #await sbi.cancel_all_orders()
-    await sbi.fetch_today_spots()
-    await sbi.fetch_in_out()
-    await sbi.fetch_today_contracts(df)
-    print(sbi.deal_result_df)
+    import time
+    start = time.time()
+    await asyncio.gather(await sbi.fetch_today_spots(), await sbi.fetch_in_out(), await sbi.fetch_today_contracts(df))
+    #await sbi.fetch_today_spots()
+    #await sbi.fetch_in_out()
+    #await sbi.fetch_today_contracts(df)
+    #print(sbi.deal_result_df)
+    print(time.time() - start)
     '''
     tab, deal_history_df = await fetch_deal_history(tab, df, datetime(2024,6,24))
     invest_result = pd.read_csv(paths.TRADE_HISTORY_CSV)

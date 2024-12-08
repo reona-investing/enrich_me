@@ -25,7 +25,7 @@ codes_to_merge_dict = {'7167':{'Code1':'7167', 'Code2':'8333', 'MergerDate':date
 def _format_stock_code(stock_df: pd.DataFrame) -> pd.DataFrame:
     '''普通株の銘柄コードを4桁に変換するヘルパー関数'''
     stock_df["Code"] = \
-        stock_df["Code"].str.rstrip("0").where(stock_df["Code"].str.len() == 5, stock_df["Code"])
+        stock_df["Code"].str[:4].where((stock_df["Code"].str.len() == 5)&(stock_df["Code"].str[-1] == '0'), stock_df["Code"])
     return stock_df
 
 
