@@ -12,6 +12,7 @@ dependencies = [
     "jquants-api-client>=1.7.2",
     "lightgbm>=4.5.0",
     "matplotlib>=3.9.2",
+    "nbformat>=5.10.4",
     "nodriver>=0.37",
     "numpy>=1.26.4",
     "pandas>=2.2.3",
