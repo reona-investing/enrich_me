@@ -9,6 +9,7 @@ from IPython.display import display
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+import seaborn as sns
 
 #%%
 class TradeHistoryAnalyzer:
@@ -191,40 +192,169 @@ class TradeHistoryAnalyzer:
         self.dataframes_dict['通算損益（レバ込み）'] = total_profit
 
     def display_result(self):
-        '''任意のデータフレームを動的に描画'''
-        #ウィジェットの構成要素の定義
-        dropdown = widgets.Dropdown(
+        '''任意のデータフレームを動的に描画(改善版)'''
+        # データフレーム選択用ドロップダウン
+        df_dropdown = widgets.Dropdown(
             options=self.dataframes_dict.keys(),
-            description='選択：'
-          )
-        button = widgets.Button(description="表示")
-        output = widgets.Output()
-        #ボタンクリック時の挙動を定義
-        def on_button_click(sb):
-            selected_df = self.dataframes_dict[dropdown.value]
-            with output:
-                output.clear_output()
-                if os.name == 'nt':
-                    if dropdown.value in ['日次リターン（累積）', '日次リターン（レバ込み）（累積）']:
-                        #fig = px.line(selected_df, y=['通算利率（税引前）', '通算利率（税引後）'], title='通算利率推移（取得価格ベース）')
-                        fig = [go.FigureWidget() for i in range(0, 2)]
-                        display(fig[0])
-                        fig[0].add_trace(go.Scatter(x=selected_df.index, y=selected_df['通算利益（税引前）'], mode='lines', name='税引前'))
-                        fig[0].add_trace(go.Scatter(x=selected_df.index, y=selected_df['通算利益（税引後）'], mode='lines', name='税引後'))
-                        fig[0].update_layout(title='通算利益推移', xaxis_title='日付', yaxis_title='利率')
-                        display(fig[1])
-                        fig[1].add_trace(go.Scatter(x=selected_df.index, y=selected_df['通算利率（税引前）'], mode='lines', name='税引前'))
-                        fig[1].add_trace(go.Scatter(x=selected_df.index, y=selected_df['通算利率（税引後）'], mode='lines', name='税引後'))
-                        fig[1].update_layout(title='通算利率推移（取得価格ベース）', xaxis_title='日付', yaxis_title='利率')
-                pd.set_option('display.max_rows', None)  # 表示行数を無制限に設定
-                pd.set_option('display.max_columns', None)  # 表示列数を無制限に設定
-                display(selected_df)
-                pd.reset_option('display.max_rows')  # 表示行数をデフォルトに戻す
-                pd.reset_option('display.max_columns')  # 表示列数をデフォルトに戻す
-        button.on_click(on_button_click)
-        #ウィジェットの表示
-        display(widgets.HBox([dropdown, button]))
-        display(output)
+            description='データフレーム:',
+            style={'description_width': 'initial'},
+            layout=widgets.Layout(width='300px')
+        )
+
+        # 出力形式選択用ラジオボタン（テーブル or グラフ）
+        output_mode = widgets.RadioButtons(
+            options=['テーブル', 'グラフ'],
+            description='表示形式:',
+            style={'description_width': 'initial'},
+            layout=widgets.Layout(width='200px')
+        )
+
+        # スタイリングチェックボックス（テーブル表示時のみ有効）
+        styling_checkbox = widgets.Checkbox(
+            value=False,
+            description='カラースケールスタイリング（数値列）',
+            layout=widgets.Layout(width='300px')
+        )
+
+        # ダウンロードボタン
+        download_button = widgets.Button(
+            description='CSVダウンロード',
+            tooltip='現在表示中のDataFrameをCSVとしてダウンロード',
+            icon='download'
+        )
+
+        # 出力エリア
+        output_area = widgets.Output()
+
+        # グラフに関するオプション（Y列選択）
+        y_columns_dropdown = widgets.SelectMultiple(
+            description='グラフ表示列:',
+            options=[],
+            value=(),
+            layout=widgets.Layout(width='300px', height='120px'),
+            style={'description_width': 'initial'},
+            disabled=True
+        )
+
+        # イベントハンドラ
+        def on_df_change(change):
+            if change['type'] == 'change' and change['name'] == 'value':
+                selected_df_name = df_dropdown.value
+                selected_df = self.dataframes_dict[selected_df_name]
+                # グラフ用Y列選択を更新(数値列のみ)
+                numeric_cols = selected_df.select_dtypes(include='number').columns.tolist()
+                y_columns_dropdown.options = numeric_cols
+                if len(numeric_cols) > 0:
+                    y_columns_dropdown.disabled = False
+                    y_columns_dropdown.value = tuple(numeric_cols[:2]) if len(numeric_cols) >= 2 else tuple(numeric_cols)
+                else:
+                    y_columns_dropdown.disabled = True
+                    y_columns_dropdown.value = ()
+
+        def on_output_mode_change(change):
+            if change['type'] == 'change' and change['name'] == 'value':
+                # テーブル・グラフ表示選択に応じて適宜オプションを有効/無効化
+                if output_mode.value == 'テーブル':
+                    styling_checkbox.disabled = False
+                    y_columns_dropdown.disabled = True
+                else:
+                    styling_checkbox.disabled = True
+                    selected_df = self.dataframes_dict[df_dropdown.value]
+                    numeric_cols = selected_df.select_dtypes(include='number').columns.tolist()
+                    if len(numeric_cols) > 0:
+                        y_columns_dropdown.disabled = False
+                    else:
+                        y_columns_dropdown.disabled = True
+
+        def on_show_button_click(_):
+            with output_area:
+                output_area.clear_output()
+                selected_df_name = df_dropdown.value
+                selected_df = self.dataframes_dict[selected_df_name]
+
+                if output_mode.value == 'テーブル':
+                    # テーブル表示
+                    styled_df = selected_df
+                    if styling_checkbox.value:
+                        # 数値列をカラースケールでスタイリング
+                        numeric_cols = styled_df.select_dtypes(include='number').columns
+                        cmap = sns.diverging_palette(5, 250, as_cmap=True)
+                        styled_df = styled_df.style.background_gradient(cmap=cmap, subset=numeric_cols, axis=0)
+                    pd.set_option('display.max_rows', None)
+                    pd.set_option('display.max_columns', None)
+                    display(styled_df)
+                    pd.reset_option('display.max_rows')
+                    pd.reset_option('display.max_columns')
+                else:
+                    # グラフ表示
+                    if len(y_columns_dropdown.value) == 0:
+                        print("グラフ表示する列が選択されていません。")
+                        return
+                    fig = go.Figure()
+                    for col in y_columns_dropdown.value:
+                        fig.add_trace(go.Scatter(x=selected_df.index, y=selected_df[col], mode='lines', name=col))
+                    fig.update_layout(
+                        title=f"{selected_df_name} のグラフ表示",
+                        xaxis_title='日付(インデックス)',
+                        yaxis_title='値',
+                        hovermode='x unified'
+                    )
+                    fig.show()
+
+            # 「表示・更新」クリック時に「出力結果」タブへ切り替え
+            tab.selected_index = 1
+
+        def on_download_button_click(_):
+            # ダウンロードボタン
+            selected_df_name = df_dropdown.value
+            selected_df = self.dataframes_dict[selected_df_name]
+            csv_data = selected_df.to_csv().encode('utf-8')
+            # ダウンロードリンク生成
+            from IPython.display import HTML
+            html = HTML(
+                f'<a download="{selected_df_name}.csv" href="data:text/csv;base64,{csv_data.decode("utf-8").encode("ascii","xmlcharrefreplace").decode("ascii")}">こちらをクリックしてCSVをダウンロード</a>')
+            with output_area:
+                output_area.clear_output()
+                display(html)
+
+        # 各種イベント登録
+        df_dropdown.observe(on_df_change, names='value')
+        output_mode.observe(on_output_mode_change, names='value')
+        download_button.on_click(on_download_button_click)
+
+        # 表示ボタン
+        show_button = widgets.Button(description='表示/更新', icon='refresh')
+        show_button.on_click(on_show_button_click)
+
+        # 初期表示時に列選択などを設定
+        on_df_change({'type':'change','name':'value','new':df_dropdown.value})
+
+        # レイアウト構成（タブを使用して整理）
+        tab = widgets.Tab()
+        
+        # "表示設定"タブ
+        config_box = widgets.VBox([
+            widgets.HTML("<h3>表示設定</h3>"),
+            df_dropdown,
+            output_mode,
+            styling_checkbox,
+            y_columns_dropdown,
+            show_button,
+            download_button
+        ])
+
+        # "出力結果"タブ
+        result_box = widgets.VBox([
+            widgets.HTML("<h3>出力結果</h3>"),
+            output_area
+        ])
+
+        tab.children = [config_box, result_box]
+        tab.set_title(0, '表示設定')
+        tab.set_title(1, '出力結果')
+
+        display(tab)
+
 
     def plot_graphs(self):
         '''任意のグラフを動的に描画'''
