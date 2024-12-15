@@ -74,7 +74,7 @@ def _reduce_units(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
         index_to_reduce = candidate_tickers_df.index[i]
         df.loc[index_to_reduce, 'TotalCost'] -= df.loc[index_to_reduce, 'EstimatedCost']
         df.loc[index_to_reduce, 'Unit'] -= 1
-    return df
+    return df[[x for x in df.columns if x != 'isMaxUnit']]
 
 
 def _increase_units(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
@@ -467,7 +467,9 @@ async def select_stocks(order_price_df:pd.DataFrame, new_sector_list_csv:str, y_
     # 注文する銘柄と注文単位数を算出
     tab, long_orders, short_orders = await _determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, tab)
     # Long, Shortそれぞれの累積コストを算出
+    long_orders = long_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[True, False])
     long_orders['CumCost_byLS'] = long_orders['TotalCost'].cumsum()
+    short_orders = short_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[False, False])
     short_orders['CumCost_byLS'] = short_orders['TotalCost'].cumsum()
     # Long, Shortの選択銘柄をCSVとして出力しておく
     long_orders.to_csv(paths.LONG_ORDERS_CSV, index=False)
