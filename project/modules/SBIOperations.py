@@ -146,7 +146,7 @@ class SBIOperations:
         self.deal_result_df = self.deal_result_df.iloc[1:]
         self.deal_result_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
         self.deal_result_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
-        self.deal_result_df = self._format_deal_result_df(sector_list_df)
+        self.deal_result_df = self._format_contracts_df(sector_list_df)
         self.deal_result_df['日付'] = pd.to_datetime(self.deal_result_df['日付']).dt.date
 
 
@@ -290,7 +290,7 @@ class SBIOperations:
             self.deal_result_df[(self.deal_result_df['売or買']=='買')|(self.deal_result_df['売or買']=='売')]
 
         #データを成型して最終的なデータフレームを得る。
-        self._format_deal_result_df(sector_list_df)
+        self._format_contracts_df(sector_list_df)
 
 
     def _append_contract_to_list(self, tr:object, data:list) -> list:
@@ -317,7 +317,7 @@ class SBIOperations:
         return data
 
 
-    def _format_deal_result_df(self, sector_list_df:pd.DataFrame):
+    def _format_contracts_df(self, sector_list_df:pd.DataFrame):
         '''
         信用取引結果データフレームを成型する。
         '''

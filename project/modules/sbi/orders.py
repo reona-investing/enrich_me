@@ -190,7 +190,7 @@ class SBIOrderMaker:
     async def settle_all_margins(self):
         await self.session.sign_in()
         await self._extract_margin_list()
-        await self._extract_order_list()
+        await self.extract_order_list()
 
         if len(self.margin_list_df) == 0:
             print('信用建玉がありません。決済処理を中断します。')
@@ -298,7 +298,7 @@ class SBIOrderMaker:
         self.margin_list_df.loc[self.margin_list_df['売・買建'] == '売建', '評価損益'] = \
             self.margin_list_df["建価格"] - self.margin_list_df["評価額"]
 
-    async def _extract_order_list(self):
+    async def extract_order_list(self):
         trade_button = await self.session.tab.wait_for('img[title="取引"]')
         await trade_button.click()
         button = await self.session.tab.wait_for(text='注文照会')
@@ -328,7 +328,7 @@ class SBIOrderMaker:
     @retry()
     async def cancel_all_orders(self):
         await self.session.sign_in()
-        await self._extract_order_list()
+        await self.extract_order_list()
         if len(self.order_list_df) == 0:
             return
         for i in range(len(self.order_list_df)):

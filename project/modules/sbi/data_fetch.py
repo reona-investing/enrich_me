@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup as soup
 from .session import SBISession
 from .utils.decorators import retry
 from .utils.web import select_pulldown, get_newest_two_files
-from .utils.formatting import format_deal_result_df, format_in_out_df
+from .utils.formatting import format_contracts_df, format_in_out_df
 import paths
 import unicodedata
 
@@ -18,8 +18,9 @@ class SBIDataFetcher:
         if session is None:
             session = SBISession()
         self.session = session
-        self.deal_result_df = pd.DataFrame()
+        self.past_contracts_df = pd.DataFrame()
         self.in_out_df = pd.DataFrame()
+        self.today_contracts_df = pd.DataFrame()
         self.today_spots_df = pd.DataFrame()
         self.margin_buying_power = None
         self.buying_power = None
@@ -28,29 +29,29 @@ class SBIDataFetcher:
         self.sell_possibility = None
 
     #@retry()
-    async def fetch_deal_result(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
+    async def fetch_past_contracts(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
         await self.session.sign_in()
-        await self._fetch_deal_result_csv(mydate=mydate)
-        self.deal_result_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
-            self.deal_result_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
-        self.deal_result_df = self.deal_result_df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
-        take_df = self.deal_result_df[(self.deal_result_df['取引']=='信用新規買')|(self.deal_result_df['取引']=='信用新規売')]
+        await self._fetch_past_contracts_csv(mydate=mydate)
+        self.past_contracts_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
+            self.past_contracts_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
+        self.past_contracts_df = self.past_contracts_df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
+        take_df = self.past_contracts_df[(self.past_contracts_df['取引']=='信用新規買')|(self.past_contracts_df['取引']=='信用新規売')]
         take_df['売or買'] = '買'
         take_df = take_df.rename(columns={'約定日': '日付',
                                           '銘柄': '社名',
                                           '約定数量': '株数',
                                           '約定単価': '取得単価'})
-        take_df.loc[self.deal_result_df['取引']=='信用新規売', '売or買'] = '売'
-        settle_df = self.deal_result_df[(self.deal_result_df['取引']=='信用返済買')|(self.deal_result_df['取引']=='信用返済売')]
+        take_df.loc[self.past_contracts_df['取引']=='信用新規売', '売or買'] = '売'
+        settle_df = self.past_contracts_df[(self.past_contracts_df['取引']=='信用返済買')|(self.past_contracts_df['取引']=='信用返済売')]
         settle_df = settle_df.rename(columns={'約定単価': '決済単価'})
-        self.deal_result_df = pd.merge(take_df, settle_df[['銘柄コード', '決済単価']], how='outer', on='銘柄コード')
+        self.past_contracts_df = pd.merge(take_df, settle_df[['銘柄コード', '決済単価']], how='outer', on='銘柄コード')
 
-        self.deal_result_df = format_deal_result_df(self.deal_result_df, sector_list_df)
-        self.deal_result_df['日付'] = pd.to_datetime(self.deal_result_df['日付']).dt.date
-        print(self.deal_result_df)
+        self.past_contracts_df = format_contracts_df(self.past_contracts_df, sector_list_df)
+        self.past_contracts_df['日付'] = pd.to_datetime(self.past_contracts_df['日付']).dt.date
+        print(self.past_contracts_df)
 
 
-    async def _fetch_deal_result_csv(self, mydate: datetime):
+    async def _fetch_past_contracts_csv(self, mydate: datetime):
         myyear = f'{mydate.year}'
         mymonth = f'{mydate.month:02}'
         myday = f'{mydate.day:02}'
@@ -84,7 +85,7 @@ class SBIDataFetcher:
                 deal_result_csv = second_file
                 break
             
-        self.deal_result_df = pd.read_csv(deal_result_csv, header=0, skiprows=8, encoding='shift_jis')
+        self.past_contracts_df = pd.read_csv(deal_result_csv, header=0, skiprows=8, encoding='shift_jis')
         os.remove(deal_result_csv)
 
     @retry()
@@ -138,9 +139,9 @@ class SBIDataFetcher:
                 data = self._append_contract_to_list(tr, data)
 
         columns = ["日付", "売or買", "銘柄コード", "社名", "株数", "取得単価", "決済単価"]
-        self.deal_result_df = pd.DataFrame(data, columns=columns)
-        self.deal_result_df = self.deal_result_df[(self.deal_result_df['売or買']=='買')|(self.deal_result_df['売or買']=='売')]
-        self.deal_result_df = format_deal_result_df(self.deal_result_df, sector_list_df)
+        self.today_contracts_df = pd.DataFrame(data, columns=columns)
+        self.today_contracts_df = self.today_contracts_df[(self.today_contracts_df['売or買']=='買')|(self.today_contracts_df['売or買']=='売')]
+        self.today_contracts_df = format_contracts_df(self.today_contracts_df, sector_list_df)
 
     def _append_contract_to_list(self, tr:object, data:list) -> list:
         row = []
