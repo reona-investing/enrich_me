@@ -1,7 +1,7 @@
 # utils/formatting.py
 import pandas as pd
 
-def format_deal_result_df(df: pd.DataFrame, sector_list_df: pd.DataFrame):
+def format_contracts_df(df: pd.DataFrame, sector_list_df: pd.DataFrame):
     df['銘柄コード'] = df['銘柄コード'].astype(str)
     df['株数'] = df['株数'].astype(int)
     df['取得単価'] = df['取得単価'].astype(float)
