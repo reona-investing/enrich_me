@@ -59,6 +59,16 @@ class SBIOrderManager:
         with open(self.file_path, "w", encoding="utf-8") as f:
             json.dump(self.orders, f, ensure_ascii=False, indent=2)
 
+    def search_orders(self, params: TradeParameters) -> int:
+        '''paramsの指定列の情報をオーダー一覧から検索し、見つかったデータのリスト上での順番を返す'''
+        compare_keys = ['symbol_code', 'trade_type', 'unit']
+        input_condition = [getattr(params, key) for key in compare_keys]
+        for i, order in enumerate(self.orders):
+            control_condition = [order['params'].get(key) for key in compare_keys]
+            if (order['status'] == OrderStatus.WAITING) & (input_condition == control_condition):
+                return i
+        return None
+
     def add_new_order(self, params: TradeParameters) -> int:
         """新規に発注待ちポジションを追加し、その注文のリスト上での順番を返す"""
         if params.symbol_code is None:

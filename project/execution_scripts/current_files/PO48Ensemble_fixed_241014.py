@@ -33,6 +33,7 @@ import target_calculator
 import MLDataset
 import machine_learning
 import sbi_trading_logic
+from sbi import SBISession, SBIDataFetcher, SBIOrderMaker
 import error_handler
 import asyncio
 
@@ -155,11 +156,13 @@ def ensemble_pred_results(dataset_ensembled: MLDataset.MLDataset, datasets: list
 async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df, 
                          trading_sector_num, candidate_sector_num,
                          top_slope):
-    tab, long_orders, short_orders, todays_pred_df = \
-        await sbi_trading_logic.select_stocks(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
-                                        trading_sector_num, candidate_sector_num, 
-                                        top_slope=top_slope)
-    _, failed_order_list = await sbi_trading_logic.make_new_order(long_orders, short_orders, tab)
+    sbi_session = SBISession()
+    sbi_data_fetcher = SBIDataFetcher(sbi_session)
+    sbi_order_maker = SBIOrderMaker(sbi_session)
+    long_orders, short_orders, todays_pred_df = \
+        await sbi_trading_logic.select_stocks(sbi_data_fetcher, order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
+                                        trading_sector_num, candidate_sector_num, top_slope=top_slope)
+    failed_order_list = await sbi_trading_logic.make_new_order(sbi_order_maker, long_orders, short_orders)
     Slack.send_message(
         message = 
             f'発注が完了しました。\n' +
@@ -174,7 +177,9 @@ async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
         )
 
 async def take_additionals():
-    _, failed_order_list = await sbi_trading_logic.make_additional_order()
+    sbi_session = SBISession()
+    sbi_order_maker = SBIOrderMaker(sbi_session)
+    failed_order_list = await sbi_trading_logic.make_additional_order(sbi_order_maker)
     Slack.send_message(
         message = 
             f'追加発注が完了しました。'
@@ -187,7 +192,9 @@ async def take_additionals():
         )
 
 async def settle_positions():
-    _, error_tickers = await sbi_trading_logic.settle_all_margins()
+    sbi_session = SBISession()
+    sbi_order_maker = SBIOrderMaker(sbi_session)
+    error_tickers = await sbi_trading_logic.settle_all_margins(sbi_order_maker)
     if len(error_tickers) == 0:
         Slack.send_message(message = '全銘柄の決済注文が完了しました。')
     else:
@@ -198,11 +205,14 @@ async def settle_positions():
                 )
 
 async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
-    _, trade_history, _, _, _, amount = \
-        await sbi_trading_logic.update_information(NEW_SECTOR_LIST_CSV,
-                                              paths.TRADE_HISTORY_CSV, 
-                                              paths.BUYING_POWER_HISTORY_CSV,
-                                              paths.DEPOSIT_HISTORY_CSV)
+    sbi_session = SBISession()
+    sbi_data_fetcher = SBIDataFetcher(sbi_session)
+    trade_history, _, _, _, amount = \
+        await sbi_trading_logic.update_information(sbi_data_fetcher,
+                                                   NEW_SECTOR_LIST_CSV,
+                                                   paths.TRADE_HISTORY_CSV,
+                                                   paths.BUYING_POWER_HISTORY_CSV,
+                                                   paths.DEPOSIT_HISTORY_CSV)
     Slack.send_result(
         message = 
             f'取引履歴等の更新が完了しました。\n' +
