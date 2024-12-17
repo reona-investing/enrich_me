@@ -157,11 +157,11 @@ async def _get_tradable_dfs(new_sector_list_df:pd.DataFrame, sbi_data_fetcher:SB
     '''売買それぞれについて、可能な銘柄を算出する。'''
     
     await sbi_data_fetcher.get_trade_possibility()
-    buyable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(sbi_data_fetcher.buy_possibility.keys())].copy()
-    sellable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(sbi_data_fetcher.sell_possibility.keys())].copy()
+    buyable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(sbi_data_fetcher.buyable_stock_limits.keys())].copy()
+    sellable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(sbi_data_fetcher.sellable_stock_limits.keys())].copy()
     buyable_symbol_codes_df['Code'] = buyable_symbol_codes_df['Code'].astype(str)
     sellable_symbol_codes_df['Code'] = sellable_symbol_codes_df['Code'].astype(str)
-    sellable_symbol_codes_df['MaxUnit'] = sellable_symbol_codes_df['Code'].map(sbi_data_fetcher.sell_possibility)
+    sellable_symbol_codes_df['MaxUnit'] = sellable_symbol_codes_df['Code'].map(sbi_data_fetcher.sellable_stock_limits)
     return buyable_symbol_codes_df, sellable_symbol_codes_df
 
 
@@ -338,8 +338,8 @@ async def _update_trade_history(trade_history_path: str, sector_list_path: str,
     trade_history = pd.read_csv(trade_history_path)
     sector_list = pd.read_csv(sector_list_path)
     trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date # 後で同じ変換をするが、この処理いる？
-    await sbi_data_fetcher.fetch_today_contracts(sector_list)
-    trade_history = pd.concat([trade_history, sbi_data_fetcher.today_contracts_df], axis=0).reset_index(drop=True)
+    await sbi_data_fetcher.fetch_today_margin_trades(sector_list)
+    trade_history = pd.concat([trade_history, sbi_data_fetcher.today_margin_trades_df], axis=0).reset_index(drop=True)
     trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date
     trade_history = trade_history.sort_values(['日付', '売or買', '業種', '銘柄コード']).reset_index(drop=True)
 
@@ -396,15 +396,15 @@ async def _update_deposit_history(deposit_history_df_path: str, buying_power_his
     deposit_history_df = deposit_history_df.set_index('日付', drop=True)
     # 当日の入出金履歴をとる
     await sbi_data_fetcher.fetch_in_out()
-    in_out_df = sbi_data_fetcher.in_out_df
-    if in_out_df is None:
+    cashflow_transactions_df = sbi_data_fetcher.cashflow_transactions_df
+    if cashflow_transactions_df is None:
         capital_diff = 0
     else:
-        in_out_df = in_out_df[(in_out_df['日付']>buying_power_history.index[-2])&(in_out_df['日付']<=buying_power_history.index[-1])]
-        capital_diff = in_out_df['入出金額'].sum()
+        cashflow_transactions_df = cashflow_transactions_df[(cashflow_transactions_df['日付']>buying_power_history.index[-2])&(cashflow_transactions_df['日付']<=buying_power_history.index[-1])]
+        capital_diff = cashflow_transactions_df['入出金額'].sum()
     # 現物の売買による資金の増減をとる
     await sbi_data_fetcher.fetch_today_spots() #現物の売買
-    spots_df = sbi_data_fetcher.today_spots_df
+    spots_df = sbi_data_fetcher.today_stock_trades_df
     if len(spots_df) == 0:
         spots_diff = 0
     else:
