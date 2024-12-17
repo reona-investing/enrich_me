@@ -68,18 +68,15 @@ class SBIOrderMaker:
     @retry()
     async def make_order(self, trade_params: TradeParameters):
         await self.session.sign_in()
-
         trade_button = await self.session.tab.wait_for('img[title="取引"]')
         await trade_button.click()
         await self.session.tab.wait(2)
-
         trade_type_button = await self.session.tab.wait_for(f'#{SBIOrderMaker.order_param_dicts["取引"][trade_params.trade_type]}')
         await trade_type_button.click()
         stock_code_input = await self.session.tab.select('input[name="stock_sec_code"]')
         await stock_code_input.send_keys(trade_params.symbol_code)
         quantity_input = await self.session.tab.select('input[name="input_quantity"]')
         await quantity_input.send_keys(str(trade_params.unit))
-
         await self._input_sashinari_params(trade_params)
         await self._get_duration_params(trade_params)
 
@@ -99,12 +96,15 @@ class SBIOrderMaker:
         html_content = await self.session.tab.get_content()
 
         # 発注情報を登録
-        order_num = self.daily_order_manager.add_new_order(trade_params)
+        order_num = self.daily_order_manager.search_orders(trade_params)
+        if order_num is None:
+            order_num = self.daily_order_manager.add_new_order(trade_params)
+        # TODO jsonに格納した時点でNoneがnullになり、search_ordersがうまく働かない。
 
         if "ご注文を受け付けました。" in html_content:
             print(f"{trade_params.symbol_code} {trade_params.unit}株 {trade_params.trade_type} {trade_params.order_type}：正常に注文完了しました。")
             self.has_successfully_ordered = True       
-            order_id = self._get_order_id(html_content)
+            order_id = self._get_element_from_order_info(html_content, search_header = "注文番号")
             self.daily_order_manager.update_order_id(order_num, order_id)
             self.daily_order_manager.update_status(order_id, "発注済")
         else:
@@ -170,11 +170,11 @@ class SBIOrderMaker:
                 else:
                     raise ValueError("指定したインデックスが範囲外")
 
-    def _get_order_id(self, html_content) -> int:
+    def _get_element_from_order_info(self, html_content, search_header: str) -> int:
         # BeautifulSoupでHTMLを解析
         bs = soup(html_content, 'html.parser')
         # "注文番号"というテキストを持つ要素を探す
-        target_element = bs.find('th', class_='vaM', text=lambda t: "注文番号" in t)
+        target_element = bs.find('th', class_='vaM', text=lambda t: search_header in t)
         # 対応する兄弟要素 <td> を取得
         if target_element:
             value_element = target_element.find_next('td', class_='vaM')
@@ -185,6 +185,7 @@ class SBIOrderMaker:
                 raise ValueError("対応する<td>要素が見つかりません。")
         else:
             raise ValueError("注文番号が見つかりません。")
+
 
     @retry()
     async def settle_all_margins(self):
@@ -251,12 +252,25 @@ class SBIOrderMaker:
                     await self.session.tab.wait_for(text='ご注文を受け付けました。')
                     print(f"{margin_tickers[i]}：正常に決済注文完了しました。")
 
-                    html_content = await self.session.tab.get_content()
-                    order_id = self._get_order_id(html_content)
-                    self.daily_order_manager.update_status(order_id, "決済発注済")
-                    
                     retry_count = 0
                     i += 1
+
+                    html_content = await self.session.tab.get_content()
+                    symbol_code = str(self._get_element_from_order_info(html_content, '銘柄コード'))
+                    extracted_unit = self._get_element_from_order_info(html_content, ' 株数')
+                    extracted_unit = int(extracted_unit[:-2])
+                    trade_type = self._get_element_from_order_info(html_content, '取引')
+                    if '信用返済買' in trade_type:
+                        trade_type = '信用新規売'
+                    if '信用返済売' in trade_type:
+                        trade_type = '信用新規買'
+                    order_id = self._get_element_from_order_info(html_content, '注文番号')
+                    print([symbol_code, extracted_unit, trade_type])
+                    params_to_compare = TradeParameters(symbol_code=symbol_code, unit=extracted_unit, trade_type=trade_type)
+                    order_id = self.daily_order_manager.search_orders(params_to_compare)
+                    self.daily_order_manager.update_status(order_id, "決済発注済")
+                    # TODO order_idのアップデートを実装する！
+                    
                 except:
                     if retry_count < 3:
                         print(f"{margin_tickers[i]}：発注失敗。再度発注を試みます。")
@@ -353,7 +367,7 @@ class SBIOrderMaker:
             order_type = self.order_list_df['注文種別'].iloc[i]
             if "ご注文を受け付けました。" in html_content:
                 print(f"{code} {unit}株 {order_type}：注文取消が完了しました。")
-                order_id = self._get_order_id(html_content)
+                order_id = self._get_element_from_order_info(html_content, "注文番号")
                 if any(keyword in html_content for keyword in ["信用新規買", "信用新規売", "現物買"]):
                     for order in self.daily_order_manager.orders:
                         if (order['order_id'] == order_id) & (order['status'] == '発注済'):                            
