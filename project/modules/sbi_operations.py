@@ -568,21 +568,21 @@ async def fetch_in_out(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, pd.Da
         data.append(row) #dataに行データを追加
 
     columns = ["日付", "摘要", "出金額", "入金額", "振替入金額", "振替出金額"] # カラム名を定義
-    in_out_df = pd.DataFrame(data, columns=columns) # DataFrameに変換
+    cashflow_transactions_df = pd.DataFrame(data, columns=columns) # DataFrameに変換
     # データ型の設定
-    in_out_df['日付'] = pd.to_datetime(in_out_df['日付']).dt.date
+    cashflow_transactions_df['日付'] = pd.to_datetime(cashflow_transactions_df['日付']).dt.date
     for x in ['入金額', '出金額', '振替入金額', '振替出金額']:
-        in_out_df[x] = in_out_df[x].astype(int)
-    in_out_df['入出金額'] = in_out_df['入金額'] + in_out_df['振替入金額'] - in_out_df['出金額'] - in_out_df['振替出金額']
-    in_out_df = in_out_df.loc[~in_out_df['摘要'].str.contains('譲渡益税')]
-    in_out_df = in_out_df[['日付', '摘要', '入出金額']]
+        cashflow_transactions_df[x] = cashflow_transactions_df[x].astype(int)
+    cashflow_transactions_df['入出金額'] = cashflow_transactions_df['入金額'] + cashflow_transactions_df['振替入金額'] - cashflow_transactions_df['出金額'] - cashflow_transactions_df['振替出金額']
+    cashflow_transactions_df = cashflow_transactions_df.loc[~cashflow_transactions_df['摘要'].str.contains('譲渡益税')]
+    cashflow_transactions_df = cashflow_transactions_df[['日付', '摘要', '入出金額']]
     print('入出金の履歴')
-    display(in_out_df)
+    display(cashflow_transactions_df)
 
-    return tab, in_out_df
+    return tab, cashflow_transactions_df
 
 @_retry()
-async def fetch_today_contracts(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFrame=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
+async def fetch_today_margin_trades(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFrame=None) -> Tuple[uc.core.tab.Tab, pd.DataFrame]:
     '''当日の信用約定情報を取得'''
     #当日約定一覧ページへ遷移
     tab = await sign_in(tab)
@@ -662,17 +662,17 @@ async def fetch_today_spots(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, 
     columns = ["日付", "売or買", "銘柄コード", "社名", "買付余力増減"]
 
     # DataFrameに変換
-    today_spots_df = pd.DataFrame(data, columns=columns)
+    today_stock_trades_df = pd.DataFrame(data, columns=columns)
     #データ型変換
-    today_spots_df['日付'] = pd.to_datetime(today_spots_df['日付']).dt.date
-    today_spots_df['銘柄コード'] = today_spots_df['銘柄コード'].astype(str)
-    today_spots_df['買付余力増減'] = today_spots_df['買付余力増減'].astype(int)
+    today_stock_trades_df['日付'] = pd.to_datetime(today_stock_trades_df['日付']).dt.date
+    today_stock_trades_df['銘柄コード'] = today_stock_trades_df['銘柄コード'].astype(str)
+    today_stock_trades_df['買付余力増減'] = today_stock_trades_df['買付余力増減'].astype(int)
     #"買"の場合はマイナスとする（資金が減るので）
-    today_spots_df.loc[today_spots_df['売or買']=='買', '買付余力増減'] = - today_spots_df.loc[today_spots_df['売or買']=='買', '買付余力増減']
+    today_stock_trades_df.loc[today_stock_trades_df['売or買']=='買', '買付余力増減'] = - today_stock_trades_df.loc[today_stock_trades_df['売or買']=='買', '買付余力増減']
     print('現物売買')
-    display(today_spots_df)
+    display(today_stock_trades_df)
 
-    return tab, today_spots_df
+    return tab, today_stock_trades_df
 
 @_retry()
 async def get_buying_power(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.Tab, int, int]:
@@ -741,12 +741,12 @@ async def get_trade_possibility(tab:uc.core.tab.Tab=None) -> Tuple[uc.core.tab.T
     #    os.remove(f'{paths.DOWNLOAD_FOLDER}/{file}')
 
     #日計り信用売り可の銘柄と上限単位数を辞書で格納
-    buy_possibility = {key: value for key, value in zip(margin_df['コード'].astype(str), margin_df['一人あたり建玉上限数'].astype(int))}
-    sell_possibility = {key: value for key, value in zip(
+    buyable_stock_limits = {key: value for key, value in zip(margin_df['コード'].astype(str), margin_df['一人あたり建玉上限数'].astype(int))}
+    sellable_stock_limits = {key: value for key, value in zip(
         margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), 'コード'].astype(str),
         margin_df.loc[(margin_df['売建受注枠']!='受付不可') & (margin_df['信用区分（HYPER）']==''), '一人あたり建玉上限数'].astype(int))}
 
-    return tab, buy_possibility, sell_possibility
+    return tab, buyable_stock_limits, sellable_stock_limits
 
 #@_retry()
 async def make_order(tab: uc.core.tab.Tab = None,
@@ -959,9 +959,9 @@ async def main():
     tab, bp, sp = await get_trade_possibility(tab)
     #tab = await make_order(tab, nariyuki_value='寄成',ticker='4502')
     #tab = await cancel_all_orders(tab)
-    #tab, today_spots_df = await fetch_today_spots(tab)
-    #tab, in_out_df = await fetch_in_out(tab)
-    #tab, today_margin_df = await fetch_today_contracts(tab, df)
+    #tab, today_stock_trades_df = await fetch_today_spots(tab)
+    #tab, cashflow_transactions_df = await fetch_in_out(tab)
+    #tab, today_margin_df = await fetch_today_margin_trades(tab, df)
     '''
     tab, deal_history_df = await fetch_deal_history(tab, df, datetime(2024,6,24))
     invest_result = pd.read_csv(paths.TRADE_HISTORY_CSV)

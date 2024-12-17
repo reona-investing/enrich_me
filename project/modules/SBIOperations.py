@@ -50,12 +50,12 @@ class SBIOperations:
         self.deal_result_df: pd.DataFrame = pd.DataFrame()
         self.order_list_df: pd.DataFrame = pd.DataFrame()
         self.margin_list_df: pd.DataFrame = pd.DataFrame()
-        self.today_spots_df: pd.DataFrame = pd.DataFrame()
+        self.today_stock_trades_df: pd.DataFrame = pd.DataFrame()
         self.margin_buying_power: int = None
         self.buying_power: int = None
         self.trade_possibility_df: pd.DataFrame = pd.DataFrame()
-        self.buy_possibility: dict = None
-        self.sell_possibility: dict = None
+        self.buyable_stock_limits: dict = None
+        self.sellable_stock_limits: dict = None
         self.has_successfully_ordered: bool = False
         self.error_tickers: list = []
         self.order_param_dicts: dict = {
@@ -190,7 +190,7 @@ class SBIOperations:
         os.remove(deal_result_csv)
 
 
-    #%% 入出金履歴の取得（self.in_out_df）
+    #%% 入出金履歴の取得（self.cashflow_transactions_df）
     @_retry()
     async def fetch_in_out(self):
         '''入出金明細ページへ遷移'''
@@ -221,7 +221,7 @@ class SBIOperations:
 
         self._format_in_out(table)
         print('入出金の履歴')
-        display(self.in_out_df)
+        display(self.cashflow_transactions_df)
 
 
     def _format_in_out(self, table):
@@ -239,19 +239,19 @@ class SBIOperations:
             data.append(row) #dataに行データを追加
 
         columns = ["日付", "摘要", "出金額", "入金額", "振替入金額", "振替出金額"] # カラム名を定義
-        self.in_out_df = pd.DataFrame(data, columns=columns) # DataFrameに変換
+        self.cashflow_transactions_df = pd.DataFrame(data, columns=columns) # DataFrameに変換
         # データ型の設定
-        self.in_out_df['日付'] = pd.to_datetime(self.in_out_df['日付']).dt.date
+        self.cashflow_transactions_df['日付'] = pd.to_datetime(self.cashflow_transactions_df['日付']).dt.date
         for x in ['入金額', '出金額', '振替入金額', '振替出金額']:
-            self.in_out_df[x] = self.in_out_df[x].astype(int)
-        self.in_out_df['入出金額'] = \
-            self.in_out_df['入金額'] + self.in_out_df['振替入金額'] - self.in_out_df['出金額'] - self.in_out_df['振替出金額']
-        self.in_out_df = self.in_out_df.loc[~self.in_out_df['摘要'].str.contains('譲渡益税')]
-        self.in_out_df = self.in_out_df[['日付', '摘要', '入出金額']]
+            self.cashflow_transactions_df[x] = self.cashflow_transactions_df[x].astype(int)
+        self.cashflow_transactions_df['入出金額'] = \
+            self.cashflow_transactions_df['入金額'] + self.cashflow_transactions_df['振替入金額'] - self.cashflow_transactions_df['出金額'] - self.cashflow_transactions_df['振替出金額']
+        self.cashflow_transactions_df = self.cashflow_transactions_df.loc[~self.cashflow_transactions_df['摘要'].str.contains('譲渡益税')]
+        self.cashflow_transactions_df = self.cashflow_transactions_df[['日付', '摘要', '入出金額']]
 
     #%% 当日の信用約定情報の取得(self.deal_result_df)
     @_retry()
-    async def fetch_today_contracts(self, sector_list_df:pd.DataFrame=None):
+    async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
         '''当日の信用約定情報を取得'''
         #当日約定一覧ページへ遷移
         await self.sign_in()
@@ -369,7 +369,7 @@ class SBIOperations:
             self.deal_result_df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
 
 
-    #%% 当日の現物取引による増減を取得（self.today_spots_df）
+    #%% 当日の現物取引による増減を取得（self.today_stock_trades_df）
     @_retry()
     async def fetch_today_spots(self):
         '''当日の現物取引による増減を確認'''
@@ -407,16 +407,16 @@ class SBIOperations:
         columns = ["日付", "売or買", "銘柄コード", "社名", "買付余力増減"]
 
         # DataFrameに変換
-        self.today_spots_df = pd.DataFrame(data, columns=columns)
+        self.today_stock_trades_df = pd.DataFrame(data, columns=columns)
         #データ型変換
-        self.today_spots_df['日付'] = pd.to_datetime(self.today_spots_df['日付']).dt.date
-        self.today_spots_df['銘柄コード'] = self.today_spots_df['銘柄コード'].astype(str)
-        self.today_spots_df['買付余力増減'] = self.today_spots_df['買付余力増減'].astype(int)
+        self.today_stock_trades_df['日付'] = pd.to_datetime(self.today_stock_trades_df['日付']).dt.date
+        self.today_stock_trades_df['銘柄コード'] = self.today_stock_trades_df['銘柄コード'].astype(str)
+        self.today_stock_trades_df['買付余力増減'] = self.today_stock_trades_df['買付余力増減'].astype(int)
         #"買"の場合はマイナスとする（資金が減るので）
-        self.today_spots_df.loc[self.today_spots_df['売or買']=='買', '買付余力増減'] = \
-            - self.today_spots_df.loc[self.today_spots_df['売or買']=='買', '買付余力増減']
+        self.today_stock_trades_df.loc[self.today_stock_trades_df['売or買']=='買', '買付余力増減'] = \
+            - self.today_stock_trades_df.loc[self.today_stock_trades_df['売or買']=='買', '買付余力増減']
         print('現物売買')
-        display(self.today_spots_df)
+        display(self.today_stock_trades_df)
 
 
     def _append_spot_to_list(self, tr:object, data:list) -> list:
@@ -467,7 +467,7 @@ class SBIOperations:
         self.buying_power = div.findNext("div").getText().strip()
         self.buying_power = int(self.buying_power.replace(',', ''))  # 買付余力をint型で取得
 
-    #%% 日計り信用可能銘柄かどうかを判定 (self.buy_possibility, self.sell_possibility)
+    #%% 日計り信用可能銘柄かどうかを判定 (self.buyable_stock_limits, self.sellable_stock_limits)
     @_retry()
     async def get_trade_possibility(self):
         '''日計り信用可能銘柄かを判定'''
@@ -511,11 +511,11 @@ class SBIOperations:
         sellable_condition = \
             (self.trade_possibility_df['売建受注枠']!='受付不可') & \
             (self.trade_possibility_df['信用区分（HYPER）']=='')
-        self.buy_possibility = \
+        self.buyable_stock_limits = \
             {key: value for key, value in \
                 zip(self.trade_possibility_df['コード'].astype(str), 
                     self.trade_possibility_df['一人あたり建玉上限数'].astype(int))}
-        self.sell_possibility = \
+        self.sellable_stock_limits = \
             {key: value for key, value in \
              zip(self.trade_possibility_df.loc[sellable_condition, 'コード'].astype(str),
                 self.trade_possibility_df.loc[sellable_condition, '一人あたり建玉上限数'].astype(int))}
@@ -977,15 +977,15 @@ async def main():
     #await sbi.get_buying_power()
     #print(sbi.margin_buying_power)
     #await sbi.get_trade_possibility()
-    #print(sbi.sell_possibility)
+    #print(sbi.sellable_stock_limits)
     #await sbi.make_order(order_type_value='寄成',ticker='4502')
     #await sbi.cancel_all_orders()
     import time
     start = time.time()
-    await asyncio.gather(await sbi.fetch_today_spots(), await sbi.fetch_in_out(), await sbi.fetch_today_contracts(df))
+    await asyncio.gather(await sbi.fetch_today_spots(), await sbi.fetch_in_out(), await sbi.fetch_today_margin_trades(df))
     #await sbi.fetch_today_spots()
     #await sbi.fetch_in_out()
-    #await sbi.fetch_today_contracts(df)
+    #await sbi.fetch_today_margin_trades(df)
     #print(sbi.deal_result_df)
     print(time.time() - start)
     '''

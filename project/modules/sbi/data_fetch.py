@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup as soup
 from .session import SBISession
 from .utils.decorators import retry
 from .utils.web import select_pulldown, get_newest_two_files
-from .utils.formatting import format_contracts_df, format_in_out_df
+from .utils.formatting import format_contracts_df, format_cashflow_transactions_df
 import paths
 import unicodedata
 
@@ -18,40 +18,40 @@ class SBIDataFetcher:
         if session is None:
             session = SBISession()
         self.session = session
-        self.past_contracts_df = pd.DataFrame()
-        self.in_out_df = pd.DataFrame()
-        self.today_contracts_df = pd.DataFrame()
-        self.today_spots_df = pd.DataFrame()
+        self.past_margin_trades_df = pd.DataFrame()
+        self.cashflow_transactions_df = pd.DataFrame()
+        self.today_margin_trades_df = pd.DataFrame()
+        self.today_stock_trades_df = pd.DataFrame()
         self.margin_buying_power = None
         self.buying_power = None
         self.trade_possibility_df = pd.DataFrame()
-        self.buy_possibility = None
-        self.sell_possibility = None
+        self.buyable_stock_limits = None
+        self.sellable_stock_limits = None
 
     #@retry()
-    async def fetch_past_contracts(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
+    async def fetch_past_margin_trades(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
         await self.session.sign_in()
-        await self._fetch_past_contracts_csv(mydate=mydate)
-        self.past_contracts_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
-            self.past_contracts_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
-        self.past_contracts_df = self.past_contracts_df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
-        take_df = self.past_contracts_df[(self.past_contracts_df['取引']=='信用新規買')|(self.past_contracts_df['取引']=='信用新規売')]
+        await self._fetch_past_margin_trades_csv(mydate=mydate)
+        self.past_margin_trades_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
+            self.past_margin_trades_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
+        self.past_margin_trades_df = self.past_margin_trades_df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
+        take_df = self.past_margin_trades_df[(self.past_margin_trades_df['取引']=='信用新規買')|(self.past_margin_trades_df['取引']=='信用新規売')]
         take_df['売or買'] = '買'
         take_df = take_df.rename(columns={'約定日': '日付',
                                           '銘柄': '社名',
                                           '約定数量': '株数',
                                           '約定単価': '取得単価'})
-        take_df.loc[self.past_contracts_df['取引']=='信用新規売', '売or買'] = '売'
-        settle_df = self.past_contracts_df[(self.past_contracts_df['取引']=='信用返済買')|(self.past_contracts_df['取引']=='信用返済売')]
+        take_df.loc[self.past_margin_trades_df['取引']=='信用新規売', '売or買'] = '売'
+        settle_df = self.past_margin_trades_df[(self.past_margin_trades_df['取引']=='信用返済買')|(self.past_margin_trades_df['取引']=='信用返済売')]
         settle_df = settle_df.rename(columns={'約定単価': '決済単価'})
-        self.past_contracts_df = pd.merge(take_df, settle_df[['銘柄コード', '決済単価']], how='outer', on='銘柄コード')
+        self.past_margin_trades_df = pd.merge(take_df, settle_df[['銘柄コード', '決済単価']], how='outer', on='銘柄コード')
 
-        self.past_contracts_df = format_contracts_df(self.past_contracts_df, sector_list_df)
-        self.past_contracts_df['日付'] = pd.to_datetime(self.past_contracts_df['日付']).dt.date
-        print(self.past_contracts_df)
+        self.past_margin_trades_df = format_contracts_df(self.past_margin_trades_df, sector_list_df)
+        self.past_margin_trades_df['日付'] = pd.to_datetime(self.past_margin_trades_df['日付']).dt.date
+        print(self.past_margin_trades_df)
 
 
-    async def _fetch_past_contracts_csv(self, mydate: datetime):
+    async def _fetch_past_margin_trades_csv(self, mydate: datetime):
         myyear = f'{mydate.year}'
         mymonth = f'{mydate.month:02}'
         myday = f'{mydate.day:02}'
@@ -85,7 +85,7 @@ class SBIDataFetcher:
                 deal_result_csv = second_file
                 break
             
-        self.past_contracts_df = pd.read_csv(deal_result_csv, header=0, skiprows=8, encoding='shift_jis')
+        self.past_margin_trades_df = pd.read_csv(deal_result_csv, header=0, skiprows=8, encoding='shift_jis')
         os.remove(deal_result_csv)
 
     @retry()
@@ -109,12 +109,12 @@ class SBIDataFetcher:
             print('直近1週間の入出金履歴はありません。')
             return
         table = table.findParent("table")
-        self.in_out_df = format_in_out_df(table)
+        self.cashflow_transactions_df = format_cashflow_transactions_df(table)
         print('入出金の履歴')
-        print(self.in_out_df)
+        print(self.cashflow_transactions_df)
 
     @retry()
-    async def fetch_today_contracts(self, sector_list_df:pd.DataFrame=None):
+    async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
         await self.session.sign_in()
         button = await self.session.tab.select('img[title=口座管理]')
         await button.click()
@@ -139,9 +139,9 @@ class SBIDataFetcher:
                 data = self._append_contract_to_list(tr, data)
 
         columns = ["日付", "売or買", "銘柄コード", "社名", "株数", "取得単価", "決済単価"]
-        self.today_contracts_df = pd.DataFrame(data, columns=columns)
-        self.today_contracts_df = self.today_contracts_df[(self.today_contracts_df['売or買']=='買')|(self.today_contracts_df['売or買']=='売')]
-        self.today_contracts_df = format_contracts_df(self.today_contracts_df, sector_list_df)
+        self.today_margin_trades_df = pd.DataFrame(data, columns=columns)
+        self.today_margin_trades_df = self.today_margin_trades_df[(self.today_margin_trades_df['売or買']=='買')|(self.today_margin_trades_df['売or買']=='売')]
+        self.today_margin_trades_df = format_contracts_df(self.today_margin_trades_df, sector_list_df)
 
     def _append_contract_to_list(self, tr:object, data:list) -> list:
         row = []
@@ -188,14 +188,14 @@ class SBIDataFetcher:
                 data = self._append_spot_to_list(tr, data)
 
         columns = ["日付", "売or買", "銘柄コード", "社名", "買付余力増減"]
-        self.today_spots_df = pd.DataFrame(data, columns=columns)
-        self.today_spots_df['日付'] = pd.to_datetime(self.today_spots_df['日付']).dt.date
-        self.today_spots_df['銘柄コード'] = self.today_spots_df['銘柄コード'].astype(str)
-        self.today_spots_df['買付余力増減'] = self.today_spots_df['買付余力増減'].astype(int)
-        self.today_spots_df.loc[self.today_spots_df['売or買']=='買', '買付余力増減'] = \
-            - self.today_spots_df.loc[self.today_spots_df['売or買']=='買', '買付余力増減']
+        self.today_stock_trades_df = pd.DataFrame(data, columns=columns)
+        self.today_stock_trades_df['日付'] = pd.to_datetime(self.today_stock_trades_df['日付']).dt.date
+        self.today_stock_trades_df['銘柄コード'] = self.today_stock_trades_df['銘柄コード'].astype(str)
+        self.today_stock_trades_df['買付余力増減'] = self.today_stock_trades_df['買付余力増減'].astype(int)
+        self.today_stock_trades_df.loc[self.today_stock_trades_df['売or買']=='買', '買付余力増減'] = \
+            - self.today_stock_trades_df.loc[self.today_stock_trades_df['売or買']=='買', '買付余力増減']
         print('現物売買')
-        print(self.today_spots_df)
+        print(self.today_stock_trades_df)
 
     def _append_spot_to_list(self, tr:object, data:list) -> list:
         row = []
@@ -265,12 +265,12 @@ class SBIDataFetcher:
         sellable_condition = \
             (self.trade_possibility_df['売建受注枠']!='受付不可') & \
             (self.trade_possibility_df['信用区分（HYPER）']=='')
-        self.buy_possibility = {
+        self.buyable_stock_limits = {
             key: value for key, value in \
                 zip(self.trade_possibility_df['コード'].astype(str), 
                     self.trade_possibility_df['一人あたり建玉上限数'].astype(int))
         }
-        self.sell_possibility = {
+        self.sellable_stock_limits = {
             key: value for key, value in \
                 zip(self.trade_possibility_df.loc[sellable_condition, 'コード'].astype(str),
                     self.trade_possibility_df.loc[sellable_condition, '一人あたり建玉上限数'].astype(int))

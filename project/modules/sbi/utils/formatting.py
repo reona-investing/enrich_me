@@ -21,7 +21,7 @@ def format_contracts_df(df: pd.DataFrame, sector_list_df: pd.DataFrame):
     df = df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
     return df
 
-def format_in_out_df(table):
+def format_cashflow_transactions_df(table):
     data = []
     for tr in table.find("tbody").findAll("tr"):
         row = []
@@ -34,11 +34,11 @@ def format_in_out_df(table):
         data.append(row)
 
     columns = ["日付", "摘要", "出金額", "入金額", "振替入金額", "振替出金額"]
-    in_out_df = pd.DataFrame(data, columns=columns)
-    in_out_df['日付'] = pd.to_datetime(in_out_df['日付']).dt.date
+    cashflow_transactions_df = pd.DataFrame(data, columns=columns)
+    cashflow_transactions_df['日付'] = pd.to_datetime(cashflow_transactions_df['日付']).dt.date
     for x in ['入金額', '出金額', '振替入金額', '振替出金額']:
-        in_out_df[x] = in_out_df[x].astype(int)
-    in_out_df['入出金額'] = in_out_df['入金額'] + in_out_df['振替入金額'] - in_out_df['出金額'] - in_out_df['振替出金額']
-    in_out_df = in_out_df.loc[~in_out_df['摘要'].str.contains('譲渡益税')]
-    in_out_df = in_out_df[['日付', '摘要', '入出金額']]
-    return in_out_df
+        cashflow_transactions_df[x] = cashflow_transactions_df[x].astype(int)
+    cashflow_transactions_df['入出金額'] = cashflow_transactions_df['入金額'] + cashflow_transactions_df['振替入金額'] - cashflow_transactions_df['出金額'] - cashflow_transactions_df['振替出金額']
+    cashflow_transactions_df = cashflow_transactions_df.loc[~cashflow_transactions_df['摘要'].str.contains('譲渡益税')]
+    cashflow_transactions_df = cashflow_transactions_df[['日付', '摘要', '入出金額']]
+    return cashflow_transactions_df
