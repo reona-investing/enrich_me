@@ -21,6 +21,7 @@ dependencies = [
     "plotly>=5.24.1",
     "pyarrow>=17.0.0",
     "pyclustering>=0.10.1.2",
+    "pydantic>=2.10.3",
     "pytesseract>=0.3.13",
     "python-dotenv>=1.0.1",
     "quantstats>=0.0.62",

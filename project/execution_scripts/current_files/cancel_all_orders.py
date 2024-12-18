@@ -14,4 +14,4 @@ async def main():
     sbi_order_maker = SBIOrderMaker(sbi_session)
     await sbi_order_maker.cancel_all_orders()
 
-asyncio.run(main())
+asyncio.get_event_loop().run_until_complete(main())
