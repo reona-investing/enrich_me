@@ -8,9 +8,10 @@ class LoginHandler:
         self.session = BrowserSession()
 
     async def sign_in(self):
-        await self.session.start_browser(LoginHandler.START_URL)
-        await self._input_credentials()
-        await self.session.tab.wait(3)
+        if self.session.tab is None:
+            await self.session.start_browser(LoginHandler.START_URL)
+            await self._input_credentials()
+            await self.session.tab.wait(3)
 
     async def _input_credentials(self):
         username = await self.session.tab.wait_for('input[name="user_id"]')

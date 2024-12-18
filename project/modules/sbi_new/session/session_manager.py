@@ -11,7 +11,7 @@ class BrowserSession:
         self.browser = None
         self.tab = None
 
-    async def start_browser(self, url):
+    async def start_browser(self, url: str):
         self.browser = await uc.start(browser_executable_path=BrowserSession.BROWSER_PATH)
         self.tab = await self.browser.get(url)
         await self.tab.wait(2)
