@@ -21,24 +21,20 @@ def format_contracts_df(df: pd.DataFrame, sector_list_df: pd.DataFrame):
     df = df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
     return df
 
-def format_cashflow_transactions_df(table):
-    data = []
-    for tr in table.find("tbody").findAll("tr"):
-        row = []
-        row.append(tr.findAll("td")[0].getText().strip()) # 日付
-        row.append(tr.findAll("td")[2].getText().strip()) # 摘要
-        row.append(tr.findAll("td")[3].getText().replace("-", "0").replace(",", "").strip()) # 出金額
-        row.append(tr.findAll("td")[4].getText().replace("-", "0").replace(",", "").strip()) # 入金額
-        row.append(tr.findAll("td")[5].getText().replace("-", "0").replace(",", "").strip()) # 振替出金額
-        row.append(tr.findAll("td")[6].getText().replace("-", "0").replace(",", "").strip()) # 振替入金額
-        data.append(row)
+def format_cashflow_transactions_df(df: pd.DataFrame) -> pd.DataFrame:
+    '''データフレームを'''
+    #日付型に変換
+    df['日付'] = pd.to_datetime(df['入出金日']).dt.date
 
-    columns = ["日付", "摘要", "出金額", "入金額", "振替入金額", "振替出金額"]
-    cashflow_transactions_df = pd.DataFrame(data, columns=columns)
-    cashflow_transactions_df['日付'] = pd.to_datetime(cashflow_transactions_df['日付']).dt.date
-    for x in ['入金額', '出金額', '振替入金額', '振替出金額']:
-        cashflow_transactions_df[x] = cashflow_transactions_df[x].astype(int)
-    cashflow_transactions_df['入出金額'] = cashflow_transactions_df['入金額'] + cashflow_transactions_df['振替入金額'] - cashflow_transactions_df['出金額'] - cashflow_transactions_df['振替出金額']
-    cashflow_transactions_df = cashflow_transactions_df.loc[~cashflow_transactions_df['摘要'].str.contains('譲渡益税')]
-    cashflow_transactions_df = cashflow_transactions_df[['日付', '摘要', '入出金額']]
-    return cashflow_transactions_df
+    # ハイフンや空文字を0に変換して、数値型に変換
+    for col in ["出金額", "入金額", "振替出金額", "振替入金額"]:
+        df[col] = df[col].astype(str).replace("-", "0")
+        df[col] = df[col].str.replace(",", "")
+        df[col] = df[col].astype(int)
+
+
+    df['入出金額'] = df['入金額'] + df['振替入金額'] - df['出金額'] - df['振替出金額']
+    df = df.loc[~df['摘要'].str.contains('譲渡益税')]
+    df = df[['日付', '摘要', '入出金額']]
+
+    return df

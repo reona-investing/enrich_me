@@ -94,22 +94,36 @@ class SBIDataFetcher:
         button = await self.session.tab.find('入出金明細')
         await button.click()
         await self.session.tab.wait(1)
-        button = await self.session.tab.find('3ヶ月')
-        await button.click()
+        
+        
+        selected_element = await self.session.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+        await selected_element.select_option()
         await self.session.tab.wait(1)
-        pulldown_selector = 'select[name=in_v_list_count] option[value="200"]'
-        await select_pulldown(self.session.tab, pulldown_selector)
-        button = await self.session.tab.select('img[title=照会]')
-        await button.click()
-        await self.session.tab.wait(1)
-        html_content = await self.session.tab.get_content()
-        html = soup(html_content, "html.parser")
-        table = html.find("th", string=re.compile("区分"))
-        if table is None:
+
+        #fc-page-table > div > ul > li:nth-child(2)
+        # タイトル行の取得
+        parent_element = await self.session.tab.select('#fc-page-table > div > ul')
+        elements = parent_element.children
+
+        data_for_df = []
+        for i, element in enumerate(elements):
+            texts = []
+            if i == 0:
+                content = await element.get_html()
+                html = soup(content, 'html.parser')
+                titles = [div.get_text(strip=True) for div in html.find_all('div', class_='table-head')]
+            else:
+                children_elements = element.children
+                for child_element in children_elements:
+                    grandchild_element = child_element.children[0]
+                    texts.append(grandchild_element.text)
+                data_for_df.append(texts)
+        df = pd.DataFrame(data_for_df, columns = titles)
+
+        if len(df) == 0:
             print('直近1週間の入出金履歴はありません。')
             return
-        table = table.findParent("table")
-        self.cashflow_transactions_df = format_cashflow_transactions_df(table)
+        self.cashflow_transactions_df = format_cashflow_transactions_df(df)
         print('入出金の履歴')
         print(self.cashflow_transactions_df)
 

@@ -1,0 +1,682 @@
+[
+  {
+    "order_id": "21607",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "7459",
+      "trade_type": "信用新規売",
+      "unit": 1500,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21608",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "2784",
+      "trade_type": "信用新規売",
+      "unit": 1400,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21609",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "7011",
+      "trade_type": "信用新規買",
+      "unit": 3800,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21610",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "9987",
+      "trade_type": "信用新規売",
+      "unit": 500,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21611",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "7013",
+      "trade_type": "信用新規買",
+      "unit": 200,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21612",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8129",
+      "trade_type": "信用新規売",
+      "unit": 400,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21613",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "1963",
+      "trade_type": "信用新規買",
+      "unit": 200,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21614",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8801",
+      "trade_type": "信用新規売",
+      "unit": 3000,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21615",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "6981",
+      "trade_type": "信用新規買",
+      "unit": 1800,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21616",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8802",
+      "trade_type": "信用新規売",
+      "unit": 1300,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21617",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "6762",
+      "trade_type": "信用新規買",
+      "unit": 1900,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21618",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8830",
+      "trade_type": "信用新規売",
+      "unit": 500,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21619",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "6479",
+      "trade_type": "信用新規買",
+      "unit": 400,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21620",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "3003",
+      "trade_type": "信用新規売",
+      "unit": 800,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21621",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "6967",
+      "trade_type": "信用新規買",
+      "unit": 100,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21622",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "4062",
+      "trade_type": "信用新規買",
+      "unit": 100,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21623",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "3231",
+      "trade_type": "信用新規売",
+      "unit": 200,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21624",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "6770",
+      "trade_type": "信用新規買",
+      "unit": 200,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21625",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "6976",
+      "trade_type": "信用新規買",
+      "unit": 100,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21626",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8905",
+      "trade_type": "信用新規売",
+      "unit": 200,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21627",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8306",
+      "trade_type": "信用新規買",
+      "unit": 1500,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21628",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8316",
+      "trade_type": "信用新規買",
+      "unit": 500,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21629",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8766",
+      "trade_type": "信用新規買",
+      "unit": 300,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21630",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8411",
+      "trade_type": "信用新規買",
+      "unit": 300,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": 0,
+    "status": "発注待ち",
+    "params": {
+      "symbol_code": "5713",
+      "trade_type": "信用新規売",
+      "unit": 2300,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21631",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "7182",
+      "trade_type": "信用新規買",
+      "unit": 500,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21632",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8725",
+      "trade_type": "信用新規買",
+      "unit": 200,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21633",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8750",
+      "trade_type": "信用新規買",
+      "unit": 100,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21634",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8630",
+      "trade_type": "信用新規買",
+      "unit": 100,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21635",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8309",
+      "trade_type": "信用新規買",
+      "unit": 100,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21636",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8308",
+      "trade_type": "信用新規買",
+      "unit": 300,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21637",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8795",
+      "trade_type": "信用新規買",
+      "unit": 100,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21639",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "5711",
+      "trade_type": "信用新規売",
+      "unit": 1200,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  },
+  {
+    "order_id": "21638",
+    "status": "発注済",
+    "params": {
+      "symbol_code": "8410",
+      "trade_type": "信用新規買",
+      "unit": 300,
+      "order_type": "成行",
+      "order_type_value": "寄成",
+      "limit_order_price": null,
+      "stop_order_trigger_price": null,
+      "stop_order_type": "成行",
+      "stop_order_price": null,
+      "period_type": "当日中",
+      "period_value": null,
+      "period_index": null,
+      "trade_section": "特定預り",
+      "margin_trade_section": "制度"
+    }
+  }
+]
