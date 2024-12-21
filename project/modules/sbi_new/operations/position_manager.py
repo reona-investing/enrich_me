@@ -6,6 +6,10 @@ import paths
 from .trade_parameters import TradeParameters
 
 class PositionManager:
+    # ステータス定数
+    STATUS_UNORDERED = "未発注"
+    STATUS_ORDERED = "発注済"
+
     def __init__(self):
         """ポジション管理クラス"""
         self.base_dir = paths.ORDERS_FOLDER
@@ -34,10 +38,10 @@ class PositionManager:
         """新しいポジションを追加"""
         position = {
             "order_id": None,  # 発注時ID（未設定）
-            "order_status": "未発注",
+            "order_status": self.STATUS_UNORDERED,
             "order_params": order_params,  # TradeParametersオブジェクト
             "settlement_id": None,  # 決済時ID（未設定）
-            "settlement_status": "未発注",
+            "settlement_status": self.STATUS_UNORDERED,
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         self.positions.append(position)
@@ -56,9 +60,15 @@ class PositionManager:
                 return True
         return False
 
-    def find_positions_by_status(self, status_type: str, status: str) -> List[Dict]:
+    def find_positions_by_status(self, trade_params: TradeParameters) -> int:
         """指定したステータスのポジションを取得"""
-        return [pos for pos in self.positions if pos[status_type] == status]
+        compare_keys = ['symbol_code', 'trade_type', 'unit']
+        input_condition = [getattr(trade_params, key) for key in compare_keys]
+        for i, order in enumerate(self.orders):
+            control_condition = [order['params'].get(key) for key in compare_keys]
+            if (order['status'] == PositionManager.STATUS_UNORDERED) & (input_condition == control_condition):
+                return i
+        return None
 
     def update_order_id(self, index: int, order_id: int):
         """発注時IDを更新"""
@@ -71,3 +81,39 @@ class PositionManager:
     def get_all_positions(self) -> List[Dict]:
         """全ポジション情報を取得"""
         return self.positions
+
+    def get_pending_positions(self) -> List[Dict]:
+        """
+        発注待ちのポジションを取得
+        - order_status: '未発注'
+        - settlement_status: '未発注'
+        """
+        pending_positions = [
+            pos for pos in self.positions
+            if pos["order_status"] == self.STATUS_UNORDERED and pos["settlement_status"] == self.STATUS_UNORDERED
+        ]
+        return pending_positions
+
+    def get_open_positions(self) -> List[Dict]:
+        """
+        決済発注待ちのポジションを取得
+        - order_status: '発注済'
+        - settlement_status: '未発注'
+        """
+        pending_positions = [
+            pos for pos in self.positions
+            if pos["order_status"] == self.STATUS_ORDERED and pos["settlement_status"] == self.STATUS_UNORDERED
+        ]
+        return pending_positions
+
+    def remove_waiting_order(self, order_id: str) -> None:
+        """'指定した銘柄コードのデータを削除"""
+        # '発注待ち'以外のデータのみを保持
+        for order in self.orders:
+            if order['order_id'] == order_id:
+                if order['order_status'] != PositionManager.STATUS_UNORDERED:
+                    raise ValueError(f'削除できるのは発注待ちの注文のみです。注文ID{order_id}の注文は、発注待ちではありません。')
+                self.orders = [order for order in self.orders if order["order_id"] != order_id]
+                self._save_data()
+                return
+        raise ValueError(f'銘柄コード{order_id}の注文データが存在しません。')

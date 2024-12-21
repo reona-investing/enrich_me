@@ -619,5 +619,15 @@ if __name__ == '__main__':
         asyncio.run(select_stocks(order_price_df, NEW_SECTOR_LIST_CSV, ml_dataset.pred_result_df, trading_sector_num=3, candidate_sector_num=5, top_slope = 1.5))
     tab, take_position, failed_order_list = asyncio.run(make_new_order(long_orders, short_orders, tab))
     '''
-    asyncio.run(make_additional_order())
+    async def main():
+        long_orders = pd.read_csv(paths.LONG_ORDERS_CSV)
+        long_orders['Code'] = long_orders['Code'].astype(str)
+        short_orders = pd.read_csv(paths.SHORT_ORDERS_CSV)
+        short_orders['Code'] = short_orders['Code'].astype(str)
+        session = SBISession()
+        await session.sign_in()
+        order_maker = SBIOrderMaker(session)
+        failed_order_list = await make_new_order(order_maker, long_orders, short_orders)
+    
+    asyncio.run(main())
     #tab = asyncio.run(settle_all_margins(tab))
