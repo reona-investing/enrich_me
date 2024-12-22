@@ -8,7 +8,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup as soup
 from .session import SBISession
 from .utils.decorators import retry
-from .utils.web import select_pulldown, get_newest_two_files
+from .utils.web import select_pulldown, get_newest_two_csvs
 from .utils.formatting import format_contracts_df, format_cashflow_transactions_df
 import paths
 import unicodedata
@@ -76,7 +76,7 @@ class SBIDataFetcher:
 
         deal_result_csv = None
         for i in range(10):
-            newest_file, second_file = get_newest_two_files(paths.DOWNLOAD_FOLDER)
+            newest_file, second_file = get_newest_two_csvs(paths.DOWNLOAD_FOLDER)
             await self.session.tab.wait(1)
             if newest_file.endswith('.csv'):
                 deal_result_csv = newest_file

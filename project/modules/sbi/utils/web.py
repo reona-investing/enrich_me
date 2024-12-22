@@ -23,7 +23,7 @@ async def wait_and_click(tab: uc.core.tab.Tab, selector_text: str, is_css=False)
 def get_downloaded_csv(download_folder: str, retry: int = 10, wait_func=None):
     import time
     for i in range(retry):
-        deal_result_csv, _ = get_newest_two_files(download_folder)
+        deal_result_csv, _ = get_newest_two_csvs(download_folder)
         if deal_result_csv.endswith('.csv'):
             return deal_result_csv
         if wait_func:
@@ -32,7 +32,7 @@ def get_downloaded_csv(download_folder: str, retry: int = 10, wait_func=None):
         else:
             time.sleep(1)
 
-def get_newest_two_files(directory: str) -> tuple[str, str]:
+def get_newest_two_csvs(directory: str) -> tuple[str, str]:
     # ディレクトリ内のすべてのファイルとサブディレクトリを取得
     files = os.listdir(directory)
     # ファイルがない場合はNoneを返す

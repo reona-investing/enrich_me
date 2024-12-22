@@ -12,7 +12,7 @@ class PositionManager:
 
     def __init__(self):
         """ポジション管理クラス"""
-        self.base_dir = paths.ORDERS_FOLDER
+        self.base_dir = paths.POSITIONS_FOLDER
         os.makedirs(self.base_dir, exist_ok=True)
         self.today = datetime.now().strftime("%Y%m%d")
         self.file_path = os.path.join(self.base_dir, f"positions_{self.today}.json")
@@ -60,13 +60,16 @@ class PositionManager:
                 return True
         return False
 
-    def find_positions_by_status(self, trade_params: TradeParameters) -> int:
-        """指定したステータスのポジションを取得"""
+    def find_unordered_position_by_params(self, trade_params: TradeParameters) -> int:
+        """
+        指定したパラメータのポジションのリスト内での位置を取得
+        比較対象は'symbol_code', 'trade_type', 'unit'の3つ
+        """
         compare_keys = ['symbol_code', 'trade_type', 'unit']
         input_condition = [getattr(trade_params, key) for key in compare_keys]
-        for i, order in enumerate(self.orders):
-            control_condition = [order['params'].get(key) for key in compare_keys]
-            if (order['status'] == PositionManager.STATUS_UNORDERED) & (input_condition == control_condition):
+        for i, order in enumerate(self.positions):
+            control_condition = [order['order_params'].get(key) for key in compare_keys]
+            if (order['order_status'] == PositionManager.STATUS_UNORDERED) & (input_condition == control_condition):
                 return i
         return None
 
@@ -109,11 +112,11 @@ class PositionManager:
     def remove_waiting_order(self, order_id: str) -> None:
         """'指定した銘柄コードのデータを削除"""
         # '発注待ち'以外のデータのみを保持
-        for order in self.orders:
+        for order in self.positions:
             if order['order_id'] == order_id:
                 if order['order_status'] != PositionManager.STATUS_UNORDERED:
                     raise ValueError(f'削除できるのは発注待ちの注文のみです。注文ID{order_id}の注文は、発注待ちではありません。')
-                self.orders = [order for order in self.orders if order["order_id"] != order_id]
+                self.positions = [order for order in self.positions if order["order_id"] != order_id]
                 self._save_data()
                 return
         raise ValueError(f'銘柄コード{order_id}の注文データが存在しません。')

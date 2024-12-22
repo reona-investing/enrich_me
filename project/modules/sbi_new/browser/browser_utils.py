@@ -10,7 +10,7 @@ class BrowserUtils:
             var event = new Event('change', {{ bubbles: true }});
             option.parentElement.dispatchEvent(event);
         ''')
-        await tab.wait(1)
+        await tab.wait(0.5)
 
     @staticmethod
     async def wait_and_click(tab: uc.core.tab.Tab, selector_text: str, is_css: bool = False):

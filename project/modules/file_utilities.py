@@ -1,7 +1,7 @@
 import os
 import paths
 
-def get_newest_two_files(directory: str) -> tuple[str, str]:
+def get_newest_two_csvs(directory: str) -> tuple[str, str]:
     # ディレクトリ内のすべてのファイルとサブディレクトリを取得
     files = os.listdir(directory)
     # ファイルがない場合はNoneを返す
