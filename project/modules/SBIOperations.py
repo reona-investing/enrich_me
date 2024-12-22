@@ -181,7 +181,7 @@ class SBIOperations:
         deal_result_csv = ""
         #ダウンロード完了まで待機（リトライ上限10回）
         for i in range(10):
-            deal_result_csv, _ = file_utilities.get_newest_two_files(paths.DOWNLOAD_FOLDER)
+            deal_result_csv, _ = file_utilities.get_newest_two_csvs(paths.DOWNLOAD_FOLDER)
             await self.tab.wait(1)
             if deal_result_csv.endswith('.csv'):
                 break

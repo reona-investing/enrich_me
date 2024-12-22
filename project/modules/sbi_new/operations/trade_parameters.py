@@ -62,8 +62,8 @@ class TradeParameters(BaseModel):
             raise ValueError("order_typeが'逆指値'でstop_order_typeが'指値'の場合、stop_order_priceを設定してください。")
         return value
 
-    @field_validator("period_value", "period_index", pre=True, always=True)
-    def validate_period_value_or_index(cls, value, values, field):
+    @field_validator("period_value", "period_index", mode="before")
+    def validate_period_value_or_index(cls, value, values):
         """period_typeが期間指定のとき、period_valueまたはperiod_indexのいずれかを必ず入力する"""
         if values.get("period_type") == "期間指定" and not (values.get("period_value") or values.get("period_index")):
             raise ValueError("period_typeが'期間指定'の場合、period_valueまたはperiod_indexのいずれかを設定してください。")

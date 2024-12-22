@@ -507,7 +507,7 @@ async def fetch_deal_history(tab:uc.core.tab.Tab=None, sector_list_df:pd.DataFra
     deal_history_csv = ""
     #ダウンロード完了まで待機（リトライ上限10回）
     for i in range(10):
-        deal_history_csv, _ = file_utilities.get_newest_two_files(paths.DOWNLOAD_FOLDER)
+        deal_history_csv, _ = file_utilities.get_newest_two_csvs(paths.DOWNLOAD_FOLDER)
         await tab.wait(1)
         if deal_history_csv.endswith('.csv'):
             break

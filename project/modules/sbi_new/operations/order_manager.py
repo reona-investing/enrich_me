@@ -8,6 +8,7 @@ import re
 import unicodedata
 import pandas as pd
 from bs4 import BeautifulSoup as soup
+import traceback
 
 # ヘルパー関数の定義
 def _get_selector(order_param_dicts: dict, category: str, key: str) -> str:
@@ -62,12 +63,12 @@ class OrderManager:
     }
 
     def __init__(self, login_handler: LoginHandler):
+        self.login_handler: LoginHandler = login_handler
         self.position_manager: PositionManager = PositionManager()
-        self.trade_possibility_manager: TradePossibilityManager = TradePossibilityManager()
+        self.trade_possibility_manager: TradePossibilityManager = TradePossibilityManager(login_handler)
         self.browser_utils: BrowserUtils = BrowserUtils()
         self.has_successfully_ordered: bool = False
         self.error_tickers: list = []
-        self.login_handler: LoginHandler = login_handler
 
     async def place_new_order(self, trade_params: TradeParameters) -> None:
         """
@@ -87,6 +88,7 @@ class OrderManager:
             self.has_successfully_ordered = True
         except Exception as e:
             print(f"注文中にエラーが発生しました: {e}")
+            traceback.print_exc()  # スタックトレースを出力
             self.error_tickers.append(trade_params.symbol_code)
         finally:
             self.login_handler.session.tab = self.tab
@@ -190,7 +192,7 @@ class OrderManager:
 
     async def _confirm_order(self, trade_params: TradeParameters) -> None:
         '''注文を確定する。'''
-        self._input_trade_pass()
+        await self._input_trade_pass()
         skip_button = await self.tab.select('input[id="shouryaku"]')
         await skip_button.click()
         order_button = await self.tab.select('img[title="注文発注"]')
@@ -201,38 +203,23 @@ class OrderManager:
         html_content = await self.tab.get_content()
         if "ご注文を受け付けました。" in html_content:
             print(f"注文が成功しました: {trade_params.symbol_code}")
-            self._edit_position_manager_for_order(html_content, order_index)
+            await self._edit_position_manager_for_order(order_index)
         else:
             print(f"注文が失敗しました: {trade_params.symbol_code}")
             self.error_tickers.append(trade_params.symbol_code)
 
-    def _edit_position_manager_for_order(self, html_content, order_index: int) -> None:
-            order_id = self._get_element_from_order_info(html_content, search_header = '注文番号')
+    async def _edit_position_manager_for_order(self, order_index: int) -> None:
+            order_id = await self._get_element('注文番号') 
             self.position_manager.update_order_id(index = order_index, order_id = order_id)
             self.position_manager.update_status(order_id, status_type = 'order_status', new_status = self.position_manager.STATUS_ORDERED)
 
     def _append_trade_params_to_orders(self, trade_params: TradeParameters):
         '''発注情報を登録'''
-        order_index = self.position_manager.find_positions_by_status(trade_params)
+        order_index = self.position_manager.find_unordered_position_by_params(trade_params)
         if order_index is None:
-            order_index = self.position_manager.add_position(trade_params)
+            self.position_manager.add_position(trade_params)
+            order_index = len(self.position_manager.positions) - 1
         return order_index
-
-    def _get_element_from_order_info(self, html_content, search_header: str) -> int:
-        # BeautifulSoupでHTMLを解析
-        bs = soup(html_content, 'html.parser')
-        # 指定したテキストを持つ要素を探す
-        target_element = bs.find('th', class_='vaM', text=lambda t: search_header in t)
-        # 対応する兄弟要素 <td> を取得
-        if target_element:
-            value_element = target_element.find_next('td', class_='vaM')
-            if value_element:
-                value = value_element.text.strip()
-                return str(value)
-            else:
-                raise ValueError("対応する<td>要素が見つかりません。")
-        else:
-            raise ValueError("注文番号が見つかりません。")
 
     async def cancel_all_orders(self) -> None:
         """
@@ -252,6 +239,7 @@ class OrderManager:
                 await self._cancel_single_order(i)
         except Exception as e:
             print(f"注文キャンセル中にエラーが発生しました: {e}")
+            traceback.print_exc()  # スタックトレースを出力
         finally:
             self.login_handler.session.tab = self.tab
 
@@ -290,6 +278,7 @@ class OrderManager:
             self.order_list_df = self.order_list_df[self.order_list_df["注文状況"] != "取消中"].reset_index(drop=True)
         except Exception as e:
             print(f"注文リストの取得中にエラーが発生しました: {e}")
+            
 
     def _append_order_to_list(self, tr: object, data: list) -> list:
         """
@@ -343,26 +332,36 @@ class OrderManager:
 
     async def _handle_cancel_response(self, index: int) -> None:
         html_content = await self.tab.get_content()
-        code = self.order_list_df['コード'].iloc[index]
-        unit = self.order_list_df['注文株数'].iloc[index]
-        order_type = self.order_list_df['注文種別'].iloc[index]
+
+        code = await self._get_element("銘柄コード")
+        code = str(code)
+        unit = await self._get_element("株数")
+        unit = int(str(unit)[:-1])
+        order_type = await self._get_element("取引")
+
         if "ご注文を受け付けました。" in html_content:
             print(f"{code} {unit}株 {order_type}：注文取消が完了しました。")
-            self._edit_position_manager_for_cancel(html_content)
+            await self._edit_position_manager_for_cancel()
         else:
             print(f"{code} {unit}株 {order_type}：注文取消に失敗しました。")
 
-    def _edit_position_manager_for_cancel(self, html_content) -> None:
-        order_id = self._get_element_from_order_info(html_content, "注文番号")
-        if any(keyword in html_content for keyword in ["信用新規買", "信用新規売", "現物買"]):
-            for order in self.position_manager.orders:
-                if (order['order_id'] == order_id) & (order['status'] == '発注済'):
-                    self.position_manager.update_status(order_id, status_type = 'order_status', new_status = self.position_manager.STATUS_UNORDERED)
+    async def _get_element(self, text: str):
+        element = await self.tab.find(text)
+        element = element.parent.parent.children[1]
+        return re.sub(r'\s+', '', element.text)
+
+    async def _edit_position_manager_for_cancel(self) -> None:
+        order_id = await self._get_element("注文番号")
+        order_type = await self._get_element("取引")
+        if any(order in order_type for order in ["信用新規買", "信用新規売", "現物買"]):
+            status_type_to_update = 'order_status'
+        if any(order in order_type for order in ["信用返済買", "信用返済売", "現物売"]):
+            status_type_to_update = 'settlement_status'
+        for order in self.position_manager.positions:
+            if (order['order_id'] == order_id):
+                self.position_manager.update_status(order_id, status_type = status_type_to_update, new_status = self.position_manager.STATUS_UNORDERED)
+                if status_type_to_update == 'order_status':
                     self.position_manager.remove_waiting_order(order_id)
-        if any(keyword in html_content for keyword in ["信用返済買", "信用返済売", "現物売"]):
-            for order in self.position_manager.orders:
-                if (order['order_id'] == order_id) & (order['status'] == '決済発注済'):  
-                    self.position_manager.update_status(order_id, status_type = 'settlement_status', new_status = self.position_manager.STATUS_UNORDERED)
 
     async def reorder_pending(self) -> None:
         """
@@ -441,18 +440,18 @@ class OrderManager:
 
 
                     html_content = await self.tab.get_content()
-                    symbol_code = str(self._get_element_from_order_info(html_content, '銘柄コード'))
-                    extracted_unit = self._get_element_from_order_info(html_content, ' 株数')
+                    symbol_code = str(await self._get_element('銘柄コード'))
+                    extracted_unit = await self._get_element('株数')
                     extracted_unit = int(extracted_unit[:-2])
-                    trade_type = self._get_element_from_order_info(html_content, '取引')
+                    trade_type = await self._get_element('取引')
                     if '信用返済買' in trade_type:
                         trade_type = '信用新規売'
                     if '信用返済売' in trade_type:
                         trade_type = '信用新規買'
-                    order_id = self._get_element_from_order_info(html_content, '注文番号')
+                    order_id = await self._get_element('注文番号')
                     print([symbol_code, extracted_unit, trade_type])
                     params_to_compare = TradeParameters(symbol_code=symbol_code, unit=extracted_unit, trade_type=trade_type)
-                    order_id = self.position_manager.find_positions_by_status(params_to_compare)
+                    order_id = self.position_manager.find_unordered_position_by_params(params_to_compare)
                     self.position_manager.update_order_id(i, order_id)
                     self.position_manager.update_status(order_id, status_type = 'settlement_order', new_status = self.position_manager.STATUS_ORDERED)
 

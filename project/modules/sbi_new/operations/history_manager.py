@@ -1,9 +1,13 @@
 import pandas as pd
-from session.login_handler import LoginHandler
+from ..session.login_handler import LoginHandler
+from ..browser.browser_utils import BrowserUtils
+from ..browser.file_utils import FileUtils
 from bs4 import BeautifulSoup as soup
 import re
+import unicodedata
 import os
 from datetime import datetime
+from pathlib import Path
 import paths
 
 class HistoryManager:
@@ -13,69 +17,65 @@ class HistoryManager:
         self.save_dir_path = paths.TRADE_HISTORY_FOLDER
         os.makedirs(self.save_dir_path, exist_ok=True)
         self.save_file_path = paths.TRADE_HISTORY_CSV
-        self.trade_history_df = pd.DataFrame()
+        self.today_margin_trades_df = pd.DataFrame()
+        self.past_margin_trades_df = pd.DataFrame()
+        self.today_margin_trades_df = pd.DataFrame()
+        self.cashflow_transactions_df = pd.DataFrame()
+        self.today_stock_trades_df = pd.DataFrame()
         self.login_handler = login_handler
 
-    async def fetch_trade_history(self):
+    async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
         """
-        取引履歴をスクレイピングして以下のファイルに取得
-        self.trade_history_df: 取引履歴データ
+        過去の取引履歴をスクレイピングして取得
+        self.today_margin_trades_df: 取引履歴データ
         """
         await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
         self.tab = self.login_handler.session.tab
-        
-        # 取引履歴ページに遷移
-        button = await self.tab.wait_for('img[title="口座管理"]')
+
+        button = await self.session.tab.select('img[title=口座管理]')
         await button.click()
-        await self.tab.wait(1)
-        button = await self.tab.wait_for('a:has-text("取引履歴")')
+        await self.session.tab.wait(1)
+        button = await self.session.tab.find('当日約定一覧')
         await button.click()
-        await self.tab.wait(3)
-
-        # ページHTMLの取得
-        html_content = await self.tab.get_content()
-        html = soup(html_content, "html.parser")
-
-        # 取引履歴テーブルの取得
-        table = html.find("th", string=re.compile("取引区分")).find_parent("table")
-        rows = table.find("tbody").find_all("tr")
-
-        # データの抽出
-        data = []
-        for row in rows:
-            cols = [col.get_text(strip=True) for col in row.find_all("td")]
-            if cols:  # 空行を除外
-                data.append(cols)
-
-        # DataFrameに変換
-        columns = ["取引区分", "銘柄", "数量", "単価", "手数料", "日付"]
-        self.trade_history_df = pd.DataFrame(data, columns=columns)
-        self.trade_history_df["数量"] = self.trade_history_df["数量"].astype(int)
-        self.trade_history_df["単価"] = self.trade_history_df["単価"].str.replace(",", "").astype(float)
-        self.trade_history_df["日付"] = pd.to_datetime(self.trade_history_df["日付"])
-
-        self._save_trade_history()
-
-        self.login_handler.session.tab = self.tab
-
-    def _save_trade_history(self):
-        """
-        取引履歴をCSVファイルとして保存
-        Args:
-            filename (str): 保存するファイル名
-        """
-        if self.trade_history_df.empty:
-            print("保存する取引履歴がありません。")
+        await self.session.tab.wait(1)
+        button = await self.session.tab.find('国内株式(信用)')
+        await button.click()
+        await self.session.tab.wait(1)
+        html_content = await self.session.tab.get_content()
+        html = soup(html_content, 'html.parser')
+        table = html.find("td", string=re.compile("銘柄"))
+        if table is None:
+            print('本日約定の注文はありません。')
             return
+        table = table.findParent("table")
 
-        if not filename:
-            filename = f"trade_history_{datetime.now().strftime('%Y%m%d')}.csv"
+        data = []
+        for tr in table.find("tbody").findAll("tr"):
+            if tr.find("td").find("a"):
+                data = self._append_contract_to_list(tr, data)
 
-        self.trade_history_df.to_csv(self.save_file_path, index=False, encoding="utf-8")
-        print(f"取引履歴を{self.save_file_path}に保存しました。")
+        columns = ["日付", "売or買", "銘柄コード", "社名", "株数", "取得単価", "決済単価"]
+        self.today_margin_trades_df = pd.DataFrame(data, columns=columns)
+        self.today_margin_trades_df = self.today_margin_trades_df[(self.today_margin_trades_df['売or買']=='買')|(self.today_margin_trades_df['売or買']=='売')]
+        self.today_margin_trades_df = self._format_contracts_df(self.today_margin_trades_df, sector_list_df)
 
-
-
+    def _append_contract_to_list(self, tr:object, data:list) -> list:
+        row = []
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[2].getText().strip())
+        row.append(datetime(2000+int(text[0:2]), int(text[3:5]), int(text[6:8])))
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[1].getText().strip())[:3]
+        if text == '信新売':
+            row.append('売')
+        elif text == '信新買':
+            row.append('買')
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[0].getText().strip())
+        row.append(text[-4:])
+        row.append(text[:-4])
+        row.append(tr.findAll("td")[3].getText().replace(",", "").strip())
+        row.append(tr.findAll("td")[4].getText().replace(",", "").strip())
+        row.append(tr.findNext("tr").findAll("td")[3].getText().replace(",", "").strip())
+        data.append(row)
+        return data
 
     async def fetch_past_margin_trades(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
         """
@@ -85,59 +85,245 @@ class HistoryManager:
         await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
         self.tab = self.login_handler.session.tab
 
-        await self._fetch_past_margin_trades_csv(mydate=mydate)
-        self.past_margin_trades_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = \
-            self.past_margin_trades_df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
-        self.past_margin_trades_df = self.past_margin_trades_df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
-        take_df = self.past_margin_trades_df[(self.past_margin_trades_df['取引']=='信用新規買')|(self.past_margin_trades_df['取引']=='信用新規売')]
+        df = await self._fetch_past_margin_trades_csv(mydate=mydate)
+        df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
+        df = df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
+        take_df = df[(df['取引']=='信用新規買')|(df['取引']=='信用新規売')]
         take_df['売or買'] = '買'
         take_df = take_df.rename(columns={'約定日': '日付',
                                           '銘柄': '社名',
                                           '約定数量': '株数',
                                           '約定単価': '取得単価'})
-        take_df.loc[self.past_margin_trades_df['取引']=='信用新規売', '売or買'] = '売'
-        settle_df = self.past_margin_trades_df[(self.past_margin_trades_df['取引']=='信用返済買')|(self.past_margin_trades_df['取引']=='信用返済売')]
+        take_df.loc[df['取引']=='信用新規売', '売or買'] = '売'
+        settle_df = df[(df['取引']=='信用返済買')|(df['取引']=='信用返済売')]
         settle_df = settle_df.rename(columns={'約定単価': '決済単価'})
-        self.past_margin_trades_df = pd.merge(take_df, settle_df[['銘柄コード', '決済単価']], how='outer', on='銘柄コード')
+        df = pd.merge(take_df, settle_df[['銘柄コード', '決済単価']], how='outer', on='銘柄コード')
 
-        self.past_margin_trades_df = format_contracts_df(self.past_margin_trades_df, sector_list_df)
+        self.past_margin_trades_df = self._format_contracts_df(df, sector_list_df)
         self.past_margin_trades_df['日付'] = pd.to_datetime(self.past_margin_trades_df['日付']).dt.date
         print(self.past_margin_trades_df)
 
 
-    async def _fetch_past_margin_trades_csv(self, mydate: datetime):
-        myyear = f'{mydate.year}'
-        mymonth = f'{mydate.month:02}'
-        myday = f'{mydate.day:02}'
+    async def _fetch_past_margin_trades_csv(self, mydate: datetime) -> pd.DataFrame: 
         # ナビゲーション
-        button = await self.session.tab.find('取引履歴')
+        button = await self.tab.find('取引履歴')
         await button.click()
-        await self.session.tab.wait(1)
-        button = await self.session.tab.select('#shinT')
+        await self.tab.wait(1)
+        button = await self.tab.select('#shinT')
         await button.click()
-        element_num = {'from_yyyy':myyear, 'from_mm':mymonth, 'from_dd':myday,
-                       'to_yyyy':myyear, 'to_mm':mymonth, 'to_dd':myday}
+        element_num = {'from_yyyy':f'{mydate.year}', 'from_mm':f'{mydate.month:02}', 'from_dd':f'{mydate.day:02}',
+                       'to_yyyy':f'{mydate.year}', 'to_mm':f'{mydate.month:02}', 'to_dd':f'{mydate.day:02}'}
         for key, value in element_num.items():
             pulldown_selector = f'select[name="ref_{key}"] option[value="{value}"]'
-            await select_pulldown(self.session.tab, pulldown_selector)
-        button = await self.session.tab.find('照会')
+            await BrowserUtils.select_pulldown(self.tab, pulldown_selector)
+        button = await self.tab.find('照会')
         await button.click()
-        await self.session.tab.wait(1)
-        await self.session.tab.set_download_path(Path(paths.DOWNLOAD_FOLDER))
-        button = await self.session.tab.find('CSVダウンロード')
+        await self.tab.wait(1)
+        await self.tab.set_download_path(Path(paths.DOWNLOAD_FOLDER))
+        button = await self.tab.find('CSVダウンロード')
         await button.click()
-        await self.session.tab.wait(3)
+        await self.tab.wait(5)
 
-        deal_result_csv = None
-        for i in range(10):
-            newest_file, second_file = get_newest_two_files(paths.DOWNLOAD_FOLDER)
-            await self.session.tab.wait(1)
-            if newest_file.endswith('.csv'):
-                deal_result_csv = newest_file
-                break
-            if second_file.endswith('.csv'):
-                deal_result_csv = second_file
-                break
-            
-        self.past_margin_trades_df = pd.read_csv(deal_result_csv, header=0, skiprows=8, encoding='shift_jis')
-        os.remove(deal_result_csv)
+        csvs = list(Path(paths.DOWNLOAD_FOLDER).glob("*.csv"))
+        if not csvs:
+            raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
+        
+        newest_csv, _ = FileUtils.get_newest_two_csvs(paths.DOWNLOAD_FOLDER)
+        df = pd.read_csv(newest_csv, header=0, skiprows=8, encoding='shift_jis')
+        for csv in csvs:
+            os.remove(csv)
+
+        return df
+
+    def _format_contracts_df(self, df: pd.DataFrame, sector_list_df: pd.DataFrame) -> pd.DataFrame:
+        df['銘柄コード'] = df['銘柄コード'].astype(str)
+        df['株数'] = df['株数'].astype(int)
+        df['取得単価'] = df['取得単価'].astype(float)
+        df['決済単価'] = df['決済単価'].astype(float)
+
+        df['取得価格'] = (df['取得単価'] * df['株数']).astype(int)
+        df['決済価格'] = (df['決済単価'] * df['株数']).astype(int)
+        df['手数料'] = 0
+        df['利益（税引前）'] = 0
+        df.loc[df['売or買']=='買', '利益（税引前）'] = df['決済価格'] - df['取得価格'] - df['手数料']
+        df.loc[df['売or買']=='売', '利益（税引前）'] = df['取得価格'] - df['決済価格'] - df['手数料']
+        df['利率（税引前）'] = df['利益（税引前）'] / df['取得価格']
+
+        sector_list_df['Code'] = sector_list_df['Code'].astype(str)
+        df = pd.merge(df, sector_list_df[['Code', 'Sector']], left_on='銘柄コード', right_on='Code', how='left')
+        df = df.drop('Code', axis=1).rename(columns={'Sector':'業種'})
+        df = df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
+        return df
+    
+
+    async def fetch_cashflow_transactions(self):
+        """
+        直近1週間の入出金履歴をスクレイピングして取得
+        self.cashflow_transactions_df: 取引履歴データ
+        """
+        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
+        self.tab = self.login_handler.session.tab
+        
+        button = await self.tab.find('入出金明細')
+        await button.click()
+        await self.tab.wait(1)
+        
+        selected_element = await self.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+        await selected_element.select_option()
+        await self.tab.wait(1)
+
+        # タイトル行の取得
+        parent_element = await self.tab.select('#fc-page-table > div > ul')
+        elements = parent_element.children
+
+        data_for_df = []
+        for i, element in enumerate(elements):
+            texts = []
+            if i == 0:
+                content = await element.get_html()
+                html = soup(content, 'html.parser')
+                titles = [div.get_text(strip=True) for div in html.find_all('div', class_='table-head')]
+            else:
+                children_elements = element.children
+                for child_element in children_elements:
+                    grandchild_element = child_element.children[0]
+                    texts.append(grandchild_element.text)
+                data_for_df.append(texts)
+        df = pd.DataFrame(data_for_df, columns = titles)
+
+        if len(df) == 0:
+            print('直近1週間の入出金履歴はありません。')
+            return
+        self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
+        print('入出金の履歴')
+        print(self.cashflow_transactions_df)
+
+    def _format_cashflow_transactions_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        #日付型に変換
+        df['日付'] = pd.to_datetime(df['入出金日']).dt.date
+
+        # ハイフンや空文字を0に変換して、数値型に変換
+        for col in ["出金額", "入金額", "振替出金額", "振替入金額"]:
+            df[col] = df[col].astype(str).replace("-", "0")
+            df[col] = df[col].str.replace(",", "")
+            df[col] = df[col].astype(int)
+
+        df['入出金額'] = df['入金額'] + df['振替入金額'] - df['出金額'] - df['振替出金額']
+        df = df.loc[~df['摘要'].str.contains('譲渡益税')]
+        df = df[['日付', '摘要', '入出金額']]
+
+        return df
+    
+    async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
+        """
+        直近1週間の入出金履歴をスクレイピングして取得
+        self.today_margin_trades_df: 取引履歴データ
+        """
+        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
+        self.tab = self.login_handler.session.tab
+       
+        button = await self.tab.select('img[title=口座管理]')
+        await button.click()
+        await self.tab.wait(1)
+        button = await self.tab.find('当日約定一覧')
+        await button.click()
+        await self.tab.wait(1)
+        button = await self.tab.find('国内株式(信用)')
+        await button.click()
+        await self.tab.wait(1)
+        html_content = await self.tab.get_content()
+        html = soup(html_content, 'html.parser')
+        table = html.find("td", string=re.compile("銘柄"))
+        if table is None:
+            print('本日約定の注文はありません。')
+            return
+        table = table.findParent("table")
+
+        data = []
+        for tr in table.find("tbody").findAll("tr"):
+            if tr.find("td").find("a"):
+                data = self._append_contract_to_list(tr, data)
+
+        columns = ["日付", "売or買", "銘柄コード", "社名", "株数", "取得単価", "決済単価"]
+        df = pd.DataFrame(data, columns=columns)
+        df = df[(df['売or買']=='買')|(df['売or買']=='売')]
+        self.today_margin_trades_df = self._format_contracts_df(df, sector_list_df)
+
+    def _append_contract_to_list(self, tr:object, data:list) -> list:
+        row = []
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[2].getText().strip())
+        row.append(datetime(2000+int(text[0:2]), int(text[3:5]), int(text[6:8])))
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[1].getText().strip())[:3]
+        if text == '信新売':
+            row.append('売')
+        elif text == '信新買':
+            row.append('買')
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[0].getText().strip())
+        row.append(text[-4:])
+        row.append(text[:-4])
+        row.append(tr.findAll("td")[3].getText().replace(",", "").strip())
+        row.append(tr.findAll("td")[4].getText().replace(",", "").strip())
+        row.append(tr.findNext("tr").findAll("td")[3].getText().replace(",", "").strip())
+        data.append(row)
+
+        return data
+    
+    async def fetch_today_stock_trades_df(self):
+        """
+        今日の現物取引をスクレイピングして取得
+        self.today_stock_trades_df: 現物取引データ
+        """
+        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
+        self.tab = self.login_handler.session.tab
+
+        button = await self.tab.select('img[title=取引]')
+        await button.click()
+        await self.tab.wait(1)
+        button = await self.tab.find('当日約定一覧')
+        await button.click()
+        await self.tab.wait(1)
+        button = await self.tab.find('国内株式(現物)')
+        await button.click()
+        await self.tab.wait(1)
+
+        html_content = await self.tab.get_content()
+        html = soup(html_content, 'html.parser')
+        table = html.find('td', string=re.compile('銘柄'))
+        if table is None:
+            print('本日約定の注文はありません。')
+            return
+        table = table.findParent("table")
+
+        data = []
+        for tr in table.find("tbody").findAll("tr"):
+            if tr.find("td").find("a"):
+                data = self._append_spot_to_list(tr, data)
+
+        columns = ["日付", "売or買", "銘柄コード", "社名", "買付余力増減"]
+        self.today_stock_trades_df = pd.DataFrame(data, columns=columns)
+        self.today_stock_trades_df['日付'] = pd.to_datetime(self.today_stock_trades_df['日付']).dt.date
+        self.today_stock_trades_df['銘柄コード'] = self.today_stock_trades_df['銘柄コード'].astype(str)
+        self.today_stock_trades_df['買付余力増減'] = self.today_stock_trades_df['買付余力増減'].astype(int)
+        self.today_stock_trades_df.loc[self.today_stock_trades_df['売or買']=='買', '買付余力増減'] = \
+            - self.today_stock_trades_df.loc[self.today_stock_trades_df['売or買']=='買', '買付余力増減']
+        print('現物売買')
+        print(self.today_stock_trades_df)
+
+    def _append_spot_to_list(self, tr:object, data:list) -> list:
+        row = []
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[2].getText().strip())
+        row.append(datetime(2000+int(text[0:2]), int(text[3:5]), int(text[6:8])))
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[1].getText().strip())[:3]
+        if text == '現物売':
+            row.append('売')
+        elif text == '現物買':
+            row.append('買')
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[0].getText().strip())
+        row.append(text[-4:])
+        row.append(text[:-4])
+        text = unicodedata.normalize("NFKC", tr.findAll("td")[7].getText().replace(",", "").strip())
+        row.append(text[:text.index("(")])
+        data.append(row)
+        return data
+    
+    
