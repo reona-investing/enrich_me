@@ -33,7 +33,8 @@ import target_calculator
 import MLDataset
 import machine_learning
 import sbi_trading_logic
-from sbi import SBISession, SBIDataFetcher, SBIOrderMaker
+#from sbi import SBISession, SBIDataFetcher, SBIOrderMaker
+from sbi import OrderManager, HistoryManager, MarginManager, PositionManager, TradeParameters, LoginHandler, TradePossibilityManager
 import error_handler
 import asyncio
 
@@ -156,13 +157,17 @@ def ensemble_pred_results(dataset_ensembled: MLDataset.MLDataset, datasets: list
 async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df, 
                          trading_sector_num, candidate_sector_num,
                          top_slope):
-    sbi_session = SBISession()
-    sbi_data_fetcher = SBIDataFetcher(sbi_session)
-    sbi_order_maker = SBIOrderMaker(sbi_session)
+    sbi_session = LoginHandler()
+    history_manager = HistoryManager(sbi_session)
+    trade_possibility_manager = TradePossibilityManager(sbi_session)
+    order_manager = OrderManager(sbi_session)
+    margin_manager = MarginManager(sbi_session)
     long_orders, short_orders, todays_pred_df = \
-        await sbi_trading_logic.select_stocks(sbi_data_fetcher, order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
-                                        trading_sector_num, candidate_sector_num, top_slope=top_slope)
-    failed_order_list = await sbi_trading_logic.make_new_order(sbi_order_maker, long_orders, short_orders)
+        await sbi_trading_logic.select_stocks(trade_possibility_manager, margin_manager, 
+                                              order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
+                                        trading_sector_num, candidate_sector_num, top_slope=top_slope,
+                                        )
+    failed_order_list = await sbi_trading_logic.make_new_order(order_manager, long_orders, short_orders)
     Slack.send_message(
         message = 
             f'発注が完了しました。\n' +
@@ -177,9 +182,9 @@ async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
         )
 
 async def take_additionals():
-    sbi_session = SBISession()
-    sbi_order_maker = SBIOrderMaker(sbi_session)
-    failed_order_list = await sbi_trading_logic.make_additional_order(sbi_order_maker)
+    sbi_session = LoginHandler()
+    order_manager = OrderManager(sbi_session)
+    failed_order_list = await sbi_trading_logic.make_additional_order(order_manager)
     Slack.send_message(
         message = 
             f'追加発注が完了しました。'
@@ -192,9 +197,9 @@ async def take_additionals():
         )
 
 async def settle_positions():
-    sbi_session = SBISession()
-    sbi_order_maker = SBIOrderMaker(sbi_session)
-    error_tickers = await sbi_trading_logic.settle_all_margins(sbi_order_maker)
+    sbi_session = LoginHandler()
+    order_manager = OrderManager(sbi_session)
+    error_tickers = await sbi_trading_logic.settle_all_margins(order_manager)
     if len(error_tickers) == 0:
         Slack.send_message(message = '全銘柄の決済注文が完了しました。')
     else:
@@ -205,10 +210,11 @@ async def settle_positions():
                 )
 
 async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
-    sbi_session = SBISession()
-    sbi_data_fetcher = SBIDataFetcher(sbi_session)
+    sbi_session = LoginHandler()
+    history_manager = HistoryManager(sbi_session)
+    margin_manager = MarginManager(sbi_session)
     trade_history, _, _, _, amount = \
-        await sbi_trading_logic.update_information(sbi_data_fetcher,
+        await sbi_trading_logic.update_information(history_manager, margin_manager,
                                                    NEW_SECTOR_LIST_CSV,
                                                    paths.TRADE_HISTORY_CSV,
                                                    paths.BUYING_POWER_HISTORY_CSV,
@@ -246,6 +252,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         # 最初に各種フラグをセットしておく。データ更新の要否を引数に入力している場合は、フラグをその値で上書き。
         FlgMng = FlagManager.FlagManager()
         FlgMng.set_flags(learn=learn, predict=predict)
+        FlgMng.set_flags(take_new_positions=True)
         print(FlgMng.get_flags())
         # データセットの読み込み
         if FlgMng.flags['update_dataset'] or FlgMng.flags['update_models']:

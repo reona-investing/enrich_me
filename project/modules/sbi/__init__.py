@@ -1,6 +1,6 @@
-from session import LoginHandler
-from browser import BrowserUtils, FileUtils
-from operations import MarginManager, TradePossibilityManager, HistoryManager, OrderManager, PositionManager, TradeParameters
+from .session import LoginHandler
+from .operations import MarginManager, TradePossibilityManager, HistoryManager, OrderManager, PositionManager, TradeParameters
+from .browser import BrowserUtils, FileUtils
 
 __all__ = [
     "LoginHandler"
