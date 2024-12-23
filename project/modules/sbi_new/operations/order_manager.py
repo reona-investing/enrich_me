@@ -423,7 +423,6 @@ class OrderManager:
                 order_input_button = await self.tab.wait_for('input[value="注文入力へ"]')
                 await order_input_button.click()
                 await self.tab.wait(1)
-                await self.tab.save_screenshot('debug.png')
                 order_type_elements = await self.tab.select_all('input[name="in_sasinari_kbn"]')
                 await order_type_elements[1].click()  # 成行
                 selector = f'select[name="nariyuki_condition"] option[value="H"]'
