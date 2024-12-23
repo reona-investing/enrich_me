@@ -1,6 +1,6 @@
 #%% モジュールのインポート
 import jquants_api_fetcher as fetcher #JQuantsAPIでのデータ取得
-from sbi import SBISession, SBIDataFetcher, SBIOrderMaker, SBIOrderManager, TradeParameters
+from sbi import LoginHandler, TradeParameters, OrderManager, MarginManager, HistoryManager, PositionManager, TradePossibilityManager
 import paths
 
 import math
@@ -153,15 +153,15 @@ def _get_todays_pred_df(y_test_df:pd.DataFrame) -> pd.DataFrame:
     return todays_pred_df
 
 
-async def _get_tradable_dfs(new_sector_list_df:pd.DataFrame, sbi_data_fetcher:SBIDataFetcher) -> Tuple[pd.DataFrame, pd.DataFrame]:
+async def _get_tradable_dfs(new_sector_list_df:pd.DataFrame, trade_possibility_manager:TradePossibilityManager) -> Tuple[pd.DataFrame, pd.DataFrame]:
     '''売買それぞれについて、可能な銘柄を算出する。'''
     
-    await sbi_data_fetcher.get_trade_possibility()
-    buyable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(sbi_data_fetcher.buyable_stock_limits.keys())].copy()
-    sellable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(sbi_data_fetcher.sellable_stock_limits.keys())].copy()
+    await trade_possibility_manager.fetch()
+    buyable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(trade_possibility_manager.data_dict['buyable_limits'].keys())].copy()
+    sellable_symbol_codes_df = new_sector_list_df[new_sector_list_df['Code'].isin(trade_possibility_manager.data_dict['sellable_limits'].keys())].copy()
     buyable_symbol_codes_df['Code'] = buyable_symbol_codes_df['Code'].astype(str)
     sellable_symbol_codes_df['Code'] = sellable_symbol_codes_df['Code'].astype(str)
-    sellable_symbol_codes_df['MaxUnit'] = sellable_symbol_codes_df['Code'].map(sbi_data_fetcher.sellable_stock_limits)
+    sellable_symbol_codes_df['MaxUnit'] = sellable_symbol_codes_df['Code'].map(trade_possibility_manager.data_dict['sellable_limits'])
     return buyable_symbol_codes_df, sellable_symbol_codes_df
 
 
@@ -281,11 +281,11 @@ def _calculate_ETF_orders(long_df:pd.DataFrame, short_df:pd.DataFrame,
 
 async def _determine_orders(long_df:pd.DataFrame, short_df:pd.DataFrame, 
                             sectors_to_trade_num:int, top_slope: float, 
-                            sbi_data_fetcher:SBIDataFetcher) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                            margin_manager: MarginManager) -> Tuple[pd.DataFrame, pd.DataFrame]:
     '''発注銘柄と発注単位の算出'''
     #業種ごとの発注限度額の算出
-    await sbi_data_fetcher.get_buying_power()
-    maxcost_per_sector = sbi_data_fetcher.margin_buying_power / (sectors_to_trade_num * 2)
+    await margin_manager.fetch()
+    maxcost_per_sector = margin_manager.margin_power / (sectors_to_trade_num * 2)
     #トップ業種に傾斜をつけない場合
     if top_slope == 1:
         print(f'業種ごとの発注限度額：{maxcost_per_sector}円')
@@ -327,7 +327,7 @@ async def _determine_orders(long_df:pd.DataFrame, short_df:pd.DataFrame,
 
 #%% 取引結果取得関連のサブ関数
 async def _update_trade_history(trade_history_path: str, sector_list_path: str, 
-                                sbi_data_fetcher: SBIDataFetcher) -> pd.DataFrame:
+                                history_manager: HistoryManager) -> pd.DataFrame:
     '''
     当日の取引結果を取得し、trade_historyのファイルを更新します。
     trade_history_path：過去の取引履歴を記録したdfのファイルパス
@@ -338,8 +338,8 @@ async def _update_trade_history(trade_history_path: str, sector_list_path: str,
     trade_history = pd.read_csv(trade_history_path)
     sector_list = pd.read_csv(sector_list_path)
     trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date # 後で同じ変換をするが、この処理いる？
-    await sbi_data_fetcher.fetch_today_margin_trades(sector_list)
-    trade_history = pd.concat([trade_history, sbi_data_fetcher.today_margin_trades_df], axis=0).reset_index(drop=True)
+    await history_manager.fetch_today_margin_trades(sector_list)
+    trade_history = pd.concat([trade_history, history_manager.today_margin_trades_df], axis=0).reset_index(drop=True)
     trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date
     trade_history = trade_history.sort_values(['日付', '売or買', '業種', '銘柄コード']).reset_index(drop=True)
 
@@ -353,7 +353,7 @@ async def _update_trade_history(trade_history_path: str, sector_list_path: str,
 
 
 async def _update_buying_power_history(buying_power_history_path: str, trade_history: pd.DataFrame, 
-                                       sbi_data_fetcher: SBIDataFetcher) -> pd.DataFrame:
+                                       history_manager: HistoryManager, margin_manager: MarginManager) -> pd.DataFrame:
     '''
     実行時点での買付余力を取得し、dfに反映します。
     buying_power_history_path：買付余力の推移を記録したdfのファイルパス
@@ -362,14 +362,14 @@ async def _update_buying_power_history(buying_power_history_path: str, trade_his
     buying_power_history['日付'] = pd.to_datetime(buying_power_history['日付']).dt.date
 
     # 買付余力の取得
-    await sbi_data_fetcher.get_buying_power()
+    await margin_manager.fetch()
     # 今日の日付の行がなければ追加、あれば更新
     today = datetime.today().date()
     if buying_power_history[buying_power_history['日付'] == today].empty:
-        new_row = pd.DataFrame([[today, sbi_data_fetcher.buying_power]], columns=['日付', '買付余力'])
+        new_row = pd.DataFrame([[today, margin_manager.buying_power]], columns=['日付', '買付余力'])
         buying_power_history = pd.concat([buying_power_history, new_row], axis=0).reset_index(drop=True)
     else:
-        buying_power_history.loc[buying_power_history['日付']==today, '買付余力'] = sbi_data_fetcher.buying_power
+        buying_power_history.loc[buying_power_history['日付']==today, '買付余力'] = margin_manager.buying_power
 
     # 取引がなかった日の行を除去する。
     days_traded = trade_history['日付'].unique()
@@ -386,7 +386,7 @@ async def _update_buying_power_history(buying_power_history_path: str, trade_his
 
 
 async def _update_deposit_history(deposit_history_df_path: str, buying_power_history: pd.DataFrame, 
-                                  sbi_data_fetcher: SBIDataFetcher) -> pd.DataFrame:
+                                  history_manager: HistoryManager) -> pd.DataFrame:
     '''
     総入金額を算出します。
     '''
@@ -395,16 +395,16 @@ async def _update_deposit_history(deposit_history_df_path: str, buying_power_his
     deposit_history_df['日付'] = pd.to_datetime(deposit_history_df['日付']).dt.date
     deposit_history_df = deposit_history_df.set_index('日付', drop=True)
     # 当日の入出金履歴をとる
-    await sbi_data_fetcher.fetch_in_out()
-    cashflow_transactions_df = sbi_data_fetcher.cashflow_transactions_df
+    await history_manager.fetch_cashflow_transactions()
+    cashflow_transactions_df = history_manager.cashflow_transactions_df
     if cashflow_transactions_df is None:
         capital_diff = 0
     else:
         cashflow_transactions_df = cashflow_transactions_df[(cashflow_transactions_df['日付']>buying_power_history.index[-2])&(cashflow_transactions_df['日付']<=buying_power_history.index[-1])]
         capital_diff = cashflow_transactions_df['入出金額'].sum()
     # 現物の売買による資金の増減をとる
-    await sbi_data_fetcher.fetch_today_spots() #現物の売買
-    spots_df = sbi_data_fetcher.today_stock_trades_df
+    await history_manager.fetch_today_stock_trades() #現物の売買
+    spots_df = history_manager.today_stock_trades_df
     if len(spots_df) == 0:
         spots_diff = 0
     else:
@@ -433,9 +433,10 @@ def _show_latest_result(trade_history: pd.DataFrame) -> tuple[str, float]:
     return amount, rate
 
 #%% メイン関数
-async def select_stocks(sbi_data_fetcher:SBIDataFetcher, order_price_df:pd.DataFrame, new_sector_list_csv:str, y_test_df:pd.DataFrame,
-                  trading_sector_num:int, candidate_sector_num:int, top_slope:float = 1.0, 
-                  ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+async def select_stocks(trade_possibility_manager: TradePossibilityManager, margin_manager:MarginManager, 
+                        order_price_df:pd.DataFrame, new_sector_list_csv:str, y_test_df:pd.DataFrame,
+                        trading_sector_num:int, candidate_sector_num:int, top_slope:float = 1.0, 
+                        ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     '''
     売買対象銘柄を選択する。
     price_for_order_df：
@@ -453,7 +454,7 @@ async def select_stocks(sbi_data_fetcher:SBIDataFetcher, order_price_df:pd.DataF
     # 最新日の予測結果をdfとして抽出
     todays_pred_df = _get_todays_pred_df(y_test_df)
     # 売買それぞれについて、可能な銘柄をdfとして抽出
-    buyable_symbol_codes_df, sellable_symbol_codes_df = await _get_tradable_dfs(new_sector_list_df, sbi_data_fetcher)
+    buyable_symbol_codes_df, sellable_symbol_codes_df = await _get_tradable_dfs(new_sector_list_df, trade_possibility_manager)
     # その業種の半分以上の銘柄が売買可能であれば、売買可能業種に設定
     todays_pred_df = _append_tradability(todays_pred_df, new_sector_list_df, buyable_symbol_codes_df, sellable_symbol_codes_df)
     # 売買対象の業種をdfとして抽出
@@ -466,7 +467,7 @@ async def select_stocks(sbi_data_fetcher:SBIDataFetcher, order_price_df:pd.DataF
     # ETFの必要注文数を算出
     long_df, short_df = _calculate_ETF_orders(long_df, short_df, buy_adjuster_num, sell_adjuster_num)
     # 注文する銘柄と注文単位数を算出
-    long_orders, short_orders = await _determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, sbi_data_fetcher)
+    long_orders, short_orders = await _determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, margin_manager)
     # Long, Shortそれぞれの累積コストを算出
     long_orders = long_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[True, False])
     long_orders['CumCost_byLS'] = long_orders['TotalCost'].cumsum()
@@ -481,7 +482,7 @@ async def select_stocks(sbi_data_fetcher:SBIDataFetcher, order_price_df:pd.DataF
 
     return long_orders, short_orders, todays_pred_df
 
-async def _make_orders(orders_df, order_type_value, sbi_order_maker: SBIOrderMaker) -> list:
+async def _make_orders(orders_df, order_type_value, order_manager: OrderManager) -> list:
     failed_order_list = []
     failed_symbol_codes = []
 
@@ -519,8 +520,8 @@ async def _make_orders(orders_df, order_type_value, sbi_order_maker: SBIOrderMak
                                     limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                                     period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
                                     margin_trade_section="制度")
-        await sbi_order_maker.make_order(order_params)
-        if sbi_order_maker.has_successfully_ordered == False:
+        await order_manager.place_new_order(order_params)
+        if order_manager.has_successfully_ordered == False:
             failed_order_list.append(f'{order_params.trade_type}: {order_params.symbol_code} {order_params.unit}株')
             failed_symbol_codes.append(symbol_code)
     failed_orders_df = orders_df.loc[orders_df['Code'].isin(failed_symbol_codes), :]
@@ -529,16 +530,16 @@ async def _make_orders(orders_df, order_type_value, sbi_order_maker: SBIOrderMak
     failed_orders_df.to_csv(paths.FAILED_ORDERS_BACKUP)
     return failed_order_list
 
-async def make_new_order(sbi_order_maker: SBIOrderMaker, long_orders:pd.DataFrame, short_orders:pd.DataFrame) -> list:
+async def make_new_order(order_manager: OrderManager, long_orders:pd.DataFrame, short_orders:pd.DataFrame) -> list:
     '''
     新規注文を発注する。
     '''
     #現時点での注文リストをsbi_operations証券から取得
-    await sbi_order_maker.extract_order_list()
+    await order_manager._extract_order_list()
 
     #発注処理の条件に当てはまるときのみ処理実行
-    if len(sbi_order_maker.order_list_df) > 0:
-        position_list = [x[:2] for x in sbi_order_maker.order_list_df['取引'].unique()]
+    if len(order_manager.order_list_df) > 0:
+        position_list = [x[:2] for x in order_manager.order_list_df['取引'].unique()]
         #信用新規がある場合のみ注文キャンセル
         if '信新' in position_list:
             return None
@@ -548,35 +549,35 @@ async def make_new_order(sbi_order_maker: SBIOrderMaker, long_orders:pd.DataFram
     short_orders['LorS']= 'Short'
     orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
     # ポジションを発注
-    failed_order_list = await _make_orders(orders_df = orders_df, order_type_value='寄成', sbi_order_maker = sbi_order_maker)
+    failed_order_list = await _make_orders(orders_df = orders_df, order_type_value='寄成', order_manager = order_manager)
 
     return failed_order_list
 
-async def make_additional_order(sbi_order_maker: SBIOrderMaker) -> list:
+async def make_additional_order(order_manager: OrderManager) -> list:
     #現時点での注文リストをsbi_operations証券から取得
     orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)
     orders_df['Code'] = orders_df['Code'].astype(str)
     #ポジションの発注
-    failed_order_list = await _make_orders(orders_df = orders_df, order_type_value=None, sbi_order_maker = sbi_order_maker)
+    failed_order_list = await _make_orders(orders_df = orders_df, order_type_value=None, order_manager = order_manager)
 
     return failed_order_list
 
-async def settle_all_margins(sbi_order_maker: SBIOrderMaker):
+async def settle_all_margins(order_manager: OrderManager):
     '''
     決済注文を発注する。
     '''
-    await sbi_order_maker.settle_all_margins()
+    await order_manager.settle_all_margins()
 
-async def update_information(sbi_data_fetcher: SBIDataFetcher,
+async def update_information(history_manager: HistoryManager,
                              sector_list_df_path: str, trade_history_path: str, 
                              buying_power_history_path: str, deposit_history_df_path: str) \
                                 -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, float, str]:
     '''
     sbi_operations証券からスクレイピングして、取引情報、買付余力、総入金額を更新
     '''
-    trade_history = await _update_trade_history(trade_history_path, sector_list_df_path, sbi_data_fetcher)
-    buying_power_history = await _update_buying_power_history(buying_power_history_path, trade_history, sbi_data_fetcher)
-    deposit_history = await _update_deposit_history(deposit_history_df_path, buying_power_history, sbi_data_fetcher)
+    trade_history = await _update_trade_history(trade_history_path, sector_list_df_path, history_manager)
+    buying_power_history = await _update_buying_power_history(buying_power_history_path, trade_history, history_manager)
+    deposit_history = await _update_deposit_history(deposit_history_df_path, buying_power_history, history_manager)
 
     amount, rate = _show_latest_result(trade_history)
 
@@ -624,10 +625,13 @@ if __name__ == '__main__':
         long_orders['Code'] = long_orders['Code'].astype(str)
         short_orders = pd.read_csv(paths.SHORT_ORDERS_CSV)
         short_orders['Code'] = short_orders['Code'].astype(str)
-        session = SBISession()
+        session = LoginHandler()
         await session.sign_in()
-        order_maker = SBIOrderMaker(session)
-        failed_order_list = await make_new_order(order_maker, long_orders, short_orders)
+        order_manager = OrderManager(session)
+        margin_manager = MarginManager(session)
+        history_manager = HistoryManager(session)
+        trade_possibility_manager = TradePossibilityManager
+        failed_order_list = await make_new_order(order_manager, long_orders, short_orders)
     
     asyncio.run(main())
     #tab = asyncio.run(settle_all_margins(tab))
