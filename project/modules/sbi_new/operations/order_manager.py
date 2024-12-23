@@ -423,6 +423,7 @@ class OrderManager:
                 order_input_button = await self.tab.wait_for('input[value="注文入力へ"]')
                 await order_input_button.click()
                 await self.tab.wait(1)
+                await self.tab.save_screenshot('debug.png')
                 order_type_elements = await self.tab.select_all('input[name="in_sasinari_kbn"]')
                 await order_type_elements[1].click()  # 成行
                 selector = f'select[name="nariyuki_condition"] option[value="H"]'
@@ -435,28 +436,8 @@ class OrderManager:
                 await order_button.click()
                 await self.tab.wait(1.2)
                 try:
-                    await self.tab.wait_for(text='ご注文を受け付けました。')
+                    await self.tab.wait_for(text='ご注文を受け付けました。')                
                     print(f"{margin_tickers[i]}：正常に決済注文完了しました。")
-
-
-                    html_content = await self.tab.get_content()
-                    symbol_code = str(await self._get_element('銘柄コード'))
-                    extracted_unit = await self._get_element('株数')
-                    extracted_unit = int(extracted_unit[:-2])
-                    trade_type = await self._get_element('取引')
-                    if '信用返済買' in trade_type:
-                        trade_type = '信用新規売'
-                    if '信用返済売' in trade_type:
-                        trade_type = '信用新規買'
-                    order_id = await self._get_element('注文番号')
-                    print([symbol_code, extracted_unit, trade_type])
-                    params_to_compare = TradeParameters(symbol_code=symbol_code, unit=extracted_unit, trade_type=trade_type)
-                    order_id = self.position_manager.find_unordered_position_by_params(params_to_compare)
-                    self.position_manager.update_order_id(i, order_id)
-                    self.position_manager.update_status(order_id, status_type = 'settlement_order', new_status = self.position_manager.STATUS_ORDERED)
-
-                    retry_count = 0
-                    i += 1
                     
                 except:
                     if retry_count < 3:
@@ -467,8 +448,27 @@ class OrderManager:
                         self.error_tickers.append(margin_tickers[i])
                         retry_count = 0
                         i += 1
-            self.login_handler.session.tab = self.tab
-            print(f'全銘柄の決済処理が完了しました。')
+                html_content = await self.tab.get_content()
+                symbol_code = str(await self._get_element('銘柄コード'))
+                extracted_unit = await self._get_element('株数')
+                extracted_unit = int(extracted_unit[:-1].replace(',', ''))
+                trade_type = await self._get_element('取引')
+                if '信用返済買' in trade_type:
+                    trade_type = '信用新規売'
+                if '信用返済売' in trade_type:
+                    trade_type = '信用新規買'
+                order_id = await self._get_element('注文番号')
+                params_to_compare = TradeParameters(symbol_code=symbol_code, unit=extracted_unit, trade_type=trade_type)
+                order_id = self.position_manager.find_unordered_position_by_params(params_to_compare)
+                self.position_manager.update_order_id(i, order_id)
+                self.position_manager.update_status(order_id, status_type = 'settlement_order', new_status = self.position_manager.STATUS_ORDERED)
+
+                retry_count = 0
+                i += 1
+
+
+        self.login_handler.session.tab = self.tab
+        print(f'全銘柄の決済処理が完了しました。')
 
 
     async def _extract_margin_list(self):
