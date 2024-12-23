@@ -9,7 +9,7 @@ class MarginManager:
         self.margin_power = None
         self.buying_power = None
 
-    async def fetch(self) -> dict:
+    async def fetch(self):
         """信用建余力と買付余力を取得して返す"""
         # 口座管理ページに遷移
         await self.login_handler.sign_in()

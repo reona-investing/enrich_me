@@ -268,7 +268,7 @@ class HistoryManager:
 
         return data
     
-    async def fetch_today_stock_trades_df(self):
+    async def fetch_today_stock_trades(self):
         """
         今日の現物取引をスクレイピングして取得
         self.today_stock_trades_df: 現物取引データ
