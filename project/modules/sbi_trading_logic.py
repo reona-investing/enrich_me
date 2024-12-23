@@ -568,7 +568,7 @@ async def settle_all_margins(order_manager: OrderManager):
     '''
     await order_manager.settle_all_margins()
 
-async def update_information(history_manager: HistoryManager,
+async def update_information(history_manager: HistoryManager, margin_manager: MarginManager,
                              sector_list_df_path: str, trade_history_path: str, 
                              buying_power_history_path: str, deposit_history_df_path: str) \
                                 -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, float, str]:
@@ -576,7 +576,7 @@ async def update_information(history_manager: HistoryManager,
     sbi_operations証券からスクレイピングして、取引情報、買付余力、総入金額を更新
     '''
     trade_history = await _update_trade_history(trade_history_path, sector_list_df_path, history_manager)
-    buying_power_history = await _update_buying_power_history(buying_power_history_path, trade_history, history_manager)
+    buying_power_history = await _update_buying_power_history(buying_power_history_path, trade_history, history_manager, margin_manager)
     deposit_history = await _update_deposit_history(deposit_history_df_path, buying_power_history, history_manager)
 
     amount, rate = _show_latest_result(trade_history)
