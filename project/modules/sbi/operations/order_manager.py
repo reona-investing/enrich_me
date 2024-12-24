@@ -75,7 +75,7 @@ class OrderManager:
         指定された取引パラメータを使用して新規注文を行う。
         """
         await self.login_handler.sign_in()
-        self.tab = self.login_handler.session.tab  # ��縮参照を設定
+        self.tab = self.login_handler.session.tab
         try:
             await self._navigate_to_trade_page()
             await self._select_trade_type(trade_params)
@@ -85,7 +85,6 @@ class OrderManager:
             await self._select_deposit_and_credit_type(trade_params)
             await self._confirm_order(trade_params)
             print("注文が正常に完了しました！")
-            self.has_successfully_ordered = True
         except Exception as e:
             print(f"注文中にエラーが発生しました: {e}")
             traceback.print_exc()  # スタックトレースを出力
@@ -204,9 +203,11 @@ class OrderManager:
         if "ご注文を受け付けました。" in html_content:
             print(f"注文が成功しました: {trade_params.symbol_code}")
             await self._edit_position_manager_for_order(order_index)
+            self.has_successfully_ordered = True
         else:
             print(f"注文が失敗しました: {trade_params.symbol_code}")
             self.error_tickers.append(trade_params.symbol_code)
+            self.has_successfully_ordered = False
 
     async def _edit_position_manager_for_order(self, order_index: int) -> None:
             order_id = await self._get_element('注文番号') 
@@ -228,7 +229,7 @@ class OrderManager:
         await self.login_handler.sign_in()
         self.tab = self.login_handler.session.tab
         try:
-            await self._extract_order_list()
+            await self.extract_order_list()
 
             if len(self.order_list_df) == 0:
                 print("キャンセルする注文はありません。")
@@ -243,11 +244,13 @@ class OrderManager:
         finally:
             self.login_handler.session.tab = self.tab
 
-    async def _extract_order_list(self) -> None:
+    async def extract_order_list(self) -> None:
         """
         現在の注文一覧を取得する。
         """
         try:
+            await self.login_handler.sign_in()
+            self.tab = self.login_handler.session.tab
             await self._navigate_to_trade_page()
             button = await self.tab.wait_for(text='注文照会')
             await button.click()
@@ -336,7 +339,7 @@ class OrderManager:
         code = await self._get_element("銘柄コード")
         code = str(code)
         unit = await self._get_element("株数")
-        unit = int(str(unit)[:-1])
+        unit = int(unit[:-1].replace(',', ''))
         order_type = await self._get_element("取引")
 
         if "ご注文を受け付けました。" in html_content:
@@ -381,7 +384,7 @@ class OrderManager:
         await self.login_handler.sign_in()
         self.tab = self.login_handler.session.tab
         await self._extract_margin_list()
-        await self._extract_order_list()
+        await self.extract_order_list()
 
         if len(self.margin_list_df) == 0:
             print('信用建玉がありません。決済処理を中断します。')

@@ -67,9 +67,9 @@ class PositionManager:
         """
         compare_keys = ['symbol_code', 'trade_type', 'unit']
         input_condition = [getattr(trade_params, key) for key in compare_keys]
-        for i, order in enumerate(self.positions):
-            control_condition = [order['order_params'].get(key) for key in compare_keys]
-            if (order['order_status'] == PositionManager.STATUS_UNORDERED) & (input_condition == control_condition):
+        for i, position in enumerate(self.positions):
+            control_condition = [position['order_params'][key] for key in compare_keys]
+            if (position['order_status'] == PositionManager.STATUS_UNORDERED) & (input_condition == control_condition):
                 return i
         return None
 

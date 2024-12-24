@@ -158,7 +158,6 @@ async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
                          trading_sector_num, candidate_sector_num,
                          top_slope):
     sbi_session = LoginHandler()
-    history_manager = HistoryManager(sbi_session)
     trade_possibility_manager = TradePossibilityManager(sbi_session)
     order_manager = OrderManager(sbi_session)
     margin_manager = MarginManager(sbi_session)
@@ -252,7 +251,6 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         # 最初に各種フラグをセットしておく。データ更新の要否を引数に入力している場合は、フラグをその値で上書き。
         FlgMng = FlagManager.FlagManager()
         FlgMng.set_flags(learn=learn, predict=predict)
-        FlgMng.set_flags(take_new_positions=True)
         print(FlgMng.get_flags())
         # データセットの読み込み
         if FlgMng.flags['update_dataset'] or FlgMng.flags['update_models']:

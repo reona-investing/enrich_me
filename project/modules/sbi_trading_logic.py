@@ -535,7 +535,7 @@ async def make_new_order(order_manager: OrderManager, long_orders:pd.DataFrame, 
     新規注文を発注する。
     '''
     #現時点での注文リストをsbi_operations証券から取得
-    await order_manager._extract_order_list()
+    await order_manager.extract_order_list()
 
     #発注処理の条件に当てはまるときのみ処理実行
     if len(order_manager.order_list_df) > 0:
@@ -548,6 +548,7 @@ async def make_new_order(order_manager: OrderManager, long_orders:pd.DataFrame, 
     long_orders['LorS'] = 'Long'
     short_orders['LorS']= 'Short'
     orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
+
     # ポジションを発注
     failed_order_list = await _make_orders(orders_df = orders_df, order_type_value='寄成', order_manager = order_manager)
 
@@ -558,6 +559,7 @@ async def make_additional_order(order_manager: OrderManager) -> list:
     orders_df = pd.read_csv(paths.FAILED_ORDERS_CSV)
     orders_df['Code'] = orders_df['Code'].astype(str)
     #ポジションの発注
+    order_manager
     failed_order_list = await _make_orders(orders_df = orders_df, order_type_value=None, order_manager = order_manager)
 
     return failed_order_list
