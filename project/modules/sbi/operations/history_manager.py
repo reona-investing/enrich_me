@@ -195,6 +195,9 @@ class HistoryManager:
             print('直近1週間の入出金履歴はありません。')
             return
         self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
+
+        button = await self.tab.find('総合トップ')
+
         print('入出金の履歴')
         print(self.cashflow_transactions_df)
 
