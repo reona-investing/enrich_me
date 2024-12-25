@@ -198,14 +198,14 @@ async def take_additionals():
 async def settle_positions():
     sbi_session = LoginHandler()
     order_manager = OrderManager(sbi_session)
-    error_tickers = await sbi_trading_logic.settle_all_margins(order_manager)
-    if len(error_tickers) == 0:
+    await sbi_trading_logic.settle_all_margins(order_manager)
+    if len(order_manager.error_tickers) == 0:
         Slack.send_message(message = '全銘柄の決済注文が完了しました。')
     else:
         Slack.send_message(
             message = 
                 f'全銘柄の決済注文を試みました。\n' +
-                f'銘柄コード{error_tickers}の決済注文に失敗しました。'
+                f'銘柄コード{order_manager.error_tickers}の決済注文に失敗しました。'
                 )
 
 async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
