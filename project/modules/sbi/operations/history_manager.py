@@ -197,6 +197,7 @@ class HistoryManager:
         self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
 
         button = await self.tab.find('総合トップ')
+        await button.click()
 
         print('入出金の履歴')
         print(self.cashflow_transactions_df)
