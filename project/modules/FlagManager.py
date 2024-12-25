@@ -1,19 +1,9 @@
 from datetime import datetime, time
 import pandas as pd
 import os
-
 import jquants_api_fetcher as fetcher
 import paths
-
-class SingletonMeta(type):
-    """シングルトン実現用メタクラス"""
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]
-
+from utils import SingletonMeta
 
 class FlagManager(metaclass=SingletonMeta):
     """フラグ管理クラス（シングルトン）"""
@@ -99,7 +89,7 @@ if __name__ == "__main__":
     flag_manager_1 = FlagManager()
     print(flag_manager_1.get_flags())
     # フラグの更新
-    flag_manager_1.set_flag('update_data', True)
+    flag_manager_1.set_flag('predict', True)
     print(flag_manager_1.get_flags())
     # シングルトンオブジェクトの再取得
     flag_manager_1 = FlagManager()
