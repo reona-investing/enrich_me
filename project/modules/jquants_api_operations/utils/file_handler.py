@@ -7,8 +7,10 @@ class FileHandler:
         return os.path.isfile(path)
 
     @staticmethod
-    def read_parquet(path: str) -> pd.DataFrame:
-        return pd.read_parquet(path)
+    def read_parquet(path: str, usecols:list = None) -> pd.DataFrame:
+        if usecols == None:
+            return pd.read_parquet(path)
+        return pd.read_parquet(path, columns = usecols)
 
     @staticmethod
     def write_parquet(data: pd.DataFrame, path: str, verbose=True) -> None:
