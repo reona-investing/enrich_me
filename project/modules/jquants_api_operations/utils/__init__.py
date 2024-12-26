@@ -1,3 +1,3 @@
-from .to_parquet import to_parquet
+from .file_handler import FileHandler
 
-all = ['to_parquet']
+all = ['FileHandler']

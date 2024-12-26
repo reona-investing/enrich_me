@@ -1,40 +1,54 @@
 import pandas as pd
-import paths
 from datetime import datetime
+import paths
 from jquants_api_operations import cli
-from jquants_api_operations.utils import to_parquet
+from jquants_api_operations.utils import FileHandler
 
-def update_fin(path: str = paths.RAW_STOCK_FIN_PARQUET) -> None:
+def update_fin(
+    path: str = paths.RAW_STOCK_FIN_PARQUET,
+    file_handler: FileHandler = FileHandler()
+) -> None:
     """
     財務情報の更新を行い、指定されたパスにParquet形式で保存する。
+    :param path: Parquetファイルの保存先パス
+    :param file_handler: ファイル操作用オブジェクト
     """
-    raw_stock_fin_df = pd.read_parquet(path)
-    fetched_stock_fin_df = _fetch_data(raw_stock_fin_df)
-    raw_stock_fin_df = _merge(raw_stock_fin_df, fetched_stock_fin_df, key="DisclosureNumber")
-    raw_stock_fin_df = _format(raw_stock_fin_df)
+    existing_data = _load_existing_data(path, file_handler)
+    fetched_data = _fetch_data(existing_data)
+    merged_data = _merge(existing_data, fetched_data, key="DisclosureNumber")
+    formatted_data = _format(merged_data)
+    
+    print(formatted_data.tail(2))
+    file_handler.write_parquet(formatted_data, path)
 
-    print(raw_stock_fin_df.tail(2))
-    to_parquet(raw_stock_fin_df, path)
+
+def _load_existing_data(path: str, file_handler: FileHandler) -> pd.DataFrame:
+    """既存データを読み込む。ファイルが存在しない場合は空のDataFrameを返す。"""
+    if file_handler.file_exists(path):
+        return file_handler.read_parquet(path)
+    return pd.DataFrame()
 
 
-def _fetch_data(raw_stock_fin_df) -> pd.DataFrame:
+def _fetch_data(existing_data: pd.DataFrame) -> pd.DataFrame:
+    """財務情報をAPIから取得する。"""
     start_date = datetime(2000, 1, 1)
-    if raw_stock_fin_df is not None:
-        start_date = pd.to_datetime(raw_stock_fin_df["DisclosedDate"].iat[-1])
+    if not existing_data.empty:
+        start_date = pd.to_datetime(existing_data["DisclosedDate"].iat[-1])
     end_date = datetime.today()
-    fetched_stock_fin_df = cli.get_statements_range(start_dt=start_date, end_dt=end_date)
-    return fetched_stock_fin_df
+    return cli.get_statements_range(start_dt=start_date, end_dt=end_date)
+
 
 def _merge(existing_data: pd.DataFrame, new_data: pd.DataFrame, key: str) -> pd.DataFrame:
-    """既存データと新規データを結合し、重複を排除."""
-    if existing_data is None:
+    """既存データと新規データを結合し、重複を排除する。"""
+    if existing_data.empty:
         return new_data
     unique_existing = existing_data.loc[~existing_data[key].isin(new_data[key])]
-    merged_data = pd.concat([new_data, unique_existing], axis=0).reset_index(drop=True)
-    return merged_data
+    return pd.concat([new_data, unique_existing], axis=0).reset_index(drop=True)
 
-def _format(raw_stock_fin_df: pd.DataFrame) -> pd.DataFrame:
-    return raw_stock_fin_df.astype(str).sort_values('DisclosureNumber').reset_index(drop=True)
+
+def _format(data: pd.DataFrame) -> pd.DataFrame:
+    """データを指定された形式に整形する。"""
+    return data.astype(str).sort_values('DisclosureNumber').reset_index(drop=True)
 
 
 if __name__ == '__main__':
