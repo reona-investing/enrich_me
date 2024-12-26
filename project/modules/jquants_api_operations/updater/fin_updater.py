@@ -5,27 +5,25 @@ from jquants_api_operations import cli
 from jquants_api_operations.utils import FileHandler
 
 def update_fin(
-    path: str = paths.RAW_STOCK_FIN_PARQUET,
-    file_handler: FileHandler = FileHandler()
+    path: str = paths.RAW_STOCK_FIN_PARQUET
 ) -> None:
     """
     財務情報の更新を行い、指定されたパスにParquet形式で保存する。
     :param path: Parquetファイルの保存先パス
-    :param file_handler: ファイル操作用オブジェクト
     """
-    existing_data = _load_existing_data(path, file_handler)
+    existing_data = _load_existing_data(path)
     fetched_data = _fetch_data(existing_data)
     merged_data = _merge(existing_data, fetched_data, key="DisclosureNumber")
     formatted_data = _format(merged_data)
     
     print(formatted_data.tail(2))
-    file_handler.write_parquet(formatted_data, path)
+    FileHandler.write_parquet(formatted_data, path)
 
 
-def _load_existing_data(path: str, file_handler: FileHandler) -> pd.DataFrame:
+def _load_existing_data(path: str) -> pd.DataFrame:
     """既存データを読み込む。ファイルが存在しない場合は空のDataFrameを返す。"""
-    if file_handler.file_exists(path):
-        return file_handler.read_parquet(path)
+    if FileHandler.file_exists(path):
+        return FileHandler.read_parquet(path)
     return pd.DataFrame()
 
 

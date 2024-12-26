@@ -3,16 +3,14 @@ from datetime import datetime
 import paths
 from jquants_api_operations.utils import FileHandler
 from jquants_api_operations import cli
-from FlagManager import FlagManager
+from FlagManager import flag_manager
 
 def update_price(
-    basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
-    file_handler: FileHandler = FileHandler()
+    basic_path: str = paths.RAW_STOCK_PRICE_PARQUET
 ) -> None:
     """
     価格情報の更新を行い、指定されたパスにParquet形式で保存する。
     :param basic_path: パスのテンプレート（例: "path_to_data/0000.parquet"）
-    :param file_handler: ファイル操作用オブジェクト
     """
     current_year = datetime.today().year
     prev_year = current_year - 1
@@ -21,11 +19,11 @@ def update_price(
     prev_year_path = _generate_file_path(prev_year, basic_path)
 
     # 今年のデータが存在しない場合、前年データを更新
-    if not file_handler.file_exists(current_year_path):
-        _update_yearly_stock_price(prev_year, prev_year_path, file_handler)
+    if not FileHandler.file_exists(current_year_path):
+        _update_yearly_stock_price(prev_year, prev_year_path)
 
     # 今年のデータを取得・更新
-    raw_stock_price = _update_yearly_stock_price(current_year, current_year_path, file_handler)
+    raw_stock_price = _update_yearly_stock_price(current_year, current_year_path)
 
     print(raw_stock_price.tail(2))
 
@@ -35,7 +33,7 @@ def _generate_file_path(year: int, basic_path: str) -> str:
     return basic_path.replace('0000', str(year))
 
 
-def _update_yearly_stock_price(year: int, yearly_path: str, file_handler: FileHandler) -> pd.DataFrame:
+def _update_yearly_stock_price(year: int, yearly_path: str) -> pd.DataFrame:
     """
     特定年の価格情報を取得・更新。
     :param year: 対象年
@@ -43,7 +41,7 @@ def _update_yearly_stock_price(year: int, yearly_path: str, file_handler: FileHa
     :param file_handler: ファイル操作用オブジェクト
     """
     # ファイルが存在すれば読み込み
-    existing_data = file_handler.read_parquet(yearly_path) if file_handler.file_exists(yearly_path) else pd.DataFrame()
+    existing_data = FileHandler.read_parquet(yearly_path) if FileHandler.file_exists(yearly_path) else pd.DataFrame()
 
     # データ更新
     updated_data = _update_yearly_price(year, existing_data)
@@ -52,7 +50,7 @@ def _update_yearly_stock_price(year: int, yearly_path: str, file_handler: FileHa
     cleaned_data = updated_data.drop_duplicates().dropna()
 
     # 更新されたデータを保存
-    file_handler.write_parquet(cleaned_data, yearly_path)
+    FileHandler.write_parquet(cleaned_data, yearly_path)
     return cleaned_data
 
 
@@ -96,7 +94,6 @@ def _fetch_new_stock_price(last_exist_date: datetime) -> pd.DataFrame:
 def _set_adjustment_flag(fetched_stock_price: pd.DataFrame):
     """AdjustmentFactorが変更された場合のフラグ設定."""
     if any(fetched_stock_price['AdjustmentFactor'] != 1):
-        flag_manager = FlagManager()
         flag_manager.flags['process_stock_price'] = True
 
 

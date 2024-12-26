@@ -6,25 +6,22 @@ from jquants_api_operations import cli
 from jquants_api_operations.utils import FileHandler
 
 def update_list(
-    path: str = paths.RAW_STOCK_LIST_PARQUET,
-    file_handler: FileHandler = FileHandler()
+    path: str = paths.RAW_STOCK_LIST_PARQUET
 ) -> None:
     """
     銘柄一覧の更新を行い、指定されたパスにParquet形式で保存する。
     
     :param path: Parquetファイルの保存先パス
-    :param fetcher: データ取得用オブジェクト
-    :param file_handler: ファイル操作用オブジェクト
     """
     stock_list_df = _fetch()
 
-    if file_handler.file_exists(path):
-        existing_stock_list_df = file_handler.read_parquet(path)
+    if FileHandler.file_exists(path):
+        existing_stock_list_df = FileHandler.read_parquet(path)
         stock_list_df = _merge(stock_list_df, existing_stock_list_df)
 
     stock_list_df = _format(stock_list_df)
     print(stock_list_df.tail(2))
-    file_handler.write_parquet(stock_list_df, path)
+    FileHandler.write_parquet(stock_list_df, path)
 
 
 def _fetch() -> pd.DataFrame:

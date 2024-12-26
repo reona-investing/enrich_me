@@ -82,6 +82,7 @@ class FlagManager(metaclass=SingletonMeta):
         """現在のフラグ状態を取得"""
         return self.flags
 
+flag_manager = FlagManager()
 
 # 使用例
 if __name__ == "__main__":
