@@ -1,7 +1,7 @@
 from datetime import datetime
 from dateutil import relativedelta
 import pandas as pd
-from jquants_api_operations.client import cli
+from jquants_api_utils.client import cli
 
 def get_next_open_date(latest_date: datetime) -> datetime:
     """翌開場日の取得."""
@@ -14,3 +14,10 @@ def get_next_open_date(latest_date: datetime) -> datetime:
     market_open_date['Date'] = pd.to_datetime(market_open_date['Date'])
     next_open_date = market_open_date.loc[market_open_date['Date'] > latest_date, 'Date'].iat[0]
     return next_open_date
+
+def is_market_open(date: datetime) -> bool:
+    market_open_day_df = cli.get_markets_trading_calendar(
+            from_yyyymmdd=(date).strftime('%Y%m%d'),
+            to_yyyymmdd=(date).strftime('%Y%m%d')
+        )
+    return market_open_day_df['HolidayDivision'].iat[0] == '1' #平日：1、土日：0、祝日：3

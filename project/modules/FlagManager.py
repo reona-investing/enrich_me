@@ -1,5 +1,5 @@
 from datetime import datetime, time
-from jquants_api_operations.client import cli
+from jquants_api_utils import cli, is_market_open
 from utils import SingletonMeta
 
 class FlagManager(metaclass=SingletonMeta):
@@ -62,13 +62,7 @@ class FlagManager(metaclass=SingletonMeta):
     
     def _is_market_open_day(self) -> bool:
         # 今日が営業日かどうかの判定
-        current_date = datetime.now().date()
-        market_open_day_df = cli.get_markets_trading_calendar(
-                from_yyyymmdd=(current_date).strftime('%Y%m%d'),
-                to_yyyymmdd=(current_date).strftime('%Y%m%d')
-            )
-        is_market_open_day =  market_open_day_df['HolidayDivision'].iat[0] == '1' #平日：1、土日：0、祝日：3
-        return is_market_open_day
+        return is_market_open(datetime.today())
 
     def _update_dependent_flags(self):
         # update_datasetとupdate_modelsのフラグを他のフラグに基づいて更新

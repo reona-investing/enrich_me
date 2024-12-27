@@ -3,14 +3,15 @@ import paths
 from jquants_api_operations.processor.formatter import Formatter
 from jquants_api_operations.utils import FileHandler
 
-def process_list() -> None:
+def process_list(raw_path: str = paths.RAW_STOCK_LIST_PARQUET, 
+                 processing_path: str = paths.STOCK_LIST_PARQUET) -> None:
     """
     銘柄リストデータを加工して、機械学習用に整形する。
     """
-    raw_stock_list = FileHandler.read_parquet(paths.RAW_STOCK_LIST_PARQUET)
+    raw_stock_list = FileHandler.read_parquet(raw_path)
     stock_list = _format(raw_stock_list)
     stock_list = _extract_individual_stocks(stock_list)
-    FileHandler.write_parquet(stock_list, paths.STOCK_LIST_PARQUET)
+    FileHandler.write_parquet(stock_list, processing_path)
 
 def _format(raw_stock_list: pd.DataFrame) -> pd.DataFrame:
     str_columns = ['Code', 'CompanyName', 'MarketCodeName', 'Sector33CodeName', 'Sector17CodeName', 'ScaleCategory']
