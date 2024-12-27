@@ -9,7 +9,7 @@ def update_price(
     basic_path: str = paths.RAW_STOCK_PRICE_PARQUET
 ) -> None:
     """
-    価格情報の更新を行い、指定されたパスにParquet形式で保存する。
+    株価情報を更新し、指定されたパスにParquet形式で保存します。
     :param basic_path: パスのテンプレート（例: "path_to_data/0000.parquet"）
     """
     current_year = datetime.today().year
@@ -29,16 +29,15 @@ def update_price(
 
 
 def _generate_file_path(year: int, basic_path: str) -> str:
-    """指定された年に基づきファイルパスを生成."""
+    """指定された年に基づいてファイルパスを生成します。"""
     return basic_path.replace('0000', str(year))
 
 
 def _update_yearly_stock_price(year: int, yearly_path: str) -> pd.DataFrame:
     """
-    特定年の価格情報を取得・更新。
-    :param year: 対象年
+    特定の年の株価情報を取得し、更新します。
+    :param year: 対象の年
     :param yearly_path: 年ごとのファイルパス
-    :param file_handler: ファイル操作用オブジェクト
     """
     # ファイルが存在すれば読み込み
     existing_data = FileHandler.read_parquet(yearly_path) if FileHandler.file_exists(yearly_path) else pd.DataFrame()
@@ -56,10 +55,9 @@ def _update_yearly_stock_price(year: int, yearly_path: str) -> pd.DataFrame:
 
 def _update_yearly_price(year: int, existing_data: pd.DataFrame = None) -> pd.DataFrame:
     """
-    年次データを取得し、既存データを更新。
-    :param year: 対象年
+    年次データを取得し、既存データを更新します。
+    :param year: 対象の年
     :param existing_data: 既存の価格情報データ
-    :return: 更新後のデータ
     """
     if existing_data.empty:
         fetched_data = _fetch_full_year_stock_price(year)
@@ -76,7 +74,7 @@ def _update_yearly_price(year: int, existing_data: pd.DataFrame = None) -> pd.Da
 
 
 def _fetch_full_year_stock_price(year: int) -> pd.DataFrame:
-    """指定された年の全期間の価格情報を取得."""
+    """指定された年の全期間の価格情報を取得します。"""
     return cli.get_price_range(
         start_dt=datetime(year, 1, 1),
         end_dt=datetime(year, 12, 31)
@@ -84,7 +82,7 @@ def _fetch_full_year_stock_price(year: int) -> pd.DataFrame:
 
 
 def _fetch_new_stock_price(last_exist_date: datetime) -> pd.DataFrame:
-    """最新の日付までの新しい価格情報を取得."""
+    """最新の日付までの新しい価格情報を取得します。"""
     return cli.get_price_range(
         start_dt=last_exist_date,
         end_dt=datetime.today()
@@ -92,13 +90,13 @@ def _fetch_new_stock_price(last_exist_date: datetime) -> pd.DataFrame:
 
 
 def _set_adjustment_flag(fetched_stock_price: pd.DataFrame):
-    """AdjustmentFactorが変更された場合のフラグ設定."""
+    """AdjustmentFactorが変更された場合のフラグを設定します。"""
     if any(fetched_stock_price['AdjustmentFactor'] != 1):
         flag_manager.flags['process_stock_price'] = True
 
 
 def _update_raw_stock_price(existing_data: pd.DataFrame, new_data: pd.DataFrame) -> pd.DataFrame:
-    """既存の価格情報に新しいデータを追加し、重複を削除."""
+    """既存の価格情報に新しいデータを追加し、重複を削除します。"""
     combined_data = pd.concat([existing_data, new_data], axis=0)
     combined_data["Date"] = pd.to_datetime(combined_data["Date"])
     return combined_data[

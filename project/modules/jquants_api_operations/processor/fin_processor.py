@@ -7,8 +7,12 @@ from jquants_api_operations.processor.code_replacement_info import codes_to_merg
 
 
 def process_fin(raw_path: str = paths.RAW_STOCK_FIN_PARQUET,
-                processing_path: str = paths.STOCK_FIN_PARQUET): # 財務情報の加工
-    '''raw_stock_finを、機械学習に使える形に加工'''
+                processing_path: str = paths.STOCK_FIN_PARQUET) -> None: # 財務情報の加工
+    '''raw_stock_finを、機械学習に使える形に加工します。
+    Args:
+        raw_path (str): 生の財務データが保存されているパス
+        processing_path (str): 加工後の財務データを保存するパス
+    '''
 
     #必要列を抜き取ってデータ型を指定する
     stock_fin = _load_fin_data(raw_path)
@@ -21,10 +25,12 @@ def process_fin(raw_path: str = paths.RAW_STOCK_FIN_PARQUET,
 
 
 def _load_fin_data(raw_path: str) -> pd.DataFrame:
+    '''生の財務データを読み込みます。'''
     stock_fin = FileHandler.read_parquet(raw_path)
     return stock_fin
 
 def _format_dtypes(raw_stock_fin: pd.DataFrame) -> pd.DataFrame:
+    '''各カラムに適切なデータ型を設定します。'''
     dtypes_spec_df = pd.read_csv(paths.DTYPES_STOCK_FIN_CSV)
     dtypes_spec_dict = {row['列名']:eval(row['型']) for _, row in dtypes_spec_df.iterrows()} #eval関数で、文字列'str'をデータ型オブジェクトstrに変換
     columns_list = dtypes_spec_dict.keys()
@@ -44,16 +50,15 @@ def _format_dtypes(raw_stock_fin: pd.DataFrame) -> pd.DataFrame:
     return stock_fin
 
 def _drop_duplicated_data(stock_fin: pd.DataFrame) -> pd.DataFrame:
-    # 財務情報の同一日に複数レコードが存在することに対応します。
-    # ある銘柄について同一日に複数の開示が行われた場合レコードが重複します。
-    # ここでは簡易的に処理するために特定のTypeOfDocumentを削除した後に、開示時間順に並べて一番最後に発表された開示情報を採用しています。
+    '''同一日に同一銘柄の複数レコードが存在する場合、重複を削除します。'''
+    # 発表の訂正などで、同一日に複数回のリリースがある場合がある。当日最後の発表を最新の発表として残す。
     stock_fin = stock_fin.loc[~stock_fin["TypeOfDocument"].isin(
         ['DividendForecastRevision', 'EarnForecastRevision', 'REITDividendForecastRevision', 'REITEarnForecastRevision'])]
     return stock_fin.sort_values("DisclosedTime").drop_duplicates(subset=["Code", "Date"], keep="last") #コードと開示日が重複しているデータを、最後を残して削除
 
 
 def _calculate_additional_fins(stock_fin: pd.DataFrame) -> pd.DataFrame:
-    '''追加の要素を算出'''
+    '''追加の財務要素を算出します。'''
     #期末発行済株式数の算出
     stock_fin['OutstandingShares'] = np.nan
     stock_fin.loc[stock_fin['NumberOfTreasuryStockAtTheEndOfFiscalYear'].notnull(), 'OutstandingShares'] = \
@@ -68,7 +73,8 @@ def _calculate_additional_fins(stock_fin: pd.DataFrame) -> pd.DataFrame:
         stock_fin.loc[stock_fin["TypeOfCurrentPeriod"] == "FY", "CurrentFiscalYearEndDate"] + pd.offsets.DateOffset(years=1)).dt.strftime("%Y/%m")
     return stock_fin
 
-def _process_merger(stock_fin:pd.DataFrame) -> pd.DataFrame: # 企業合併時の財務情報処理
+def _process_merger(stock_fin:pd.DataFrame) -> pd.DataFrame:
+    '''企業合併時の財務情報合成処理を行います'''
     #合併前の各社のデータを足し合わせる項目
     plus_when_merging = ['TotalAssets', 'Equity','CashAndEquivalents',	'NetSales',	'OperatingProfit',
                           'OrdinaryProfit',	'Profit', 'ForecastNetSales',	'ForecastOperatingProfit',
@@ -76,7 +82,6 @@ def _process_merger(stock_fin:pd.DataFrame) -> pd.DataFrame: # 企業合併時�
                           'CashFlowsFromInvestingActivities', 'CashFlowsFromFinancingActivities']
     #合併リストの中身の分だけ処理を繰り返し
     for key, value in codes_to_merge_dict.items():
-        #合併前の2社分のデータについて、インデックスを揃える
         merger1 = stock_fin.loc[stock_fin['Code']==value['Code1']].sort_values('Date') #合併前1（存続）
         merger2 = stock_fin.loc[stock_fin['Code']==value['Code2']].sort_values('Date') #合併前2（消滅）
         #存続会社のデータを、合併前後に分ける。
@@ -98,11 +103,10 @@ def _process_merger(stock_fin:pd.DataFrame) -> pd.DataFrame: # 企業合併時�
         #合併前後のデータを結合する。
         merged = pd.concat([merger1_before, merger1_after], axis=0).sort_values('Date')
         stock_fin = stock_fin[(stock_fin['Code']!=value['Code1'])&(stock_fin['Code']!=value['Code2'])]
-        stock_fin = pd.concat([stock_fin, merged], axis=0).sort_values(['Date', 'Code'])
-
-        return stock_fin
+        return pd.concat([stock_fin, merged], axis=0).sort_values(['Date', 'Code'])
 
 def _finalize_df(stock_fin: pd.DataFrame) -> pd.DataFrame:
+    '''データフレームに最終処理を施します。'''
     return stock_fin.drop(['DisclosedTime'], axis=1).drop_duplicates(keep='last').reset_index(drop=True) # データフレームの最終処理
 
 

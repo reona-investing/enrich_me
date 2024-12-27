@@ -11,7 +11,13 @@ from jquants_api_operations.processor.code_replacement_info import manual_adjust
 
 def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
                   processing_basic_path: str = paths.STOCK_PRICE_PARQUET):
-    """価格情報の加工"""
+    """
+    価格情報を加工して、機械学習用に整形します。
+
+    Args:
+        raw_basic_path (str): 生の株価データが保存されているパス。
+        processing_basic_path (str): 加工後の株価データを保存するパス。
+    """
     end_date = datetime.today()
     temp_cumprod = None
     
@@ -26,12 +32,22 @@ def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
 
 # サブプロセス
 def _load_yearly_raw_data(raw_basic_path: str, year: int) -> pd.DataFrame:
+    '''取得したままの年次株価データを読み込みます。'''
     raw_path = raw_basic_path.replace('0000', str(year))
     usecols = ['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume', 'TurnoverValue', 'AdjustmentFactor']
     return FileHandler.read_parquet(raw_path, usecols=usecols)
 
-def _process_stock_price(stock_price: pd.DataFrame, temp_cumprod: dict, is_latest_file: bool) -> pd.DataFrame:
-    """価格データを加工する"""
+def _process_stock_price(stock_price: pd.DataFrame, temp_cumprod: dict[str, float], is_latest_file: bool) -> pd.DataFrame:
+    """
+    価格データを加工します。
+    Args:
+        stock_price (pd.DataFrame): 加工前の株価データ
+        temp_cumprod (dict[str, float]): 
+            処理時点での銘柄ごとの暫定の累積調整係数を格納（キー: 銘柄コード、値：暫定累積調整係数）
+        is_latest_file (bool): stock_priceが最新期間のファイルかどうか
+    Returns:
+        pd.DataFrame: 加工された株価データ。
+    """
     stock_price['Code'] = stock_price['Code'].astype(str)
     stock_price = Formatter.format_stock_code(stock_price)
     stock_price['Code'] = _replace_code(stock_price['Code'])
@@ -43,12 +59,12 @@ def _process_stock_price(stock_price: pd.DataFrame, temp_cumprod: dict, is_lates
     )
     return _finalize_price_data(stock_price), temp_cumprod
 
-def _replace_code(code_row: pd.Series) -> pd.Series:
-    """銘柄コードを置換する"""
-    return code_row.replace(codes_to_replace_dict)
+def _replace_code(code_column: pd.Series) -> pd.Series:
+    """ルールに従い、銘柄コードを置換します。"""
+    return code_column.replace(codes_to_replace_dict)
 
 def _fill_suspension_period(stock_price: pd.DataFrame) -> pd.DataFrame:
-    """欠損期間のデータを埋める"""
+    """銘柄コード変更前後の欠損期間のデータを埋めます。"""
     rows_to_add = []
     date_list = stock_price['Date'].unique()
     codes_after_replacement = codes_to_replace_dict.values()
@@ -60,12 +76,12 @@ def _fill_suspension_period(stock_price: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([stock_price] + rows_to_add, axis=0)
 
 def _get_missing_dates(stock_price: pd.DataFrame, code_replaced: str, date_list: List[str]) -> List[str]:
-    """欠損している日付を取得"""
+    """データが欠損している日付を取得します。"""
     existing_dates = stock_price.loc[stock_price['Code'] == code_replaced, 'Date'].unique()
     return [x for x in date_list if x not in existing_dates]
 
 def _create_missing_rows(stock_price: pd.DataFrame, code: str, dates_to_fill: List[str]) -> List[pd.DataFrame]:
-    """欠損期間の行を作成する"""
+    """欠損期間の行を作成します。"""
     rows = []
     if len(dates_to_fill) <= 5:
         for date in dates_to_fill:
@@ -79,7 +95,7 @@ def _create_missing_rows(stock_price: pd.DataFrame, code: str, dates_to_fill: Li
     return rows
 
 def _format_dtypes(stock_price: pd.DataFrame) -> pd.DataFrame:
-    """データ型を整形する"""
+    """データ型を整形します。"""
     stock_price['Code'] = stock_price['Code'].astype(str)
     stock_price['Date'] = pd.to_datetime(stock_price['Date'])
     numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'AdjustmentFactor', 'TurnoverValue']
@@ -87,14 +103,14 @@ def _format_dtypes(stock_price: pd.DataFrame) -> pd.DataFrame:
     return stock_price
 
 def _remove_system_failure_day(stock_price: pd.DataFrame) -> pd.DataFrame:
-    """システム障害日を除外する"""
+    """システム障害によるデータ欠損日を除外します。"""
     return stock_price[stock_price['Date'] != '2020-10-01']
 
 def _apply_cumulative_adjustment_factor(
     stock_price: pd.DataFrame, temp_cumprod: dict, is_latest_file: bool,
     manual_adjustment_dict_list: List[Dict]
 ) -> Tuple[pd.DataFrame, dict]:
-    """累積調整係数を適用"""
+    """価格データ（OHLCV）に累積調整係数を適用します。"""
     stock_price = stock_price.sort_values(['Code', 'Date']).set_index('Code', drop=True)
     stock_price = stock_price.groupby('Code', group_keys=False).apply(_calculate_cumulative_adjustment_factor).reset_index(drop=False)
 
@@ -110,27 +126,27 @@ def _apply_cumulative_adjustment_factor(
     return stock_price, temp_cumprod
 
 def _calculate_cumulative_adjustment_factor(stock_price: pd.DataFrame) -> pd.DataFrame:
-    """累積調整係数を計算する"""
+    """累積調整係数を計算します。"""
     stock_price = stock_price.sort_values('Date', ascending=False)
     stock_price['AdjustmentFactor'] = stock_price['AdjustmentFactor'].shift(-1).fillna(1.0)
     stock_price['CumulativeAdjustmentFactor'] = 1 / stock_price['AdjustmentFactor'].cumprod()
     return stock_price.sort_values('Date')
 
 def _inherit_cumulative_values(stock_price: pd.DataFrame, temp_cumprod: dict) -> pd.DataFrame:
-    """累積値を引き継ぐ"""
+    """計算途中の暫定累積調整係数を引き継ぎます。"""
     stock_price['InheritedValue'] = stock_price['Code'].map(temp_cumprod).fillna(1)
     stock_price['CumulativeAdjustmentFactor'] *= stock_price['InheritedValue']
     return stock_price.drop(columns='InheritedValue')
 
 def _apply_manual_adjustments(stock_price: pd.DataFrame, manual_adjustments: List[Dict]) -> pd.DataFrame:
-    """手動調整を適用する"""
+    """元データで未掲載の株式分割・併合について、累積調整係数をマニュアルで調整する"""
     for adjustment in manual_adjustments:
         condition = (stock_price['Code'] == adjustment['Code']) & (stock_price['Date'] < adjustment['Date'])
         stock_price.loc[condition, 'CumulativeAdjustmentFactor'] *= adjustment['Rate']
     return stock_price
 
 def _finalize_price_data(stock_price: pd.DataFrame) -> pd.DataFrame:
-    """最終的なデータ整形"""
+    """最終的なデータ整形を行う。"""
     stock_price = stock_price.dropna(subset=['Code'])
     stock_price = stock_price.drop_duplicates(subset=['Date', 'Code'], keep='last')
     return stock_price.sort_values(['Date', 'Code']).reset_index(drop=True)[
@@ -138,6 +154,7 @@ def _finalize_price_data(stock_price: pd.DataFrame) -> pd.DataFrame:
     ]
 
 def _save_yearly_data(df: pd.DataFrame, processing_basic_path: str, year: int) -> None:
+    '''年次の加工後価格データを保存する。'''
     save_path = processing_basic_path.replace('0000', str(year))
     FileHandler.write_parquet(df, save_path)
 
