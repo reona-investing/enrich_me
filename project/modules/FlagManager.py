@@ -1,6 +1,6 @@
 from datetime import datetime, time
 from jquants_api_utils import cli, is_market_open
-from utils import SingletonMeta
+from common_utils import SingletonMeta
 
 class FlagManager(metaclass=SingletonMeta):
     """フラグ管理クラス（シングルトン）"""
