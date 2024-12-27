@@ -1,8 +1,5 @@
 from datetime import datetime, time
-import pandas as pd
-import os
-import jquants_api_fetcher as fetcher
-import paths
+from jquants_api_operations.client import cli
 from utils import SingletonMeta
 
 class FlagManager(metaclass=SingletonMeta):
@@ -66,7 +63,7 @@ class FlagManager(metaclass=SingletonMeta):
     def _is_market_open_day(self) -> bool:
         # 今日が営業日かどうかの判定
         current_date = datetime.now().date()
-        market_open_day_df = fetcher.cli.get_markets_trading_calendar(
+        market_open_day_df = cli.get_markets_trading_calendar(
                 from_yyyymmdd=(current_date).strftime('%Y%m%d'),
                 to_yyyymmdd=(current_date).strftime('%Y%m%d')
             )
