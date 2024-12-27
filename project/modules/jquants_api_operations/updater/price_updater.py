@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 import paths
 from jquants_api_operations.utils import FileHandler
-from jquants_api_operations import cli
+from jquants_api_utils import cli
 from FlagManager import flag_manager
 
 def update_price(

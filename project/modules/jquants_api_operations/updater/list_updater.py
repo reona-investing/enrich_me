@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Protocol
 import os
 import paths
-from jquants_api_operations import cli
+from jquants_api_utils import cli
 from jquants_api_operations.utils import FileHandler
 
 def update_list(

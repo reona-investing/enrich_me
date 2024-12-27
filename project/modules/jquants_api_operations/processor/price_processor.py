@@ -9,23 +9,24 @@ from jquants_api_operations.utils import FileHandler
 from jquants_api_operations.processor.code_replacement_info import manual_adjustment_dict_list,codes_to_replace_dict
 
 
-def process_price():
+def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
+                  processing_basic_path: str = paths.STOCK_PRICE_PARQUET):
     """価格情報の加工"""
     end_date = datetime.today()
     temp_cumprod = None
     
     for year in range(end_date.year, 2012, -1):
         is_latest_file = year == end_date.year
-
-        if is_latest_file or flag_manager.flags['process_stock_price']:
-            stock_price = _load_yearly_raw_data(year)
-            stock_price = _process_stock_price(stock_price, temp_cumprod, is_latest_file)
-            _save_yearly_data(stock_price, year)
+        should_process = is_latest_file or flag_manager.flags['process_stock_price']
+        if should_process:
+            stock_price = _load_yearly_raw_data(raw_basic_path, year)
+            stock_price, temp_cumprod = _process_stock_price(stock_price, temp_cumprod, is_latest_file)
+            _save_yearly_data(stock_price, processing_basic_path, year)
 
 
 # サブプロセス
-def _load_yearly_raw_data(year: int) -> pd.DataFrame:
-    raw_path = paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(year))
+def _load_yearly_raw_data(raw_basic_path: str, year: int) -> pd.DataFrame:
+    raw_path = raw_basic_path.replace('0000', str(year))
     usecols = ['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume', 'TurnoverValue', 'AdjustmentFactor']
     return FileHandler.read_parquet(raw_path, usecols=usecols)
 
@@ -40,7 +41,7 @@ def _process_stock_price(stock_price: pd.DataFrame, temp_cumprod: dict, is_lates
     stock_price, temp_cumprod = _apply_cumulative_adjustment_factor(
         stock_price, temp_cumprod, is_latest_file, manual_adjustment_dict_list
     )
-    return _finalize_price_data(stock_price)
+    return _finalize_price_data(stock_price), temp_cumprod
 
 def _replace_code(code_row: pd.Series) -> pd.Series:
     """銘柄コードを置換する"""
@@ -136,8 +137,8 @@ def _finalize_price_data(stock_price: pd.DataFrame) -> pd.DataFrame:
         ['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume', 'AdjustmentFactor', 'CumulativeAdjustmentFactor', 'TurnoverValue']
     ]
 
-def _save_yearly_data(df: pd.DataFrame, year: int) -> None:
-    save_path = paths.STOCK_PRICE_PARQUET.replace('0000', str(year))
+def _save_yearly_data(df: pd.DataFrame, processing_basic_path: str, year: int) -> None:
+    save_path = processing_basic_path.replace('0000', str(year))
     FileHandler.write_parquet(df, save_path)
 
 
