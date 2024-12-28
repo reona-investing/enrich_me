@@ -24,7 +24,8 @@ def _format_dtypes(raw_stock_list: pd.DataFrame) -> pd.DataFrame:
     stock_list = raw_stock_list[str_columns + int_columns].copy()
     stock_list[str_columns] = stock_list[str_columns].astype(str)
     stock_list[int_columns] = stock_list[int_columns].astype(int)
-    return Formatter.format_stock_code(stock_list)
+    stock_list['Code'] = Formatter.format_stock_code(stock_list['Code'])
+    return stock_list
 
 def _extract_individual_stocks(stock_list: pd.DataFrame):
     '''ETF等を除き、個別銘柄のみを抽出します。'''

@@ -48,8 +48,7 @@ def _process_stock_price(stock_price: pd.DataFrame, temp_cumprod: dict[str, floa
     Returns:
         pd.DataFrame: 加工された株価データ。
     """
-    stock_price['Code'] = stock_price['Code'].astype(str)
-    stock_price = Formatter.format_stock_code(stock_price)
+    stock_price['Code'] = Formatter.format_stock_code(stock_price['Code'].astype(str))
     stock_price['Code'] = _replace_code(stock_price['Code'])
     stock_price = _fill_suspension_period(stock_price)
     stock_price = _format_dtypes(stock_price)
