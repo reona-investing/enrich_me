@@ -15,7 +15,9 @@ def run_jquants_api_operations(update: bool = False, process: bool = False, read
         filter (str): 読み込み対象銘柄のフィルタリング条件（クエリ）
         filtered_code_list (list[str]): フィルタリングする銘柄コードのをリストで指定
     戻り値:
-        dict: 実行された操作の結果。
+        pd.DataFrame: 銘柄一覧
+        pd.DataFrame: 財務情報
+        pd.DataFrame: 株価情報
     """
     list_df = None
     fin_df = None

@@ -11,8 +11,7 @@ if __name__ == '__main__':
 from datetime import datetime
 
 import paths #パス一覧
-import stock_dfs_processor as processor #取得したデータの加工
-import stock_dfs_reader as reader #加工したデータの読み込み
+from jquants_api_operations import run_jquants_api_operations
 import sector_index_calculator
 import features_scraper as scraper
 import features_calculator
@@ -42,7 +41,8 @@ async def main(ML_DATASET_PATH:str, NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PK
     '''
     # ml_datasetは必ず生成するので、最初に生成してしまう。
     ml_dataset = MLDataset.MLDataset(ML_DATASET_PATH)
-    stock_dfs_dict = reader.read_stock_dfs(filter = universe_filter)
+    list_df, fin_df, price_df = run_jquants_api_operations(filter = universe_filter)
+    stock_dfs_dict = {'stock_list': list_df, 'stock_fin': fin_df, 'stock_price': price_df}
 
     new_sector_price_df, order_price_df = sector_index_calculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
 

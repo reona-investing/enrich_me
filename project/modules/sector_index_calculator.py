@@ -180,11 +180,14 @@ def calc_new_sector_price(stock_dfs_dict:dict, new_sector_list_csv:str, new_sect
 #%% デバッグ
 if __name__ == '__main__':
     from IPython.display import display
-    import stock_dfs_reader
+    from jquants_api_operations import run_jquants_api_operations
     NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_list.csv'
     NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz'
-    stock_dfs_dict = stock_dfs_reader.read_stock_dfs(filter= \
+    list_df, fin_df, price_df = run_jquants_api_operations(filter= \
       "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
       )
+    stock_dfs_dict = {'stock_list': list_df,
+                      'stock_fin': fin_df,
+                      'stock_price': price_df}
     new_sector_price, price_for_order = calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     display(new_sector_price)

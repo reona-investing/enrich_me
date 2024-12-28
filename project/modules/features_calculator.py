@@ -298,7 +298,7 @@ def calculate_features(new_sector_price:pd.DataFrame,
 #%% デバッグ
 if __name__ == '__main__':
 
-    import stock_dfs_reader as reader # 加工したデータの読み込み
+    from jquants_api_operations import run_jquants_api_operations
     import sector_index_calculator
     from IPython.display import display
 
@@ -308,8 +308,10 @@ if __name__ == '__main__':
     '''ユニバースを絞るフィルタ'''
     universe_filter = \
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
-
-    stock_dfs_dict = reader.read_stock_dfs(filter = universe_filter)
+    list_df, fin_df, price_df = run_jquants_api_operations(filter=universe_filter)    
+    stock_dfs_dict = {'stock_list': list_df,
+                      'stock_fin': fin_df,
+                      'stock_price': price_df}
     new_sector_price_df, order_price_df = \
         sector_index_calculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     
