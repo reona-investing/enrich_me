@@ -604,7 +604,6 @@ def load_information(trade_history_path: str, buying_power_history_path: str, de
 #%% デバッグ
 if __name__ == '__main__':
     import paths
-    import stock_dfs_reader as reader
     import sector_index_calculator
     import MLDataset
     '''
