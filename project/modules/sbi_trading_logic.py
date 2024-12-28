@@ -1,16 +1,14 @@
 #%% モジュールのインポート
-import jquants_api_fetcher as fetcher #JQuantsAPIでのデータ取得
-from sbi import LoginHandler, TradeParameters, OrderManager, MarginManager, HistoryManager, PositionManager, TradePossibilityManager
-import paths
-
 import math
 import shutil
 import pandas as pd
 from typing import Tuple
 from datetime import datetime
 from IPython.display import display
-import nodriver as uc
 import asyncio
+from jquants_api_utils import cli
+from sbi import LoginHandler, TradeParameters, OrderManager, MarginManager, HistoryManager, PositionManager, TradePossibilityManager
+import paths
 
 #%% get_unitとそのサブ関数
 
@@ -254,8 +252,8 @@ def _calculate_ETF_orders(long_df:pd.DataFrame, short_df:pd.DataFrame,
                           buy_adjuster_num:int, sell_adjuster_num:int) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if max(buy_adjuster_num, sell_adjuster_num):
         if buy_adjuster_num != 0:
-            bull_list = fetcher.cli.get_list(code='1308') #上場インデックスファンドTOPIX
-            bull_price = fetcher.cli.get_prices_daily_quotes(code='1308')
+            bull_list = cli.get_list(code='1308') #上場インデックスファンドTOPIX
+            bull_price = cli.get_prices_daily_quotes(code='1308')
             for i in range (0, buy_adjuster_num):
                 bull_list['Code'] = bull_list['Code'].astype(str)[:4]
                 bull_list = bull_list[['Code', 'CompanyName', 'Sector33CodeName']]
@@ -264,8 +262,8 @@ def _calculate_ETF_orders(long_df:pd.DataFrame, short_df:pd.DataFrame,
                 bull_list['EstimatedCost'] = bull_price['Close'].iat[-1] * 10
                 long_df = pd.concat([long_df, bull_list], axis=0)
         if sell_adjuster_num != 0:
-            bear_list = fetcher.cli.get_list(code='1356') #TOPIXベア2倍上場投信
-            bear_price = fetcher.cli.get_prices_daily_quotes(code='1356')
+            bear_list = cli.get_list(code='1356') #TOPIXベア2倍上場投信
+            bear_price = cli.get_prices_daily_quotes(code='1356')
             for i in range (0, sell_adjuster_num):
                 bear_list['Code'] = bear_list['Code'].astype(str)[:4]
                 bear_list = bear_list[['Code', 'CompanyName', 'Sector33CodeName']]

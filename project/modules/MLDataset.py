@@ -1,12 +1,10 @@
 #%% モジュールのインポート
-# 自作モジュール
-import jquants_api_fetcher as fetcher
-# 既存モジュール
 from typing import Tuple
 import pandas as pd
 import pickle
 import os
 from datetime import datetime
+from jquants_api_utils import get_next_open_date
 
 #%% 関数群 
 class MLDataset:
@@ -61,7 +59,7 @@ class MLDataset:
 
     def _append_next_business_day_row(self, target_df:pd.DataFrame, features_df:pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         '''target, featuresの各データフレームに、次の営業日の行を追加'''
-        next_open_date = fetcher.get_next_open_date(latest_date=features_df.index.get_level_values('Date')[-1])
+        next_open_date = get_next_open_date(latest_date=features_df.index.get_level_values('Date')[-1])
         sectors = target_df.index.get_level_values('Sector').unique()
         new_rows = [[next_open_date for _ in range(len(sectors))],[sector for sector in sectors]]
         target_to_add = pd.DataFrame(index=new_rows, columns=target_df.columns)
@@ -80,7 +78,7 @@ class MLDataset:
 
     def _append_next_business_day_row_to_target(self, target_df:pd.DataFrame) -> pd.DataFrame:
         '''target, featuresの各データフレームに、次の営業日の行を追加'''
-        next_open_date = fetcher.get_next_open_date(latest_date=target_df.index.get_level_values('Date')[-1])
+        next_open_date = get_next_open_date(latest_date=target_df.index.get_level_values('Date')[-1])
         sectors = target_df.index.get_level_values('Sector').unique()
         new_rows = [[next_open_date for _ in range(len(sectors))],[sector for sector in sectors]]
         target_to_add = pd.DataFrame(index=new_rows, columns=target_df.columns)

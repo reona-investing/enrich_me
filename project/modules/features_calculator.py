@@ -1,12 +1,8 @@
 #%% モジュールのインポート
 import paths
-
-import jquants_api_fetcher as fetcher
-import sector_index_calculator
-
 import pandas as pd
-import pickle
 from typing import Literal
+import sector_index_calculator
 
 #%% 関数群
 def _calculate_1day_return(row:pd.Series) -> pd.DataFrame:

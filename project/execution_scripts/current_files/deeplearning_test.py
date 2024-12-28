@@ -11,7 +11,6 @@ if __name__ == '__main__':
 from datetime import datetime
 
 import paths #パス一覧
-import jquants_api_fetcher as fetcher #JQuantsAPIでのデータ取得
 import stock_dfs_processor as processor #取得したデータの加工
 import stock_dfs_reader as reader #加工したデータの読み込み
 import sector_index_calculator

@@ -64,8 +64,8 @@ def _update_yearly_price(year: int, existing_data: pd.DataFrame = None) -> pd.Da
         _set_adjustment_flag(fetched_data)
         return fetched_data
 
-    last_exist_date = pd.to_datetime(existing_data["Date"]).iat[-1]
-    if last_exist_date != datetime.today():
+    last_exist_date = pd.to_datetime(existing_data["Date"]).iat[-1].date()
+    if last_exist_date != datetime.today().date():
         new_data = _fetch_new_stock_price(last_exist_date)
         _set_adjustment_flag(new_data)
         return _update_raw_stock_price(existing_data, new_data)
