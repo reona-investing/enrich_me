@@ -45,7 +45,7 @@ def _format_dtypes(raw_stock_fin: pd.DataFrame) -> pd.DataFrame:
         stock_fin[column]= stock_fin[column].str[:10]
         stock_fin[column] = pd.to_datetime(stock_fin[column])
   
-    stock_fin = Formatter.format_stock_code(stock_fin)
+    stock_fin['Code'] = Formatter.format_stock_code(stock_fin['Code'])
     stock_fin['Code'] = stock_fin['Code'].replace(codes_to_replace_dict)
     return stock_fin
 

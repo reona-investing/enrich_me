@@ -1,6 +1,4 @@
-import pandas as pd
 from datetime import datetime
-import paths
 
 # 設定値や定数
 codes_to_replace_dict = {

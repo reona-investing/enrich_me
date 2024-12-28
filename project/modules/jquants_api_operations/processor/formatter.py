@@ -2,8 +2,6 @@ import pandas as pd
 
 class Formatter:
     @staticmethod
-    def format_stock_code(df: pd.DataFrame) -> pd.DataFrame:
+    def format_stock_code(code_column: pd.Series) -> pd.DataFrame:
         '''普通株の銘柄コードを4桁に変換するヘルパー関数'''
-        df["Code"] = \
-            df["Code"].str[:4].where((df["Code"].str.len() == 5)&(df["Code"].str[-1] == '0'), df["Code"])
-        return df
+        return code_column.str[:4].where((code_column.str.len() == 5)&(code_column.str[-1] == '0'), code_column)
