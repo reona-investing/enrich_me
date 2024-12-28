@@ -86,11 +86,10 @@ def _create_missing_rows(stock_price: pd.DataFrame, code: str, dates_to_fill: Li
         for date in dates_to_fill:
             last_date = stock_price.loc[(stock_price['Code'] == code) & (stock_price['Date'] <= date), 'Date'].max()
             value_to_fill = stock_price.loc[(stock_price['Code'] == code) & (stock_price['Date'] == last_date), 'Close'].values[0]
-            row_to_add = pd.DataFrame([[np.nan] * len(stock_price.columns)], columns=stock_price.columns)
-            row_to_add.update({'Date': date, 'Code': code, 'Open': value_to_fill, 'Close': value_to_fill,
-                               'High': value_to_fill, 'Low': value_to_fill, 'Volume': 0,
-                               'TurnoverValue': 0, 'AdjustmentFactor': 1})
-            rows.append(row_to_add)
+            row_to_add = {'Date': date, 'Code': code, 'Open': value_to_fill, 'Close': value_to_fill,
+                          'High': value_to_fill, 'Low': value_to_fill, 'Volume': 0,
+                          'TurnoverValue': 0, 'AdjustmentFactor': 1}
+            rows.append(pd.DataFrame([row_to_add], index=[0]))
     return rows
 
 def _format_dtypes(stock_price: pd.DataFrame) -> pd.DataFrame:
