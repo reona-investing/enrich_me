@@ -38,11 +38,12 @@ def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEM
         ml_dataset_ensembled = MLDataset.MLDataset(ML_DATASET_ENSEMBLED_PATH)
     return ml_dataset1, ml_dataset2, ml_dataset_ensembled
 
-async def read_and_update_data(universe_filter: str) -> dict:
+async def read_and_update_data(filter: str) -> dict:
     stock_dfs_dict = None
+    update = process = False
     if flag_manager.flags['fetch_data']:
         update = process = True
-    list_df, fin_df, price_df = run_jquants_api_operations(filter = universe_filter)
+    list_df, fin_df, price_df = run_jquants_api_operations(update=update, process=process, read=True, filter = filter)
     stock_dfs_dict = {'stock_list': list_df,
                       'stock_fin': fin_df,
                       'stock_price': price_df}

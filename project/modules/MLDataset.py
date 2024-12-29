@@ -117,7 +117,7 @@ class MLDataset:
             target_df = self._append_next_business_day_row_to_target(target_df)
         else:
             target_df, features_df = self._append_next_business_day_row(target_df, features_df)
-            
+        
         shift_features = [col for col in features_df.columns if col not in no_shift_features]
         features_df[shift_features] = features_df.groupby('Sector')[shift_features].shift(1)
         features_df = features_df.loc[target_df.index, :] # features_dfのインデックスをtarget_dfにそろえる

@@ -1,5 +1,5 @@
 from datetime import datetime
-from dateutil import relativedelta
+from dateutil.relativedelta import relativedelta
 import pandas as pd
 from jquants_api_utils.client import cli
 
