@@ -153,11 +153,18 @@ class DataProcessor:
         return df[(df.index.get_level_values('Date')>=start_day)&(df.index.get_level_values('Date')<=end_day)]
 
     @staticmethod
-    def _remove_outliers(target_train: pd.DataFrame, 
-                            features_train: pd.DataFrame, 
-                            outlier_theshold: float) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def _remove_outliers(target_train: pd.DataFrame,
+                         features_train: pd.DataFrame,
+                         outlier_theshold: float) -> tuple[pd.DataFrame, pd.DataFrame]:
+        '''
+        目的変数、特徴量の各dfから、標準偏差のcoef倍を超えるデータの外れ値を除去します。
+        Args:
+            target_train (pd.DataFrame): 目的変数
+            features_train (pd.DataFrame): 特徴量
+            outlier_theshold (float): 外れ値除去の閾値（±何σ）
+        '''
         target_train = target_train.groupby('Sector').apply(
-            DataProcessor._filter_outliers, coef=outlier_theshold
+            DataProcessor._filter_outliers, column_name = 'Target', coef = outlier_theshold
         ).droplevel(0, axis=0)
         target_train = target_train.sort_index()
         features_train = features_train.loc[
@@ -166,13 +173,19 @@ class DataProcessor:
         return target_train, features_train
 
     @staticmethod
-    def _filter_outliers(group:pd.DataFrame, coef:float=3) -> pd.DataFrame:
-        '''外れ値の除去（デフォルト：±3σの範囲外を除去）'''
-        mean = group['Target'].mean() 
-        std = group['Target'].std()
+    def _filter_outliers(group:pd.DataFrame, column_name: str, coef: float = 3) -> pd.DataFrame:
+        '''
+        標準偏差のcoef倍を超えるデータの外れ値を除去します。
+        Args:
+            group (pd.DataFrame): 除去対象のデータ群
+            column_name (str): 閾値を計算するデータ列の名称
+            coef (float): 閾値計算に使用する係数
+        '''
+        mean = group[column_name].mean() 
+        std = group[column_name].std()
         lower_bound = mean - coef * std
         upper_bound = mean + coef * std
-        return group[(group['Target'] >= lower_bound) & (group['Target'] <= upper_bound)]
+        return group[(group[column_name] >= lower_bound) & (group[column_name] <= upper_bound)]
 
 
 class FileHandler:
