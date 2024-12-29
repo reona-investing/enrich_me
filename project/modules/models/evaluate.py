@@ -20,7 +20,7 @@ class DatetimeManager:
         self.start_date = start_date
         self.end_date = end_date
         pass
-    def _extract_duration(self, df: pd.DataFrame):
+    def extract_duration(self, df: pd.DataFrame):
         '''
         指定した日付のデータを抽出する。
         '''
@@ -50,12 +50,12 @@ class LSControlHandler:
         topix_pkl = df.loc[df['Name']=='TOPIX', 'Path'].values[0]
         return paths.SCRAPED_DATA_FOLDER + '/' + topix_folder + '/' + topix_pkl
 
-    def _calculate_return(self, type: str, control_df: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_return(self,  control_df: pd.DataFrame) -> pd.DataFrame:
         '''リターンを計算する。'''
         df = pd.DataFrame()
         df['Date'] = pd.to_datetime(control_df['Date'])
-        df[f'{type}_daytime'] = control_df['Close'] / control_df['Open'] - 1
-        df[f'{type}_hold'] = (control_df['Close'] / control_df['Open'].iat[0]).pct_change(1)
+        df[f'{self.control_type}_daytime'] = control_df['Close'] / control_df['Open'] - 1
+        df[f'{self.control_type}_hold'] = (control_df['Close'] / control_df['Open'].iat[0]).pct_change(1)
         return df.set_index('Date', drop=True)
 
 
@@ -71,9 +71,9 @@ class LSDataHandler:
                  ls_control: LSControlHandler = LSControlHandler(),
                  ):
         self.datetime_manager = DatetimeManager(start_day, end_day)
-        pred_result_df = self.datetime_manager._extract_duration(ml_dataset.pred_result_df)
-        raw_target_df = self.datetime_manager._extract_duration(ml_dataset.raw_target_df)
-        self.control_df = self.datetime_manager._extract_duration(ls_control.control_df)
+        pred_result_df = self.datetime_manager.extract_duration(ml_dataset.pred_result_df)
+        raw_target_df = self.datetime_manager.extract_duration(ml_dataset.raw_target_df)
+        self.control_df = self.datetime_manager.extract_duration(ls_control.control_df)
         self.control_type = ls_control.control_type
         self.original_cols = pred_result_df.columns
         pred_result_df = self._append_rank_cols(pred_result_df)
@@ -131,7 +131,7 @@ class MetricsCalculator:
         self.get_numerai_corrs()
 
 
-    def get_return_by_bin(self) -> pd.DataFrame:
+    def get_return_by_bin(self, result_df: pd.DataFrame) -> pd.DataFrame:
         '''指定したbin数ごとのリターンを算出。'''
         df = self.result_df.dropna().copy()
         for column in self.original_cols:
