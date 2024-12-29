@@ -604,8 +604,6 @@ def load_information(trade_history_path: str, buying_power_history_path: str, de
 #%% デバッグ
 if __name__ == '__main__':
     import paths
-    import sector_index_calculator
-    import MLDataset
     '''
     NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/49sectors_list.csv' #別でファイルを作っておく
     NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/49sectors_price.pkl.gz' #出力のみなのでファイルがなくてもOK
@@ -614,7 +612,7 @@ if __name__ == '__main__':
     stock_dfs_dict = reader.read_stock_dfs(filter= universe_filter)
     _, order_price_df = sector_index_calculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     ML_DATASET_PATH = f'{paths.ML_DATASETS_FOLDER}/test.pkl.gz'
-    ml_dataset = MLDataset.MLDataset(ML_DATASET_PATH)
+    ml_dataset = MLDataset(ML_DATASET_PATH)
     tab, long_orders, short_orders, todays_pred_df = \
         asyncio.run(select_stocks(order_price_df, NEW_SECTOR_LIST_CSV, ml_dataset.pred_result_df, trading_sector_num=3, candidate_sector_num=5, top_slope = 1.5))
     tab, take_position, failed_order_list = asyncio.run(make_new_order(long_orders, short_orders, tab))

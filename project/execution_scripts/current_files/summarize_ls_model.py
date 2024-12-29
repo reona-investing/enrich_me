@@ -9,16 +9,13 @@ if __name__ == '__main__':
 # 使用するモジュール
 from datetime import datetime
 import pandas as pd
-import numpy as np
-from scipy.stats import spearmanr, norm, t, chi2
 import quantstats as qs
 from IPython.display import HTML, display
 
 import paths
 
-import MLDataset
+from models import MLDataset
 import evaluate_model
-import calculate_stats
 
 #%% サブ関数
 def calculate_return_topix(start_date: datetime, end_date: datetime) -> pd.DataFrame:
@@ -53,8 +50,8 @@ def summarize_ls_model(strategy1_name: str, strategy2_name: str, apply_benchmark
     start_date: 開始日
     end_date: 終了日
     '''
-    model1 = MLDataset.MLDataset(model1_path)
-    model2 = MLDataset.MLDataset(model2_path)
+    model1 = MLDataset(model1_path)
+    model2 = MLDataset(model2_path)
 
     model1_obj = evaluate_model.LongShortModel(model_name = strategy1_name, pred_result_df = model1.pred_result_df, raw_target_df = model1.raw_target_df,
                                 start_date = start_date, end_date = end_date, bin_num = 5)

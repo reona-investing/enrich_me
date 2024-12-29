@@ -19,7 +19,7 @@ from FlagManager import flag_manager
 import features_scraper as scraper
 import features_calculator
 import target_calculator
-import MLDataset
+from models import MLDataset
 import machine_learning
 import sbi_trading_logic
 from sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
@@ -27,15 +27,15 @@ import error_handler
 import asyncio
 
 def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
-    -> Tuple[MLDataset.MLDataset, MLDataset.MLDataset, MLDataset.MLDataset]:
+    -> Tuple[MLDataset, MLDataset, MLDataset]:
     if flag_manager.flags['learn']:
-        ml_dataset1 = MLDataset.MLDataset()
-        ml_dataset2 = MLDataset.MLDataset()
-        ml_dataset_ensembled = MLDataset.MLDataset()
+        ml_dataset1 = MLDataset()
+        ml_dataset2 = MLDataset()
+        ml_dataset_ensembled = MLDataset()
     else:
-        ml_dataset1 = MLDataset.MLDataset(ML_DATASET_PATH1)
-        ml_dataset2 = MLDataset.MLDataset(ML_DATASET_PATH2)
-        ml_dataset_ensembled = MLDataset.MLDataset(ML_DATASET_ENSEMBLED_PATH)
+        ml_dataset1 = MLDataset(ML_DATASET_PATH1)
+        ml_dataset2 = MLDataset(ML_DATASET_PATH2)
+        ml_dataset_ensembled = MLDataset(ML_DATASET_ENSEMBLED_PATH)
     return ml_dataset1, ml_dataset2, ml_dataset_ensembled
 
 async def read_and_update_data(filter: str) -> dict:
@@ -69,9 +69,9 @@ def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end
             'raw_target_df': raw_target_df,
             'target_df': target_df}
 
-def update_1st_model(ml_dataset: MLDataset.MLDataset, necessary_dfs_dict: dict,
+def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
-                        -> MLDataset.MLDataset:
+                        -> MLDataset:
     if flag_manager.flags['update_dataset']:
         '''LASSO用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
@@ -92,10 +92,10 @@ def update_1st_model(ml_dataset: MLDataset.MLDataset, necessary_dfs_dict: dict,
                                             min_features = 3, max_features = 5)
     return ml_dataset
 
-def update_2nd_model(ml_dataset1: MLDataset.MLDataset, ml_dataset2: MLDataset.MLDataset, 
+def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset, 
                      stock_dfs_dict: dict, necessary_dfs_dict: dict, 
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
-                        -> MLDataset.MLDataset:
+                        -> MLDataset:
     if flag_manager.flags['update_dataset']:
         '''lightGBM用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
@@ -124,8 +124,8 @@ def update_2nd_model(ml_dataset1: MLDataset.MLDataset, ml_dataset2: MLDataset.ML
                                             learn = flag_manager.flags['learn'], categorical_features = ['Sector_cat'])
     return ml_dataset2
 
-def ensemble_pred_results(dataset_ensembled: MLDataset.MLDataset, datasets: list, ensemble_rates: list, ENSEMBLED_DATASET_PATH: str) \
-    -> MLDataset.MLDataset:
+def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble_rates: list, ENSEMBLED_DATASET_PATH: str) \
+    -> MLDataset:
     if len(datasets) == 0 or len(datasets) == 0:
         raise ValueError('datasetsとensemble_ratesには1つ以上の要素を指定してください。')
     if len(datasets) != len(ensemble_rates):
@@ -136,7 +136,7 @@ def ensemble_pred_results(dataset_ensembled: MLDataset.MLDataset, datasets: list
     dataset_ensembled.archive_raw_target(datasets[0].raw_target_df)
     dataset_ensembled.archive_pred_result(ensembled_pred_df)
     dataset_ensembled.save_instance(ENSEMBLED_DATASET_PATH)
-    dataset_ensembled = MLDataset.MLDataset(ENSEMBLED_DATASET_PATH)
+    dataset_ensembled = MLDataset(ENSEMBLED_DATASET_PATH)
     return dataset_ensembled
 
 async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df, 

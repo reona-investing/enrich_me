@@ -13,9 +13,7 @@ from datetime import datetime
 import paths #パス一覧
 from jquants_api_operations import run_jquants_api_operations
 import sector_index_calculator
-import features_scraper as scraper
-import features_calculator
-import MLDataset
+from models import MLDataset
 import asyncio
 
 #%% メイン関数
@@ -40,7 +38,7 @@ async def main(ML_DATASET_PATH:str, NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PK
     should_learn: 学習するか否か
     '''
     # ml_datasetは必ず生成するので、最初に生成してしまう。
-    ml_dataset = MLDataset.MLDataset(ML_DATASET_PATH)
+    ml_dataset = MLDataset(ML_DATASET_PATH)
     list_df, fin_df, price_df = run_jquants_api_operations(filter = universe_filter)
     stock_dfs_dict = {'stock_list': list_df, 'stock_fin': fin_df, 'stock_price': price_df}
 
@@ -191,8 +189,8 @@ if __name__ == '__main__':
 if __name__ == '__main__':
     import pandas as pd
     from IPython.display import display
-    import MLDataset
-    ml_dataset = MLDataset.MLDataset(ML_DATASET_PATH)
+    from models import MLDataset
+    ml_dataset = MLDataset(ML_DATASET_PATH)
     pred_df = pd.DataFrame(predictions, index=ml_dataset.target_test_df.index, columns=['Pred'])
     pred_df = pd.concat(ml_dataset.raw_target_df, pred_df, axis=1)
     display(pred_df)

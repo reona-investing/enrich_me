@@ -1,5 +1,5 @@
 #%% モジュールのインポート
-import MLDataset
+from models import MLDataset
 
 import pandas as pd
 import numpy as np
@@ -170,7 +170,7 @@ def _numerai_corr_lgbm(preds, data):
     # LightGBMのカスタムメトリックの形式で返す
     return 'numerai_corr', numerai_corr, True
 
-def lasso(ml_dataset: MLDataset.MLDataset, dataset_path:str, learn: bool = True, max_features: int = 5, min_features: int = 3, **kwargs) -> MLDataset.MLDataset:
+def lasso(ml_dataset: MLDataset, dataset_path:str, learn: bool = True, max_features: int = 5, min_features: int = 3, **kwargs) -> MLDataset:
     '''
     ml_dataset: 機械学習用のデータセット
     dataset_path: データセットのファイルパス
@@ -205,12 +205,12 @@ def lasso(ml_dataset: MLDataset.MLDataset, dataset_path:str, learn: bool = True,
         print('データセットの出力パスが指定されていないため、出力しません。')
     else:
         ml_dataset.save_instance(dataset_path)
-        ml_dataset = MLDataset.MLDataset(dataset_path)
+        ml_dataset = MLDataset(dataset_path)
 
     return ml_dataset
 
 
-def lgbm(ml_dataset: MLDataset.MLDataset, dataset_path: str, learn: bool = True, categorical_features: list = None, **kwargs):
+def lgbm(ml_dataset: MLDataset, dataset_path: str, learn: bool = True, categorical_features: list = None, **kwargs):
     # データの準備
     X_train = ml_dataset.features_train_df
     y_train = ml_dataset.target_train_df['Target']
@@ -249,14 +249,14 @@ def lgbm(ml_dataset: MLDataset.MLDataset, dataset_path: str, learn: bool = True,
         print('データセットの出力パスが指定されていないため、出力しません。')
     else:
         ml_dataset.save_instance(dataset_path)
-        ml_dataset = MLDataset.MLDataset(dataset_path)
+        ml_dataset = MLDataset(dataset_path)
     
     return ml_dataset
 
 def ensemble_by_rank(ml_datasets: list, ensemble_rates: list) -> pd.Series:
     '''
     2つ以上のモデルの結果をアンサンブルする（予測順位ベース）
-    ml_datasets: アンサンブルしたいモデルのMLDataset.MLDatasetをリストに格納
+    ml_datasets: アンサンブルしたいモデルのMLDatasetをリストに格納
     ensemble_rates: 各モデルの予測結果を合成する際の重みづけ
     '''
     assert len(ml_datasets) == len(ensemble_rates), "ml_datasetsとensemble_ratesには同じ個数のデータをセットしてください。"
