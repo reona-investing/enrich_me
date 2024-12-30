@@ -36,7 +36,7 @@ class LSControlHandler:
         self.control_type = type
         if type == 'TOPIX':
             self.control_df = self._load_topix_data()
-        self.control_df = self._calculate_return(type, self.control_df)
+        self.control_df = self._calculate_return(self.control_df)
 
     def _load_topix_data(self) -> pd.DataFrame:
         """TOPIXデータをpandas.DataFrame形式で読み込む。"""
