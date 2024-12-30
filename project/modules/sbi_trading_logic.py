@@ -7,10 +7,58 @@ from datetime import datetime
 from IPython.display import display
 import asyncio
 from jquants_api_utils import cli
-from sbi import LoginHandler, TradeParameters, OrderManager, MarginManager, HistoryManager, PositionManager, TradePossibilityManager
+from sbi import LoginHandler, TradeParameters, OrderManager, MarginManager, HistoryManager, TradePossibilityManager
 import paths
 
-#%% get_unitとそのサブ関数
+async def select_stocks(trade_possibility_manager: TradePossibilityManager, margin_manager:MarginManager, 
+                        order_price_df:pd.DataFrame, new_sector_list_csv:str, y_test_df:pd.DataFrame,
+                        trading_sector_num:int, candidate_sector_num:int, top_slope:float = 1.0, 
+                        ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    '''
+    売買対象銘柄を選択する。
+    price_for_order_df：
+    new_sector_list_df：
+    y_test_df：
+    trading_sector_num：最終的な売買対象業種数
+    candidate_sector_num：売買候補とする業種数
+    '''
+    # new_sector_listを読み込む
+    new_sector_list_df = pd.read_csv(new_sector_list_csv)
+    # 終値時点での「単位株の購入価格」、「過去5営業日の出来高平均」、「時価総額」を算出
+    cost_and_volume_df = _get_cost_and_volume_df(order_price_df)
+    # インデックス算出のための銘柄ごとのウエイトを算出する。
+    weight_df = _get_weight_df(new_sector_list_df, cost_and_volume_df)
+    # 最新日の予測結果をdfとして抽出
+    todays_pred_df = _get_todays_pred_df(y_test_df)
+    # 売買それぞれについて、可能な銘柄をdfとして抽出
+    buyable_symbol_codes_df, sellable_symbol_codes_df = await _get_tradable_dfs(new_sector_list_df, trade_possibility_manager)
+    # その業種の半分以上の銘柄が売買可能であれば、売買可能業種に設定
+    todays_pred_df = _append_tradability(todays_pred_df, new_sector_list_df, buyable_symbol_codes_df, sellable_symbol_codes_df)
+    # 売買対象の業種をdfとして抽出
+    buy_sectors_df, sell_sectors_df = _determine_sectors_to_trade(todays_pred_df, trading_sector_num, candidate_sector_num)
+    # 売買対象銘柄をdfとして抽出
+    long_df = _get_symbol_codes_to_trade_df(new_sector_list_df, buy_sectors_df, buyable_symbol_codes_df, weight_df)
+    short_df = _get_symbol_codes_to_trade_df(new_sector_list_df, sell_sectors_df, sellable_symbol_codes_df, weight_df)
+    # 対象業種数が売買で異なる場合、何業種分をETFで補うかを算出
+    sectors_to_trade_num, buy_adjuster_num, sell_adjuster_num = _determine_whether_ordering_ETF(buy_sectors_df, sell_sectors_df)
+    # ETFの必要注文数を算出
+    long_df, short_df = _calculate_ETF_orders(long_df, short_df, buy_adjuster_num, sell_adjuster_num)
+    # 注文する銘柄と注文単位数を算出
+    long_orders, short_orders = await _determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, margin_manager)
+    # Long, Shortそれぞれの累積コストを算出
+    long_orders = long_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[True, False])
+    long_orders['CumCost_byLS'] = long_orders['TotalCost'].cumsum()
+    short_orders = short_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[False, False])
+    short_orders['CumCost_byLS'] = short_orders['TotalCost'].cumsum()
+    # Long, Shortの選択銘柄をCSVとして出力しておく
+    long_orders.to_csv(paths.LONG_ORDERS_CSV, index=False)
+    short_orders.to_csv(paths.SHORT_ORDERS_CSV, index=False)
+    # Google Drive上にバックアップ
+    shutil.copy(paths.LONG_ORDERS_CSV, paths.LONG_ORDERS_BACKUP)
+    shutil.copy(paths.SHORT_ORDERS_CSV, paths.SHORT_ORDERS_BACKUP)
+
+    return long_orders, short_orders, todays_pred_df
+
 
 def _get_unit(df:pd.DataFrame, maxcost:int) -> pd.DataFrame:
     '''
@@ -430,55 +478,6 @@ def _show_latest_result(trade_history: pd.DataFrame) -> tuple[str, float]:
     print(f'{date.strftime("%Y-%m-%d")}： 利益（税引前）{amount}円（{round(rate * 100, 3)}%）')
     return amount, rate
 
-#%% メイン関数
-async def select_stocks(trade_possibility_manager: TradePossibilityManager, margin_manager:MarginManager, 
-                        order_price_df:pd.DataFrame, new_sector_list_csv:str, y_test_df:pd.DataFrame,
-                        trading_sector_num:int, candidate_sector_num:int, top_slope:float = 1.0, 
-                        ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    '''
-    売買対象銘柄を選択する。
-    price_for_order_df：
-    new_sector_list_df：
-    y_test_df：
-    trading_sector_num：最終的な売買対象業種数
-    candidate_sector_num：売買候補とする業種数
-    '''
-    # new_sector_listを読み込む
-    new_sector_list_df = pd.read_csv(new_sector_list_csv)
-    # 終値時点での「単位株の購入価格」、「過去5営業日の出来高平均」、「時価総額」を算出
-    cost_and_volume_df = _get_cost_and_volume_df(order_price_df)
-    # インデックス算出のための銘柄ごとのウエイトを算出する。
-    weight_df = _get_weight_df(new_sector_list_df, cost_and_volume_df)
-    # 最新日の予測結果をdfとして抽出
-    todays_pred_df = _get_todays_pred_df(y_test_df)
-    # 売買それぞれについて、可能な銘柄をdfとして抽出
-    buyable_symbol_codes_df, sellable_symbol_codes_df = await _get_tradable_dfs(new_sector_list_df, trade_possibility_manager)
-    # その業種の半分以上の銘柄が売買可能であれば、売買可能業種に設定
-    todays_pred_df = _append_tradability(todays_pred_df, new_sector_list_df, buyable_symbol_codes_df, sellable_symbol_codes_df)
-    # 売買対象の業種をdfとして抽出
-    buy_sectors_df, sell_sectors_df = _determine_sectors_to_trade(todays_pred_df, trading_sector_num, candidate_sector_num)
-    # 売買対象銘柄をdfとして抽出
-    long_df = _get_symbol_codes_to_trade_df(new_sector_list_df, buy_sectors_df, buyable_symbol_codes_df, weight_df)
-    short_df = _get_symbol_codes_to_trade_df(new_sector_list_df, sell_sectors_df, sellable_symbol_codes_df, weight_df)
-    # 対象業種数が売買で異なる場合、何業種分をETFで補うかを算出
-    sectors_to_trade_num, buy_adjuster_num, sell_adjuster_num = _determine_whether_ordering_ETF(buy_sectors_df, sell_sectors_df)
-    # ETFの必要注文数を算出
-    long_df, short_df = _calculate_ETF_orders(long_df, short_df, buy_adjuster_num, sell_adjuster_num)
-    # 注文する銘柄と注文単位数を算出
-    long_orders, short_orders = await _determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, margin_manager)
-    # Long, Shortそれぞれの累積コストを算出
-    long_orders = long_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[True, False])
-    long_orders['CumCost_byLS'] = long_orders['TotalCost'].cumsum()
-    short_orders = short_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[False, False])
-    short_orders['CumCost_byLS'] = short_orders['TotalCost'].cumsum()
-    # Long, Shortの選択銘柄をCSVとして出力しておく
-    long_orders.to_csv(paths.LONG_ORDERS_CSV, index=False)
-    short_orders.to_csv(paths.SHORT_ORDERS_CSV, index=False)
-    # Google Drive上にバックアップ
-    shutil.copy(paths.LONG_ORDERS_CSV, paths.LONG_ORDERS_BACKUP)
-    shutil.copy(paths.SHORT_ORDERS_CSV, paths.SHORT_ORDERS_BACKUP)
-
-    return long_orders, short_orders, todays_pred_df
 
 async def _make_orders(orders_df, order_type_value, order_manager: OrderManager) -> list:
     failed_order_list = []
