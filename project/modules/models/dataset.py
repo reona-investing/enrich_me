@@ -16,6 +16,14 @@ class MLDataset:
             file_path = f"{self.dataset_folder_path}/{attr_name}{ext}" if self.dataset_folder_path else None
             setattr(self, attr_name, FileHandler.load(file_path))
 
+    def copy_from_other_dataset(self, copy_from: 'MLDataset'):
+        """
+        他のデータセットからすべてのインスタンス変数をコピー
+        copy_from (MLDataset): コピー元のデータセット
+        """
+        for attr_name in FileHandler.instance_vars.keys():
+            setattr(self, attr_name, getattr(copy_from, attr_name))
+
     def archive_dfs(self, target_df: pd.DataFrame, features_df: pd.DataFrame,
                     train_start_day: datetime, train_end_day: datetime,
                     test_start_day: datetime, test_end_day: datetime,

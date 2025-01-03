@@ -21,8 +21,8 @@ import features_calculator
 import target_calculator
 from models import MLDataset
 import machine_learning
-import sbi_trading_logic
 from sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
+from sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
 import error_handler
 import asyncio
 
@@ -133,30 +133,29 @@ def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble
     ensembled_pred_df = datasets[0].pred_result_df[['Target']]
     ensembled_pred_df['Pred'] = machine_learning.ensemble_by_rank(ml_datasets = datasets, 
                                                     ensemble_rates = ensemble_rates)
-    dataset_ensembled.archive_raw_target(datasets[0].raw_target_df)
+    dataset_ensembled.copy_from_other_dataset(datasets[0])
     dataset_ensembled.archive_pred_result(ensembled_pred_df)
     dataset_ensembled.save_instance(ENSEMBLED_DATASET_PATH)
     dataset_ensembled = MLDataset(ENSEMBLED_DATASET_PATH)
     return dataset_ensembled
 
-async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df, 
-                         trading_sector_num, candidate_sector_num,
+async def take_positions(ml_dataset, NEW_SECTOR_LIST_CSV, 
+                         num_sectors_to_trade, num_candidate_sectors,
                          top_slope):
     sbi_session = LoginHandler()
     trade_possibility_manager = TradePossibilityManager(sbi_session)
     order_manager = OrderManager(sbi_session)
     margin_manager = MarginManager(sbi_session)
-    long_orders, short_orders, todays_pred_df = \
-        await sbi_trading_logic.select_stocks(trade_possibility_manager, margin_manager, 
-                                              order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
-                                        trading_sector_num, candidate_sector_num, top_slope=top_slope,
-                                        )
-    failed_order_list = await sbi_trading_logic.make_new_order(order_manager, long_orders, short_orders)
+    stock_selector = StockSelector(ml_dataset, trade_possibility_manager, margin_manager,
+                                   NEW_SECTOR_LIST_CSV, num_sectors_to_trade, 
+                                   num_candidate_sectors, top_slope)
+    order_maker = NewOrderMaker(stock_selector, order_manager)
+    failed_order_list = await order_maker.run_new_orders()                               
     Slack.send_message(
         message = 
             f'発注が完了しました。\n' +
-            f'買： {long_orders["Sector"].unique()}\n' +
-            f'売： {short_orders["Sector"].unique()}'
+            f'買： {stock_selector.buy_sectors}\n' +
+            f'売： {stock_selector.sell_sectors}'
     )
     if len(failed_order_list) > 0:
         Slack.send_message(
@@ -168,7 +167,8 @@ async def take_positions(order_price_df, NEW_SECTOR_LIST_CSV, pred_result_df,
 async def take_additionals():
     sbi_session = LoginHandler()
     order_manager = OrderManager(sbi_session)
-    failed_order_list = await sbi_trading_logic.make_additional_order(order_manager)
+    order_maker = AdditionalOrderMaker(order_manager)
+    failed_order_list = await order_maker.run_additional_orders()
     Slack.send_message(
         message = 
             f'追加発注が完了しました。'
@@ -183,7 +183,8 @@ async def take_additionals():
 async def settle_positions():
     sbi_session = LoginHandler()
     order_manager = OrderManager(sbi_session)
-    await sbi_trading_logic.settle_all_margins(order_manager)
+    position_settler = PositionSettler(order_manager)
+    await position_settler.settle_all_margins()
     if len(order_manager.error_tickers) == 0:
         Slack.send_message(message = '全銘柄の決済注文が完了しました。')
     else:
@@ -197,12 +198,8 @@ async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
     sbi_session = LoginHandler()
     history_manager = HistoryManager(sbi_session)
     margin_manager = MarginManager(sbi_session)
-    trade_history, _, _, _, amount = \
-        await sbi_trading_logic.update_information(history_manager, margin_manager,
-                                                   NEW_SECTOR_LIST_CSV,
-                                                   paths.TRADE_HISTORY_CSV,
-                                                   paths.BUYING_POWER_HISTORY_CSV,
-                                                   paths.DEPOSIT_HISTORY_CSV)
+    history_updater = HistoryUpdater(history_manager, margin_manager, NEW_SECTOR_LIST_CSV)
+    trade_history, _, _, _, amount = await history_updater.update_information()
     Slack.send_result(
         message = 
             f'取引履歴等の更新が完了しました。\n' +
@@ -256,11 +253,10 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             Slack.send_message(message = f'予測が完了しました。')
         '''新規建'''
         if flag_manager.flags['take_new_positions']:
-            await take_positions(order_price_df = necessary_dfs_dict['order_price_df'],
+            await take_positions(ml_dataset= ml_dataset_ensembled,
                                  NEW_SECTOR_LIST_CSV = NEW_SECTOR_LIST_CSV,
-                                 pred_result_df = ml_dataset_ensembled.pred_result_df,
-                                 trading_sector_num = trading_sector_num,
-                                 candidate_sector_num = candidate_sector_num,
+                                 num_sectors_to_trade = trading_sector_num,
+                                 num_candidate_sectors = candidate_sector_num,
                                  top_slope = top_slope)
         '''追加建'''
         if flag_manager.flags['take_additional_positions']:
