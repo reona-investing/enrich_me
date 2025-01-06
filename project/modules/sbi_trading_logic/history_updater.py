@@ -133,7 +133,7 @@ class HistoryUpdater:
         # 当日の入出金履歴をとる
         await history_manager.fetch_cashflow_transactions()
         cashflow_transactions_df = history_manager.cashflow_transactions_df
-        if cashflow_transactions_df is None:
+        if cashflow_transactions_df.empty:
             capital_diff = 0
         else:
             cashflow_transactions_df = cashflow_transactions_df[(cashflow_transactions_df['日付']>buying_power_history.index[-2])&(cashflow_transactions_df['日付']<=buying_power_history.index[-1])]
@@ -167,3 +167,14 @@ class HistoryUpdater:
         amount = "{:,.0f}".format(amount)
         print(f'{date.strftime("%Y-%m-%d")}： 利益（税引前）{amount}円（{round(rate * 100, 3)}%）')
         return amount, rate
+    
+
+if __name__ == '__main__':
+    from sbi import LoginHandler
+    import asyncio
+    sector_path = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
+    lh = LoginHandler()
+    hm = HistoryManager(lh)
+    mm = MarginManager(lh)
+    hu = HistoryUpdater(hm, mm, sector_path)
+    _, _, _, _, _ = asyncio.run(hu.update_information())

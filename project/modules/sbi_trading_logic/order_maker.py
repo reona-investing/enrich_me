@@ -15,7 +15,8 @@ class OrderMakerBase:
     async def _make_orders(self, 
                           orders_df: pd.DataFrame, 
                           order_type: Literal["指値", "成行", "逆指値"] = '成行', 
-                          order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None] = None) -> None:
+                          order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None] = None,
+                          margin_trade_section: Literal["制度", "一般", "日計り"] = '制度') -> None:
         '''
         orders_dfに存在する銘柄注文を一括発注します。
         Args:
@@ -24,7 +25,7 @@ class OrderMakerBase:
             order_type_value(Literal): 注文タイプの詳細
         '''
         for symbol_code, unit, L_or_S, price in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS'], orders_df['EstimatedCost']):
-            await self.make_order(order_type, order_type_value, symbol_code, unit, L_or_S, price)
+            await self.make_order(order_type, order_type_value, symbol_code, unit, L_or_S, price, margin_trade_section)
         failed_orders_df = orders_df.loc[orders_df['Code'].isin(self.failed_symbol_codes), :]
         # 発注失敗した銘柄をdfとして保存
         failed_orders_df.to_csv(paths.FAILED_ORDERS_CSV)
@@ -33,7 +34,8 @@ class OrderMakerBase:
     async def make_order(self, 
                          order_type: Literal["指値", "成行", "逆指値"],
                          order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None], 
-                         symbol_code: str, unit: int, L_or_S: Literal['Long', 'Short'], price: float) -> bool:
+                         symbol_code: str, unit: int, L_or_S: Literal['Long', 'Short'], price: float,
+                         margin_trade_section: Literal["制度", "一般", "日計り"]) -> bool:
         '''
         単体注文を発注します。
         Args:
@@ -59,7 +61,7 @@ class OrderMakerBase:
         order_params = TradeParameters(trade_type=trade_type, symbol_code=symbol_code, unit=unit, order_type=order_type, order_type_value=order_type_value,
                                     limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                                     period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
-                                    margin_trade_section="制度")
+                                    margin_trade_section=margin_trade_section)
         has_successfully_ordered =  await self.order_manager.place_new_order(order_params)
         if not has_successfully_ordered:
             self.failed_orders.append(f'{order_params.trade_type}: {order_params.symbol_code} {order_params.unit}株')
@@ -128,7 +130,8 @@ class NewOrderMaker(OrderMakerBase):
             if '信新' in position_list:
                 return None
         orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
-        await self._make_orders(orders_df = orders_df, order_type = '成行', order_type_value = '寄成')
+        await self._make_orders(orders_df = orders_df, order_type = '成行', order_type_value = '寄成', margin_trade_section='制度')
+        
         return self.failed_orders
 
 

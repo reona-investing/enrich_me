@@ -169,14 +169,30 @@ class HistoryManager:
         await button.click()
         await self.tab.wait(1)
         
-        selected_element = await self.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+        df = await self._convert_fetched_data_to_df()
+
+        button = await self.tab.find('総合トップ')
+        await button.click()
+
+        if len(df) == 0:
+            print('直近1週間の入出金履歴はありません。')
+            return
+        self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
+
+
+        print('入出金の履歴')
+        print(self.cashflow_transactions_df)
+
+    async def _convert_fetched_data_to_df(self) -> pd.DataFrame:
+        try:
+            selected_element = await self.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+        except:
+            return pd.DataFrame()
         await selected_element.select_option()
         await self.tab.wait(1)
-
-        # タイトル行の取得
         parent_element = await self.tab.select('#fc-page-table > div > ul')
         elements = parent_element.children
-
+        
         data_for_df = []
         for i, element in enumerate(elements):
             texts = []
@@ -190,18 +206,7 @@ class HistoryManager:
                     grandchild_element = child_element.children[0]
                     texts.append(grandchild_element.text)
                 data_for_df.append(texts)
-        df = pd.DataFrame(data_for_df, columns = titles)
-
-        if len(df) == 0:
-            print('直近1週間の入出金履歴はありません。')
-            return
-        self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
-
-        button = await self.tab.find('総合トップ')
-        await button.click()
-
-        print('入出金の履歴')
-        print(self.cashflow_transactions_df)
+        return pd.DataFrame(data_for_df, columns = titles)
 
     def _format_cashflow_transactions_df(self, df: pd.DataFrame) -> pd.DataFrame:
         #日付型に変換
