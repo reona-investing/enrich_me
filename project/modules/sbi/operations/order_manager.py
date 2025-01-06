@@ -130,7 +130,7 @@ class OrderManager:
 
         if trade_params.order_type == "指値":
             form = await self.tab.select('#gsn0 > input[type=text]')
-            await form.send_keys(trade_params.limit_order_price)
+            await form.send_keys(str(trade_params.limit_order_price))
 
             if trade_params.order_type_value is not None:
                 selector = f'select[name="sasine_condition"] option[value="{self.order_param_dicts["指値タイプ"][trade_params.order_type_value]}"]'

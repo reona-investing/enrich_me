@@ -125,6 +125,7 @@ class StockSelector:
         buyable_symbol_codes_df['Code'] = buyable_symbol_codes_df['Code'].astype(str)
         sellable_symbol_codes_df['Code'] = sellable_symbol_codes_df['Code'].astype(str)
         sellable_symbol_codes_df['MaxUnit'] = sellable_symbol_codes_df['Code'].map(trade_possibility_manager.data_dict['sellable_limits'])
+        sellable_symbol_codes_df['isBorrowingStock'] = sellable_symbol_codes_df['Code'].map(trade_possibility_manager.data_dict['borrowing_stocks'])
         return buyable_symbol_codes_df, sellable_symbol_codes_df
 
     def _append_tradability(self, todays_pred_df:pd.DataFrame, sector_definisions_df:pd.DataFrame,
@@ -184,6 +185,22 @@ class StockSelector:
         # 注文する銘柄と注文単位数を算出
         return await self._determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, self.margin_manager)
 
+    def _get_symbol_codes_to_trade_df(self,
+                                      sector_definisions_df:pd.DataFrame,
+                                      sectors_to_trade_df:pd.DataFrame,
+                                      tradable_symbol_codes_df:pd.DataFrame,
+                                      weight_df:pd.DataFrame) -> pd.DataFrame:
+        '''売買それぞれの対象業種を抽出する'''
+        symbol_codes_to_trade_df = sector_definisions_df[sector_definisions_df['Sector'].isin(sectors_to_trade_df['Sector'])].copy()
+        symbol_codes_to_trade_df = pd.merge(symbol_codes_to_trade_df, sectors_to_trade_df[['Sector', 'Rank']])
+        symbol_codes_to_trade_df['Code'] = symbol_codes_to_trade_df['Code'].astype(str)
+        symbol_codes_to_trade_df = pd.merge(symbol_codes_to_trade_df, weight_df[['Code', 'Weight', 'EstimatedCost']], on='Code', how='left')
+        symbol_codes_to_trade_df = symbol_codes_to_trade_df[symbol_codes_to_trade_df['Code'].isin(tradable_symbol_codes_df['Code'])]
+        if 'MaxUnit' in tradable_symbol_codes_df.columns:
+            symbol_codes_to_trade_df = pd.merge(symbol_codes_to_trade_df, tradable_symbol_codes_df[['Code', 'MaxUnit', 'isBorrowingStock']], how='left', on='Code')
+        symbol_codes_to_trade_df['Weight'] = symbol_codes_to_trade_df['Weight'] / symbol_codes_to_trade_df.groupby('Sector')['Weight'].transform('sum')
+        return symbol_codes_to_trade_df
+
     def _determine_whether_ordering_ETF(self, buy_sectors_df:pd.DataFrame, sell_sectors_df:pd.DataFrame) -> Tuple[int, int, int]:
         '''
         売買する業種数を判定し、不足分をETFで補う
@@ -209,22 +226,6 @@ class StockSelector:
                 sell_adjuster_num = 0
 
         return sectors_to_trade_num, buy_adjuster_num, sell_adjuster_num
-
-    def _get_symbol_codes_to_trade_df(self,
-                                      sector_definisions_df:pd.DataFrame,
-                                      sectors_to_trade_df:pd.DataFrame,
-                                      tradable_symbol_codes_df:pd.DataFrame,
-                                      weight_df:pd.DataFrame) -> pd.DataFrame:
-        '''売買それぞれの対象業種を抽出する'''
-        symbol_codes_to_trade_df = sector_definisions_df[sector_definisions_df['Sector'].isin(sectors_to_trade_df['Sector'])].copy()
-        symbol_codes_to_trade_df = pd.merge(symbol_codes_to_trade_df, sectors_to_trade_df[['Sector', 'Rank']])
-        symbol_codes_to_trade_df['Code'] = symbol_codes_to_trade_df['Code'].astype(str)
-        symbol_codes_to_trade_df = pd.merge(symbol_codes_to_trade_df, weight_df[['Code', 'Weight', 'EstimatedCost']], on='Code', how='left')
-        symbol_codes_to_trade_df = symbol_codes_to_trade_df[symbol_codes_to_trade_df['Code'].isin(tradable_symbol_codes_df['Code'])]
-        if 'MaxUnit' in tradable_symbol_codes_df.columns:
-            symbol_codes_to_trade_df = pd.merge(symbol_codes_to_trade_df, tradable_symbol_codes_df[['Code', 'MaxUnit']], how='left', on='Code')
-        symbol_codes_to_trade_df['Weight'] = symbol_codes_to_trade_df['Weight'] / symbol_codes_to_trade_df.groupby('Sector')['Weight'].transform('sum')
-        return symbol_codes_to_trade_df
 
     def _calculate_ETF_orders(self, long_df:pd.DataFrame, short_df:pd.DataFrame,
                             buy_adjuster_num:int, sell_adjuster_num:int) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -406,3 +407,19 @@ class StockSelector:
         short_orders = short_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[False, False])
         short_orders['CumCost_byLS'] = short_orders['TotalCost'].cumsum()
         return long_orders, short_orders
+    
+
+if __name__  == '__main__':
+    async def main():
+        from sbi.session import LoginHandler
+        ml = MLDataset(f'{paths.ML_DATASETS_FOLDER}/New48sectors')
+        lh = LoginHandler()
+        tpm = TradePossibilityManager(lh)
+        mm = MarginManager(lh)
+        sd = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
+        ss = StockSelector(ml, tpm, mm, sd)
+        long, short, today = await ss.select()
+        print(short)
+    
+    import asyncio
+    asyncio.run(main())

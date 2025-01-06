@@ -15,8 +15,7 @@ class OrderMakerBase:
     async def _make_orders(self, 
                           orders_df: pd.DataFrame, 
                           order_type: Literal["指値", "成行", "逆指値"] = '成行', 
-                          order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None] = None,
-                          margin_trade_section: Literal["制度", "一般", "日計り"] = '制度') -> None:
+                          order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None] = None) -> None:
         '''
         orders_dfに存在する銘柄注文を一括発注します。
         Args:
@@ -24,12 +23,19 @@ class OrderMakerBase:
             order_type (Literal): 注文タイプ
             order_type_value(Literal): 注文タイプの詳細
         '''
-        for symbol_code, unit, L_or_S, price in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS'], orders_df['EstimatedCost']):
+        for symbol_code, unit, L_or_S, price, is_borrowing_stock \
+                in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS'], orders_df['EstimatedCost'], orders_df['isBorrowingStock']):
+            margin_trade_section = self._get_margin_trade_section(is_borrowing_stock)
             await self.make_order(order_type, order_type_value, symbol_code, unit, L_or_S, price, margin_trade_section)
         failed_orders_df = orders_df.loc[orders_df['Code'].isin(self.failed_symbol_codes), :]
         # 発注失敗した銘柄をdfとして保存
         failed_orders_df.to_csv(paths.FAILED_ORDERS_CSV)
         failed_orders_df.to_csv(paths.FAILED_ORDERS_BACKUP)
+
+    def _get_margin_trade_section(self, is_borrowing_stock: bool) -> str:
+        if is_borrowing_stock == False:
+            return "日計り"
+        return "制度"
 
     async def make_order(self, 
                          order_type: Literal["指値", "成行", "逆指値"],
@@ -56,8 +62,10 @@ class OrderMakerBase:
         trade_type = '信用新規買'
         if (L_or_S == 'Short') and (symbol_code != '1356'):
             trade_type = '信用新規売'
-            if unit > 5000: # 51単元以上のときは、空売り規制を回避。
-                order_type, order_type_value, limit_order_price = self._avoid_short_selling_restrictions(order_type_value, price)
+            #if unit > 5000: # 51単元以上のときは、空売り規制を回避。
+            #    print('51単元以上の信用売りは、指値注文で発注されます。')
+            #    order_type, order_type_value, limit_order_price = self._avoid_short_selling_restrictions(order_type_value, price)
+            order_type, order_type_value, limit_order_price = self._avoid_short_selling_restrictions(order_type_value, price)
         order_params = TradeParameters(trade_type=trade_type, symbol_code=symbol_code, unit=unit, order_type=order_type, order_type_value=order_type_value,
                                     limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                                     period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
@@ -80,7 +88,6 @@ class OrderMakerBase:
             str: 注文タイプの詳細（成→指に置換）
             float: 指値
         '''
-        print('51単元以上の信用売りは、指値注文で発注されます。')
         order_type = '指値'
         
         if order_type_value is not None:
@@ -130,8 +137,8 @@ class NewOrderMaker(OrderMakerBase):
             if '信新' in position_list:
                 return None
         orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
-        await self._make_orders(orders_df = orders_df, order_type = '成行', order_type_value = '寄成', margin_trade_section='制度')
-        
+        await self._make_orders(orders_df = orders_df, order_type = '成行', order_type_value = '寄成')
+
         return self.failed_orders
 
 
@@ -161,3 +168,20 @@ class PositionSettler(OrderMakerBase):
     async def settle_all_margins(self):
         '''決済注文を発注する'''
         await self.order_manager.settle_all_margins()
+
+if __name__ == '__main__':
+    async def main():
+        from models import MLDataset
+        from sbi.operations import TradePossibilityManager, MarginManager
+        from sbi.session import LoginHandler
+        ml = MLDataset(f'{paths.ML_DATASETS_FOLDER}/New48sectors')
+        lh = LoginHandler()
+        tpm = TradePossibilityManager(lh)
+        mm = MarginManager(lh)
+        sd = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
+        ss = StockSelector(ml, tpm, mm, sd)
+        om = OrderManager(lh)
+        nom = NewOrderMaker(ss, om)
+        failed_list = await nom.run_new_orders()
+    import asyncio
+    asyncio.run(main())
