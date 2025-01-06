@@ -19,13 +19,15 @@ def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
         processing_basic_path (str): 加工後の株価データを保存するパス。
     """
     end_date = datetime.today()
-    temp_cumprod = None
+    temp_cumprod = {}
     
     for year in range(end_date.year, 2012, -1):
         is_latest_file = year == end_date.year
         should_process = is_latest_file or flag_manager.flags['process_stock_price']
         if should_process:
             stock_price = _load_yearly_raw_data(raw_basic_path, year)
+            if stock_price.empty:
+                continue
             stock_price, temp_cumprod = _process_stock_price(stock_price, temp_cumprod, is_latest_file)
             _save_yearly_data(stock_price, processing_basic_path, year)
 
@@ -158,4 +160,5 @@ def _save_yearly_data(df: pd.DataFrame, processing_basic_path: str, year: int) -
 
 
 if __name__ == '__main__':
+    flag_manager.flags['process_stock_price'] = True
     process_price()
