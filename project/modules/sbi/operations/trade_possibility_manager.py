@@ -1,5 +1,5 @@
 import pandas as pd
-from ..session.login_handler import LoginHandler
+from sbi.session.login_handler import LoginHandler
 from bs4 import BeautifulSoup as soup
 import os
 from pathlib import Path
@@ -45,14 +45,15 @@ class TradePossibilityManager:
         # データ整形
         trade_data["一人あたり建玉上限数"] = trade_data["一人あたり建玉上限数"].replace("-", 1000000).astype(int)
         sellable_condition = (trade_data["売建受注枠"] != "受付不可") & (trade_data["信用区分（HYPER）"] == "")
-
         self.login_handler.session.tab = self.tab
 
         # 結果の辞書化
         self.data_dict = {
             "buyable_limits": dict(zip(trade_data["コード"], trade_data["一人あたり建玉上限数"])),
             "sellable_limits": dict(zip(trade_data.loc[sellable_condition, "コード"], 
-                                        trade_data.loc[sellable_condition, "一人あたり建玉上限数"]))
+                                        trade_data.loc[sellable_condition, "一人あたり建玉上限数"])),
+            "borrowing_stocks": dict(zip(trade_data.loc[sellable_condition, "コード"], 
+                                         trade_data.loc[sellable_condition, "信用区分（無期限）"].replace({"◎":True, "":False})))
         }
 
     def _remove_files_in_download_folder(self):
@@ -85,3 +86,14 @@ class TradePossibilityManager:
                 else:
                     extracted_rows.append(row)
         return pd.DataFrame(extracted_rows, columns=columns)
+
+
+if __name__ == "__main__":
+    async def main():
+        lh = LoginHandler()
+        tpm = TradePossibilityManager(lh)
+        await tpm.fetch()
+        print(tpm.data_dict['borrowing_stocks'])
+    
+    import asyncio
+    asyncio.run(main())

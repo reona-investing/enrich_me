@@ -19,13 +19,15 @@ def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
         processing_basic_path (str): 加工後の株価データを保存するパス。
     """
     end_date = datetime.today()
-    temp_cumprod = None
+    temp_cumprod = {}
     
     for year in range(end_date.year, 2012, -1):
         is_latest_file = year == end_date.year
         should_process = is_latest_file or flag_manager.flags['process_stock_price']
         if should_process:
             stock_price = _load_yearly_raw_data(raw_basic_path, year)
+            if stock_price.empty:
+                continue
             stock_price, temp_cumprod = _process_stock_price(stock_price, temp_cumprod, is_latest_file)
             _save_yearly_data(stock_price, processing_basic_path, year)
 
@@ -86,11 +88,10 @@ def _create_missing_rows(stock_price: pd.DataFrame, code: str, dates_to_fill: Li
         for date in dates_to_fill:
             last_date = stock_price.loc[(stock_price['Code'] == code) & (stock_price['Date'] <= date), 'Date'].max()
             value_to_fill = stock_price.loc[(stock_price['Code'] == code) & (stock_price['Date'] == last_date), 'Close'].values[0]
-            row_to_add = pd.DataFrame([[np.nan] * len(stock_price.columns)], columns=stock_price.columns)
-            row_to_add.update({'Date': date, 'Code': code, 'Open': value_to_fill, 'Close': value_to_fill,
-                               'High': value_to_fill, 'Low': value_to_fill, 'Volume': 0,
-                               'TurnoverValue': 0, 'AdjustmentFactor': 1})
-            rows.append(row_to_add)
+            row_to_add = {'Date': date, 'Code': code, 'Open': value_to_fill, 'Close': value_to_fill,
+                          'High': value_to_fill, 'Low': value_to_fill, 'Volume': 0,
+                          'TurnoverValue': 0, 'AdjustmentFactor': 1}
+            rows.append(pd.DataFrame([row_to_add], index=[0]))
     return rows
 
 def _format_dtypes(stock_price: pd.DataFrame) -> pd.DataFrame:
@@ -159,4 +160,5 @@ def _save_yearly_data(df: pd.DataFrame, processing_basic_path: str, year: int) -
 
 
 if __name__ == '__main__':
+    flag_manager.flags['process_stock_price'] = True
     process_price()

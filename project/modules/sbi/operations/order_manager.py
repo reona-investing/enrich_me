@@ -70,7 +70,7 @@ class OrderManager:
         self.has_successfully_ordered: bool = False
         self.error_tickers: list = []
 
-    async def place_new_order(self, trade_params: TradeParameters) -> None:
+    async def place_new_order(self, trade_params: TradeParameters) -> bool:
         """
         指定された取引パラメータを使用して新規注文を行う。
         """
@@ -83,14 +83,16 @@ class OrderManager:
             await self._input_sashinari_params(trade_params)
             await self._get_duration_params(trade_params)
             await self._select_deposit_and_credit_type(trade_params)
-            await self._confirm_order(trade_params)
-            print("注文が正常に完了しました！")
+            has_successfully_ordered = await self._confirm_order(trade_params)
+            
         except Exception as e:
             print(f"注文中にエラーが発生しました: {e}")
             traceback.print_exc()  # スタックトレースを出力
             self.error_tickers.append(trade_params.symbol_code)
+            has_successfully_ordered = False
         finally:
             self.login_handler.session.tab = self.tab
+            return has_successfully_ordered
 
     async def _navigate_to_trade_page(self) -> None:
         """
@@ -128,7 +130,7 @@ class OrderManager:
 
         if trade_params.order_type == "指値":
             form = await self.tab.select('#gsn0 > input[type=text]')
-            await form.send_keys(trade_params.limit_order_price)
+            await form.send_keys(str(trade_params.limit_order_price))
 
             if trade_params.order_type_value is not None:
                 selector = f'select[name="sasine_condition"] option[value="{self.order_param_dicts["指値タイプ"][trade_params.order_type_value]}"]'
@@ -189,7 +191,7 @@ class OrderManager:
         trade_password_input = await self.tab.select('input[id="pwd3"]')
         await trade_password_input.send_keys(os.getenv('SBI_TRADEPASS'))
 
-    async def _confirm_order(self, trade_params: TradeParameters) -> None:
+    async def _confirm_order(self, trade_params: TradeParameters) -> bool:
         '''注文を確定する。'''
         await self._input_trade_pass()
         skip_button = await self.tab.select('input[id="shouryaku"]')
@@ -203,11 +205,11 @@ class OrderManager:
         if "ご注文を受け付けました。" in html_content:
             print(f"注文が成功しました: {trade_params.symbol_code}")
             await self._edit_position_manager_for_order(order_index)
-            self.has_successfully_ordered = True
+            return True
         else:
             print(f"注文が失敗しました: {trade_params.symbol_code}")
             self.error_tickers.append(trade_params.symbol_code)
-            self.has_successfully_ordered = False
+            return False
 
     async def _edit_position_manager_for_order(self, order_index: int) -> None:
             order_id = await self._get_element('注文番号') 

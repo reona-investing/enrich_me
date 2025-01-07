@@ -24,13 +24,16 @@ class HistoryManager:
         self.today_stock_trades_df = pd.DataFrame()
         self.login_handler = login_handler
 
+    async def _set_tab(self):
+        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
+        self.tab = self.login_handler.session.tab
+
     async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
         """
         過去の取引履歴をスクレイピングして取得
         self.today_margin_trades_df: 取引履歴データ
         """
-        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
-        self.tab = self.login_handler.session.tab
+        await self._set_tab()
 
         button = await self.session.tab.select('img[title=口座管理]')
         await button.click()
@@ -82,8 +85,7 @@ class HistoryManager:
         過去の取引履歴をスクレイピングして取得
         self.past_margin_trades_df: 取引履歴データ
         """
-        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
-        self.tab = self.login_handler.session.tab
+        await self._set_tab()
 
         df = await self._fetch_past_margin_trades_csv(mydate=mydate)
         df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
@@ -161,21 +163,36 @@ class HistoryManager:
         直近1週間の入出金履歴をスクレイピングして取得
         self.cashflow_transactions_df: 取引履歴データ
         """
-        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
-        self.tab = self.login_handler.session.tab
+        await self._set_tab()
         
         button = await self.tab.find('入出金明細')
         await button.click()
         await self.tab.wait(1)
         
-        selected_element = await self.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+        df = await self._convert_fetched_data_to_df()
+
+        button = await self.tab.find('総合トップ')
+        await button.click()
+
+        if len(df) == 0:
+            print('直近1週間の入出金履歴はありません。')
+            return
+        self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
+
+
+        print('入出金の履歴')
+        print(self.cashflow_transactions_df)
+
+    async def _convert_fetched_data_to_df(self) -> pd.DataFrame:
+        try:
+            selected_element = await self.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+        except:
+            return pd.DataFrame()
         await selected_element.select_option()
         await self.tab.wait(1)
-
-        # タイトル行の取得
         parent_element = await self.tab.select('#fc-page-table > div > ul')
         elements = parent_element.children
-
+        
         data_for_df = []
         for i, element in enumerate(elements):
             texts = []
@@ -189,18 +206,7 @@ class HistoryManager:
                     grandchild_element = child_element.children[0]
                     texts.append(grandchild_element.text)
                 data_for_df.append(texts)
-        df = pd.DataFrame(data_for_df, columns = titles)
-
-        if len(df) == 0:
-            print('直近1週間の入出金履歴はありません。')
-            return
-        self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
-
-        button = await self.tab.find('総合トップ')
-        await button.click()
-
-        print('入出金の履歴')
-        print(self.cashflow_transactions_df)
+        return pd.DataFrame(data_for_df, columns = titles)
 
     def _format_cashflow_transactions_df(self, df: pd.DataFrame) -> pd.DataFrame:
         #日付型に変換
@@ -223,8 +229,7 @@ class HistoryManager:
         直近1週間の入出金履歴をスクレイピングして取得
         self.today_margin_trades_df: 取引履歴データ
         """
-        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
-        self.tab = self.login_handler.session.tab
+        await self._set_tab()
        
         button = await self.tab.select('img[title=口座管理]')
         await button.click()
@@ -277,8 +282,7 @@ class HistoryManager:
         今日の現物取引をスクレイピングして取得
         self.today_stock_trades_df: 現物取引データ
         """
-        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
-        self.tab = self.login_handler.session.tab
+        await self._set_tab()
 
         button = await self.tab.select('img[title=取引]')
         await button.click()
