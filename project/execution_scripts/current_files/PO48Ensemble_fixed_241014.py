@@ -15,7 +15,7 @@ from typing import Tuple
 import paths #パス一覧
 from jquants_api_operations import run_jquants_api_operations
 import sector_index_calculator
-from FlagManager import flag_manager
+from FlagManager import flag_manager, Flags
 import features_scraper as scraper
 import features_calculator
 import target_calculator
@@ -28,7 +28,7 @@ import asyncio
 
 def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
     -> Tuple[MLDataset, MLDataset, MLDataset]:
-    if flag_manager.flags['learn']:
+    if flag_manager.flags[Flags.LEARN]:
         ml_dataset1 = MLDataset()
         ml_dataset2 = MLDataset()
         ml_dataset_ensembled = MLDataset()
@@ -41,16 +41,16 @@ def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEM
 async def read_and_update_data(filter: str) -> dict:
     stock_dfs_dict = None
     update = process = False
-    if flag_manager.flags['fetch_data']:
+    if flag_manager.flags[Flags.FETCH_DATA]:
         update = process = True
     list_df, fin_df, price_df = run_jquants_api_operations(update=update, process=process, read=True, filter = filter)
     stock_dfs_dict = {'stock_list': list_df,
                       'stock_fin': fin_df,
                       'stock_price': price_df}
-    if flag_manager.flags['update_dataset']:    
+    if flag_manager.flags[Flags.UPDATE_DATASET]:    
         '''各種金融データ取得or読み込み'''
         await scraper.scrape_all_indices(
-            should_scrape_features=flag_manager.flags['fetch_data'])
+            should_scrape_features=flag_manager.flags[Flags.FETCH_DATA])
         Slack.send_message(message = 'データの更新が完了しました。')
     return stock_dfs_dict
 
@@ -72,7 +72,7 @@ def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end
 def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
                         -> MLDataset:
-    if flag_manager.flags['update_dataset']:
+    if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''LASSO用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
                                                              adopts_features_indices = True, adopts_features_price = False,
@@ -86,9 +86,9 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
                                 outlier_theshold = 3,
                                 raw_target_df=necessary_dfs_dict['raw_target_df'], 
                                 order_price_df=necessary_dfs_dict['order_price_df'])
-    if flag_manager.flags['update_models']:
+    if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''LASSO（学習は必要時、予測は毎回）'''
-        ml_dataset = machine_learning.lasso(ml_dataset, dataset_path = ML_DATASET_PATH1, learn = flag_manager.flags['learn'],
+        ml_dataset = machine_learning.lasso(ml_dataset, dataset_path = ML_DATASET_PATH1, learn = flag_manager.flags[Flags.LEARN],
                                             min_features = 3, max_features = 5)
     return ml_dataset
 
@@ -96,7 +96,7 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
                      stock_dfs_dict: dict, necessary_dfs_dict: dict, 
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
                         -> MLDataset:
-    if flag_manager.flags['update_dataset']:
+    if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''lightGBM用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
                                                               pd.read_csv(NEW_SECTOR_LIST_CSV), stock_dfs_dict,
@@ -118,10 +118,10 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
                                 order_price_df=necessary_dfs_dict['order_price_df'],
                                 no_shift_features=['1stModel_pred'], reuse_features_df_of_others=True)
 
-    if flag_manager.flags['update_models']:
+    if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''lightGBM（学習は必要時、予測は毎回）'''
         ml_dataset2 = machine_learning.lgbm(ml_dataset = ml_dataset2, dataset_path = ML_DATASET_PATH2, 
-                                            learn = flag_manager.flags['learn'], categorical_features = ['Sector_cat'])
+                                            learn = flag_manager.flags[Flags.LEARN], categorical_features = ['Sector_cat'])
     return ml_dataset2
 
 def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble_rates: list, ENSEMBLED_DATASET_PATH: str) \
@@ -231,10 +231,16 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
     try:
         '''初期設定'''
         # 最初に各種フラグをセットしておく。データ更新の要否を引数に入力している場合は、フラグをその値で上書き。
-        flag_manager.set_flags(learn=learn, predict=predict)
+        turn_true = []
+        if learn:
+            turn_true.append(Flags.LEARN)
+        if predict:
+            turn_true.append(Flags.PREDICT)
+        # TODO turn_trueの設定をヘルパー関数として切り出す！
+        flag_manager.set_flags(turn_true=turn_true)
         print(flag_manager.get_flags())
         # データセットの読み込み
-        if flag_manager.flags['update_dataset'] or flag_manager.flags['update_models']:
+        if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:
             ml_dataset1, ml_dataset2, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
             '''データの更新・読み込み'''
             stock_dfs_dict = await read_and_update_data(universe_filter)
@@ -252,20 +258,20 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
                                                          ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)          
             Slack.send_message(message = f'予測が完了しました。')
         '''新規建'''
-        if flag_manager.flags['take_new_positions']:
+        if flag_manager.flags[Flags.TAKE_NEW_POSITIONS]:
             await take_positions(ml_dataset= ml_dataset_ensembled,
                                  NEW_SECTOR_LIST_CSV = NEW_SECTOR_LIST_CSV,
                                  num_sectors_to_trade = trading_sector_num,
                                  num_candidate_sectors = candidate_sector_num,
                                  top_slope = top_slope)
         '''追加建'''
-        if flag_manager.flags['take_additional_positions']:
+        if flag_manager.flags[Flags.TAKE_ADDITIONAL_POSITIONS]:
             await take_additionals()
         '''決済注文'''
-        if flag_manager.flags['settle_positions']:
+        if flag_manager.flags[Flags.SETTLE_POSITIONS]:
             await settle_positions()
         '''取引結果の取得'''
-        if flag_manager.flags['fetch_result']:    
+        if flag_manager.flags[Flags.FETCH_RESULT]:
             await fetch_invest_result(NEW_SECTOR_LIST_CSV)
         Slack.finish(message = 'すべての処理が完了しました。')
     except:

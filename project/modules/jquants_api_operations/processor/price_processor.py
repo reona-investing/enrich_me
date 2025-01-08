@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Tuple, List, Dict
-from FlagManager import flag_manager
+from FlagManager import flag_manager, Flags
 import paths
 from jquants_api_operations.processor.formatter import Formatter
 from jquants_api_operations.utils import FileHandler
@@ -23,7 +23,7 @@ def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
     
     for year in range(end_date.year, 2012, -1):
         is_latest_file = year == end_date.year
-        should_process = is_latest_file or flag_manager.flags['process_stock_price']
+        should_process = is_latest_file or flag_manager.flags[Flags.PROCESS_STOCK_PRICE]
         if should_process:
             stock_price = _load_yearly_raw_data(raw_basic_path, year)
             if stock_price.empty:
@@ -160,5 +160,6 @@ def _save_yearly_data(df: pd.DataFrame, processing_basic_path: str, year: int) -
 
 
 if __name__ == '__main__':
-    flag_manager.flags['process_stock_price'] = True
+
+    flag_manager.set_flag(Flags.PROCESS_STOCK_PRICE, True)
     process_price()

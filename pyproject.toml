@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "dtw>=1.4.0",
+    "easyocr>=1.7.2",
     "fastparquet>=2024.5.0",
     "ipykernel>=6.29.5",
     "ipython>=8.28.0",
