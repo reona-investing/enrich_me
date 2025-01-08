@@ -3,7 +3,7 @@ from datetime import datetime
 import paths
 from jquants_api_operations.utils import FileHandler
 from jquants_api_utils import cli
-from FlagManager import flag_manager
+from FlagManager import flag_manager, Flags
 
 def update_price(
     basic_path: str = paths.RAW_STOCK_PRICE_PARQUET
@@ -92,7 +92,7 @@ def _fetch_new_stock_price(last_exist_date: datetime) -> pd.DataFrame:
 def _set_adjustment_flag(fetched_stock_price: pd.DataFrame):
     """AdjustmentFactorが変更された場合のフラグを設定します。"""
     if any(fetched_stock_price['AdjustmentFactor'] != 1):
-        flag_manager.flags['process_stock_price'] = True
+        flag_manager.set_flag(Flags.PROCESS_STOCK_PRICE, True)
 
 
 def _update_raw_stock_price(existing_data: pd.DataFrame, new_data: pd.DataFrame) -> pd.DataFrame:
