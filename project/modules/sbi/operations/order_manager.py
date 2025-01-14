@@ -202,12 +202,13 @@ class OrderManager:
 
         order_index = self._append_trade_params_to_orders(trade_params)
         html_content = await self.tab.get_content()
+        text_to_show = f'{trade_params.symbol_code} {trade_params.trade_type} {trade_params.unit}株:'
         if "ご注文を受け付けました。" in html_content:
-            print(f"注文が成功しました: {trade_params.symbol_code}")
+            print(f"{text_to_show} 注文が成功しました")
             await self._edit_position_manager_for_order(order_index)
             return True
         else:
-            print(f"注文が失敗しました: {trade_params.symbol_code}")
+            print(f"{text_to_show} 注文が失敗しました")
             self.error_tickers.append(trade_params.symbol_code)
             return False
 
