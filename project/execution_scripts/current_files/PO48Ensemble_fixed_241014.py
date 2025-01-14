@@ -170,7 +170,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             turn_true.append(Flags.PREDICT)
         # TODO turn_trueの設定をヘルパー関数として切り出す！
         flag_manager.set_flags(turn_true=turn_true)
-        flag_manager.set_flags(turn_true=[Flags.TAKE_NEW_POSITIONS])
+        flag_manager.set_flags(turn_true=[Flags.PREDICT])
         print(flag_manager.get_flags())
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:
