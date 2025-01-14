@@ -1,55 +1,132 @@
 #%% モジュールのインポート
 import paths
-
-
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
 #%% 関数群
-def filter_stocks(stock_dfs_dict:dict, filter:str): #対象銘柄の抜き取り
-    '''【対象銘柄の抜き取り】'''
-    stock_list = stock_dfs_dict['stock_list']
+def calc_new_sector_price(stock_dfs_dict:dict, SECTOR_REDEFINITIONS_CSV:str, SECTOR_INDEX_PARQUET:str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    '''
+    セクターインデックスを算出します。
+    Args:
+        stock_dfs_dict (dict): 'stock_list', 'stock_fin', 'stock_price'が定義されたデータフレーム
+        SECTOR_REDEFINITIONS_CSV (str): セクター定義の設定ファイルのパス
+        SECTOR_INDEX_PARQUET (str): セクターインデックスを出力するparquetファイルのパス
+    Returns:
+        pd.DataFrame: セクターインデックスを格納
+        pd.DataFrame: 発注用に、個別銘柄の終値と時価総額を格納
+    '''
     stock_price = stock_dfs_dict['stock_price']
     stock_fin = stock_dfs_dict['stock_fin']
-    #フィルターの設定
-    filtered_code_list = stock_list.query(filter)['Code'].astype(str).values
-    #dfからの抜き取り
-    stock_dfs_dict['stock_list'] = stock_list[stock_list['Code'].astype(str).isin(filtered_code_list)]
-    stock_dfs_dict['stock_fin'] = stock_fin[stock_fin['Code'].astype(str).isin(filtered_code_list)]
-    stock_dfs_dict['stock_price'] = stock_price[stock_price['Code'].astype(str).isin(filtered_code_list)]
-    return stock_dfs_dict
+    #価格情報に発行済み株式数の情報を結合
+    stock_price_for_order = calc_marketcap(stock_price, stock_fin)
+    #インデックス値の算出
+    new_sector_price = _calc_index_value(stock_price_for_order, SECTOR_REDEFINITIONS_CSV)
+    #データフレームを保存して、インデックスを設定
+    new_sector_price = new_sector_price.reset_index()
+    new_sector_price.to_parquet(SECTOR_INDEX_PARQUET)
+    new_sector_price = new_sector_price.set_index(['Date', 'Sector'])
+    print('セクターのインデックス値の算出が完了しました。')
+    #TODO 2つのデータフレームを返す関数は分けたほうがよさそう。
+
+    return new_sector_price, stock_price_for_order
+
+
+def calc_marketcap(stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
+    '''
+    各銘柄の日ごとの時価総額を算出する。
+    Args:
+        stock_price (pd.DataFrame): 価格情報
+        stok_fin (pd.DataFrame): 財務情報
+    Returns:
+        pd.DataFrame: 価格情報に時価総額を付記
+    '''
+    # 価格情報に発行済み株式数の情報を照合
+    stock_price_cap = _merge_stock_price_and_shares(stock_price, stock_fin)
+    # 発行済み株式数の補正係数を算出
+    stock_price_cap = _calc_shares_rate(stock_price_cap, stock_price)
+    stock_price_cap = _adjust_shares(stock_price_cap)
+    # 時価総額と指数計算用の補正値を算出
+    stock_price_cap = _calc_marketcap(stock_price_cap)
+    return _calc_correction_value(stock_price_cap)
+
+
+def _merge_stock_price_and_shares(stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
+    """
+    期末日以降最初の営業日時点での発行済株式数を結合。
+    Args:
+        stock_price (pd.DataFrame): 価格情報
+        stock_fin (pd.DataFrame): 財務情報
+    Returns:
+        pd.DataFrame: 価格情報に発行済株式数を付記
+    """
+    business_days = stock_price['Date'].unique()
+    shares_df = _calc_shares_at_end_period(stock_fin)
+    shares_df = _append_next_period_start_date(shares_df, business_days)
+    merged_df = _merge_with_stock_price(stock_price, shares_df)
+    return merged_df
+
+def _calc_shares_at_end_period(stock_fin: pd.DataFrame) -> pd.DataFrame:
+    """
+    期末日時点での発行済株式数を計算する。
+    Args:
+        stock_fin (pd.DataFrame): 財務情報
+    Returns:
+        pd.DataFrame: 財務情報に発行済株式数を付記
+    """
+    shares_df = stock_fin[['Code', 'Date', 'OutstandingShares', 'CurrentPeriodEndDate']].copy()
+    shares_df = shares_df.sort_values('Date').drop('Date', axis=1)
+    shares_df = shares_df.drop_duplicates(subset=['CurrentPeriodEndDate', 'Code'], keep='last')
+    shares_df['NextPeriodStartDate'] = pd.to_datetime(shares_df['CurrentPeriodEndDate']) + timedelta(days=1)
+    shares_df['Settlement'] = 1 #TODO この列の追加理由をコメントアウトしたほうがいいかも
+    return shares_df
+
+def _append_next_period_start_date(shares_df: pd.DataFrame, business_days: np.array) -> pd.DataFrame:
+    """
+    次期開始日を営業日ベースで計算する。
+    Args:
+        shares_df (pd.DataFrame): 財務情報に発行済株式数を付記
+        business_days (np.array): 営業日リスト
+    Returns:
+        pd.DataFrame: 財務情報に発行済株式数と時期開始日を付記
+    """
+    shares_df['NextPeriodStartDate'] = shares_df['NextPeriodStartDate'].apply(
+        _find_next_business_day, business_days=business_days
+    )
+    return shares_df
+
 
 def _find_next_business_day(date:pd.Timestamp, business_days:np.array) -> pd.Timestamp:
-    '''次の営業日を探す'''
+    '''
+    任意の日付を参照し、翌営業日を探します。
+    Args:
+        date (pd.Timestamp): 任意の日付
+        business_days (np.array): 営業日の一覧
+    Returns:
+        pd.TimeStamp: 翌営業日の日付
+    '''
     if pd.isna(date):
         return date
     while date not in business_days:
         date += np.timedelta64(1, 'D')
     return date
 
-def _merge_stock_price_and_shares(stock_price:pd.DataFrame, stock_fin:pd.DataFrame) -> pd.DataFrame:
-    '''期末日以降最初の営業日時点での発行済株式数を算出'''
-    #stock_finから期末日時点の発行済株式数を算出
-    shares_at_end_period_df = stock_fin[['Code', 'Date', 'OutstandingShares', 'CurrentPeriodEndDate']].copy()
-    shares_at_end_period_df = shares_at_end_period_df.sort_values('Date').drop('Date', axis=1)
-    shares_at_end_period_df = \
-      shares_at_end_period_df.drop_duplicates(subset=['CurrentPeriodEndDate', 'Code'], keep='last')
-    shares_at_end_period_df['Code'] = shares_at_end_period_df['Code'].astype(str)
-    shares_at_end_period_df['Settlement'] = 1
-    shares_at_end_period_df['NextPeriodStartDate'] = \
-      pd.to_datetime(shares_at_end_period_df['CurrentPeriodEndDate']) + timedelta(days=1)
-    shares_at_beginning_period_df = \
-      shares_at_end_period_df[['Code', 'OutstandingShares', 'NextPeriodStartDate', 'Settlement']].copy()
-    #期初日以降最初の営業日を探す
-    business_days = stock_price['Date'].unique()
-    shares_at_beginning_period_df['NextPeriodStartDate'] = \
-      shares_at_beginning_period_df['NextPeriodStartDate'].apply(_find_next_business_day, business_days=business_days)
 
-    stock_price_with_shares_df = pd.merge(stock_price, shares_at_beginning_period_df,
-                                  left_on=['Date', 'Code'], right_on=['NextPeriodStartDate', 'Code'],
-                                  how='left').drop('NextPeriodStartDate', axis=1)
-    return stock_price_with_shares_df
+def _merge_with_stock_price(stock_price: pd.DataFrame, shares_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    価格データに発行済株式数情報を結合する。
+    Args:
+        stock_price (pd.DataFrame): 価格情報データフレーム
+        shares_df (pd.DataFrame): 発行済株式数を含むデータフレーム
+    Returns:
+        pd.DataFrame: 結合されたデータフレーム
+    """
+    return pd.merge(stock_price, 
+                    shares_df[['Code', 'OutstandingShares', 'NextPeriodStartDate', 'Settlement']],
+                    left_on=['Date', 'Code'], 
+                    right_on=['NextPeriodStartDate', 'Code'], 
+                    how='left'
+                    ).drop('NextPeriodStartDate', axis=1)
 
 
 def _calc_shares_rate(stock_price_with_shares_df:pd.DataFrame, stock_price:pd.DataFrame) -> pd.DataFrame:
@@ -125,9 +202,9 @@ def _calc_correction_value(stock_price: pd.DataFrame) -> pd.DataFrame:
     return stock_price
 
 
-def _calc_index_value(stock_price: pd.DataFrame, new_sector_list_csv:str) -> pd.DataFrame:
+def _calc_index_value(stock_price: pd.DataFrame, SECTOR_REDEFINITIONS_CSV:str) -> pd.DataFrame:
     '''指標の算出'''
-    new_sector_list = pd.read_csv(new_sector_list_csv).dropna(how='any', axis=1)
+    new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV).dropna(how='any', axis=1)
     new_sector_list['Code'] = new_sector_list['Code'].astype(str)
 
     #必要列を抜き出したデータフレームを作る。
@@ -148,46 +225,33 @@ def _calc_index_value(stock_price: pd.DataFrame, new_sector_list_csv:str) -> pd.
 
     return new_sector_price
 
-def calc_marketcap(stock_price: pd.DataFrame, stock_fin: pd.DataFrame):
-    '''各銘柄の日ごとの時価総額を算出'''
-    # 価格情報に発行済み株式数の情報を照合
-    stock_price_cap = _merge_stock_price_and_shares(stock_price, stock_fin)
-    # 発行済み株式数の補正係数を算出
-    stock_price_cap = _calc_shares_rate(stock_price_cap, stock_price)
-    stock_price_cap = _adjust_shares(stock_price_cap)
-    # 時価総額と指数計算用の補正値を算出
-    stock_price_cap = _calc_marketcap(stock_price_cap)
-    stock_price_cap = _calc_correction_value(stock_price_cap)
-    return stock_price_cap
 
-def calc_new_sector_price(stock_dfs_dict:dict, new_sector_list_csv:str, new_sector_price_pklgz:str):
-    '''新しいインデックスを算出'''
+def filter_stocks(stock_dfs_dict:dict, filter:str): #対象銘柄の抜き取り
+    '''【対象銘柄の抜き取り】'''
     stock_list = stock_dfs_dict['stock_list']
     stock_price = stock_dfs_dict['stock_price']
     stock_fin = stock_dfs_dict['stock_fin']
-    #価格情報に発行済み株式数の情報を結合
-    stock_price_for_order = calc_marketcap(stock_price, stock_fin)
-    #インデックス値の算出
-    new_sector_price = _calc_index_value(stock_price_for_order, new_sector_list_csv)
-    #データフレームを保存して、インデックスを設定
-    new_sector_price = new_sector_price.reset_index()
-    new_sector_price.to_parquet(new_sector_price_pklgz)
-    new_sector_price = new_sector_price.set_index(['Date', 'Sector'])
-    print('セクターのインデックス値の算出が完了しました。')
+    #フィルターの設定
+    filtered_code_list = stock_list.query(filter)['Code'].astype(str).values
+    #dfからの抜き取り
+    stock_dfs_dict['stock_list'] = stock_list[stock_list['Code'].astype(str).isin(filtered_code_list)]
+    stock_dfs_dict['stock_fin'] = stock_fin[stock_fin['Code'].astype(str).isin(filtered_code_list)]
+    stock_dfs_dict['stock_price'] = stock_price[stock_price['Code'].astype(str).isin(filtered_code_list)]
+    return stock_dfs_dict
 
-    return new_sector_price, stock_price_for_order
+
 
 #%% デバッグ
 if __name__ == '__main__':
     from IPython.display import display
     from jquants_api_operations import run_jquants_api_operations
-    NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_list.csv'
-    NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz'
+    SECTOR_REDEFINITIONS_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_list.csv'
+    SECTOR_INDEX_PARQUET = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz'
     list_df, fin_df, price_df = run_jquants_api_operations(filter= \
       "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
       )
     stock_dfs_dict = {'stock_list': list_df,
                       'stock_fin': fin_df,
                       'stock_price': price_df}
-    new_sector_price, price_for_order = calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+    new_sector_price, price_for_order = calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     display(new_sector_price)

@@ -116,9 +116,8 @@ def daytime_return_PCAresiduals(df:pd.DataFrame, # PCAで残差をとった日�
 if __name__ == '__main__':
     import paths
     
-    from IPython.display import display
     NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz'
     df = pd.read_parquet(NEW_SECTOR_PRICE_PKLGZ)
     df = df.set_index(['Date', 'Sector'], drop=True)
     raw_target_df, target_df = daytime_return_PCAresiduals(df, 1, datetime(2016,1,1), datetime.today())
-    display(target_df)
+    print(target_df)

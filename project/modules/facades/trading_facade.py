@@ -1,3 +1,4 @@
+import os
 import paths
 from SlackNotifier import SlackNotifier
 from sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
@@ -8,7 +9,7 @@ class TradingFacade:
     def __init__(self):
         """SBI取引操作を統括するファサード"""
         self.login_handler = LoginHandler()
-        self.slack = SlackNotifier(__file__)
+        self.slack = SlackNotifier(program_name=os.path.basename(__file__))
         self.history_manager = HistoryManager(self.login_handler)
         self.margin_manager = MarginManager(self.login_handler)
         self.order_manager = OrderManager(self.login_handler)
