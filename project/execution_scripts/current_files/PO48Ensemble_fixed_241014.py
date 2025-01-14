@@ -21,8 +21,7 @@ import features_calculator
 import target_calculator
 from models import MLDataset
 import machine_learning
-from sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
-from sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
+from facades import TradingFacade
 import error_handler
 import asyncio
 
@@ -139,73 +138,6 @@ def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble
     dataset_ensembled = MLDataset(ENSEMBLED_DATASET_PATH)
     return dataset_ensembled
 
-async def take_positions(ml_dataset, NEW_SECTOR_LIST_CSV, 
-                         num_sectors_to_trade, num_candidate_sectors,
-                         top_slope):
-    sbi_session = LoginHandler()
-    trade_possibility_manager = TradePossibilityManager(sbi_session)
-    order_manager = OrderManager(sbi_session)
-    margin_manager = MarginManager(sbi_session)
-    stock_selector = StockSelector(ml_dataset, trade_possibility_manager, margin_manager,
-                                   NEW_SECTOR_LIST_CSV, num_sectors_to_trade, 
-                                   num_candidate_sectors, top_slope)
-    order_maker = NewOrderMaker(stock_selector, order_manager)
-    failed_order_list = await order_maker.run_new_orders()                               
-    Slack.send_message(
-        message = 
-            f'発注が完了しました。\n' +
-            f'買： {stock_selector.buy_sectors}\n' +
-            f'売： {stock_selector.sell_sectors}'
-    )
-    if len(failed_order_list) > 0:
-        Slack.send_message(
-            message = 
-                f'以下の注文の発注に失敗しました。\n' +
-                f'{failed_order_list}'
-        )
-
-async def take_additionals():
-    sbi_session = LoginHandler()
-    order_manager = OrderManager(sbi_session)
-    order_maker = AdditionalOrderMaker(order_manager)
-    failed_order_list = await order_maker.run_additional_orders()
-    Slack.send_message(
-        message = 
-            f'追加発注が完了しました。'
-    )
-    if len(failed_order_list) > 0:
-        Slack.send_message(
-            message = 
-                f'以下の注文の発注に失敗しました。\n' +
-                f'{failed_order_list}'
-        )
-
-async def settle_positions():
-    sbi_session = LoginHandler()
-    order_manager = OrderManager(sbi_session)
-    position_settler = PositionSettler(order_manager)
-    await position_settler.settle_all_margins()
-    if len(order_manager.error_tickers) == 0:
-        Slack.send_message(message = '全銘柄の決済注文が完了しました。')
-    else:
-        Slack.send_message(
-            message = 
-                f'全銘柄の決済注文を試みました。\n' +
-                f'銘柄コード{order_manager.error_tickers}の決済注文に失敗しました。'
-                )
-
-async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
-    sbi_session = LoginHandler()
-    history_manager = HistoryManager(sbi_session)
-    margin_manager = MarginManager(sbi_session)
-    history_updater = HistoryUpdater(history_manager, margin_manager, NEW_SECTOR_LIST_CSV)
-    trade_history, _, _, _, amount = await history_updater.update_information()
-    Slack.send_result(
-        message = 
-            f'取引履歴等の更新が完了しました。\n' +
-            f'{trade_history["日付"].iloc[-1].strftime("%Y-%m-%d")}の取引結果：{amount}円'
-            )
-
 #%% メイン関数
 async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_PATH:str,
                NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PARQUET:str,
@@ -238,6 +170,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             turn_true.append(Flags.PREDICT)
         # TODO turn_trueの設定をヘルパー関数として切り出す！
         flag_manager.set_flags(turn_true=turn_true)
+        flag_manager.set_flags(turn_true=[Flags.TAKE_NEW_POSITIONS])
         print(flag_manager.get_flags())
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:
@@ -257,22 +190,24 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
                                                          ensemble_rates = ensemble_rates,
                                                          ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)          
             Slack.send_message(message = f'予測が完了しました。')
+        trade_facade = TradingFacade()
         '''新規建'''
         if flag_manager.flags[Flags.TAKE_NEW_POSITIONS]:
-            await take_positions(ml_dataset= ml_dataset_ensembled,
-                                 NEW_SECTOR_LIST_CSV = NEW_SECTOR_LIST_CSV,
-                                 num_sectors_to_trade = trading_sector_num,
-                                 num_candidate_sectors = candidate_sector_num,
-                                 top_slope = top_slope)
+            await trade_facade.take_positions(
+                ml_dataset= ml_dataset_ensembled,
+                NEW_SECTOR_LIST_CSV = NEW_SECTOR_LIST_CSV,
+                num_sectors_to_trade = trading_sector_num,
+                num_candidate_sectors = candidate_sector_num,
+                top_slope = top_slope)
         '''追加建'''
         if flag_manager.flags[Flags.TAKE_ADDITIONAL_POSITIONS]:
-            await take_additionals()
+            await trade_facade.take_additionals()
         '''決済注文'''
         if flag_manager.flags[Flags.SETTLE_POSITIONS]:
-            await settle_positions()
+            await trade_facade.settle_positions()
         '''取引結果の取得'''
         if flag_manager.flags[Flags.FETCH_RESULT]:
-            await fetch_invest_result(NEW_SECTOR_LIST_CSV)
+            await trade_facade.fetch_invest_result(NEW_SECTOR_LIST_CSV)
         Slack.finish(message = 'すべての処理が完了しました。')
     except:
         '''エラーログの出力'''
