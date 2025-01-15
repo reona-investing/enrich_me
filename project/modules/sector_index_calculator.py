@@ -179,15 +179,28 @@ def calc_new_sector_price(stock_dfs_dict:dict, new_sector_list_csv:str, new_sect
 
 #%% デバッグ
 if __name__ == '__main__':
-    from IPython.display import display
     from jquants_api_operations import run_jquants_api_operations
-    NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_list.csv'
-    NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz'
-    list_df, fin_df, price_df = run_jquants_api_operations(filter= \
-      "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
+    SECTOR_REDEFINITIONS_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
+    SECTOR_INDEX_PARQUET = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price_test.parquet'
+    list_df, fin_df, price_df = run_jquants_api_operations(
+        read = True,
+        filter= "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
       )
     stock_dfs_dict = {'stock_list': list_df,
                       'stock_fin': fin_df,
                       'stock_price': price_df}
-    new_sector_price, price_for_order = calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
-    display(new_sector_price)
+    new_sector_price, price_for_order = calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+    #print((new_sector_price[['1d_return']].fillna(0).unstack() + 1).cumprod())
+
+    print(new_sector_price[['1d_return']].dropna().sort_values(by='1d_return'))
+
+
+    sector = 'ITインフラ'
+    start_date = datetime(2013, 12, 30)
+    end_date = datetime(2014, 1, 6)
+    
+    sector_redefinitions = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
+    sector_condition = (price_for_order['Code'].isin(sector_redefinitions.loc[sector_redefinitions['Sector'] == sector, 'Code'].astype(str)))
+    duration = (price_for_order['Date'] >= start_date) & (price_for_order['Date'] <= end_date)
+    print(price_for_order.loc[sector_condition & duration, ['Date', 'Code', 'MarketCapClose_forCorrection']].set_index(['Code', 'Date']).unstack())
+    print(price_for_order.loc[sector_condition & duration, ['Date', 'Code', 'CorrectionValue']].set_index(['Code', 'Date']).unstack())

@@ -11,6 +11,8 @@ wheels/
 
 # env file
 project/modules/.env
+TOPIX_prediction
+consideration
 
 # Data, Deliverables, and Temporary Files
 project/debug_files
