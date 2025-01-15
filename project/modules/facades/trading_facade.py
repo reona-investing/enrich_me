@@ -18,7 +18,7 @@ class TradingFacade:
 
     async def take_positions(self, 
                              ml_dataset: MLDataset, 
-                             NEW_SECTOR_LIST_CSV: str, 
+                             SECTOR_REDEFINITIONS_CSV: str, 
                              num_sectors_to_trade: int = 3, 
                              num_candidate_sectors: int = 5, 
                              top_slope: float = 1.0):
@@ -35,7 +35,7 @@ class TradingFacade:
 
         '''
         stock_selector = StockSelector(ml_dataset, self.trade_possibility_manager, self.margin_manager,
-                                       NEW_SECTOR_LIST_CSV, num_sectors_to_trade, num_candidate_sectors, top_slope)
+                                       SECTOR_REDEFINITIONS_CSV, num_sectors_to_trade, num_candidate_sectors, top_slope)
         order_maker = NewOrderMaker(stock_selector, self.order_manager)
         failed_order_list = await order_maker.run_new_orders()
         self.slack.send_message(f'発注が完了しました。\n買：{stock_selector.buy_sectors}\n売：{stock_selector.sell_sectors}')
@@ -63,10 +63,10 @@ class TradingFacade:
         else:
             self.slack.send_message(f'銘柄コード{self.order_manager.error_tickers}の決済注文に失敗しました。')
 
-    async def fetch_invest_result(self, NEW_SECTOR_LIST_CSV):
+    async def fetch_invest_result(self, SECTOR_REDEFINITIONS_CSV):
         '''
         当日の取引履歴・入出金履歴・買付余力を取得します。
         '''
-        history_updater = HistoryUpdater(self.history_manager, self.margin_manager, NEW_SECTOR_LIST_CSV)
+        history_updater = HistoryUpdater(self.history_manager, self.margin_manager, SECTOR_REDEFINITIONS_CSV)
         trade_history, _, _, _, amount = await history_updater.update_information()
         self.slack.send_result(f'取引履歴等の更新が完了しました。\n{trade_history["日付"].iloc[-1].strftime("%Y-%m-%d")}の取引結果：{amount}円')
