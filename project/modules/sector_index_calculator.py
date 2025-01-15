@@ -45,10 +45,19 @@ def calc_marketcap(stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.Dat
     stock_price_with_shares = _merge_stock_price_and_shares(stock_price, stock_fin)
     # 発行済み株式数の補正係数を算出
     stock_price_cap = _calc_adjustment_factor(stock_price_with_shares, stock_price)
+    #print(stock_price_cap[(stock_price_cap['Code']=='2175')&((stock_price_cap['Date']==datetime(2013,12,30))|(stock_price_cap['Date']==datetime(2014,1,6)))])
     stock_price_cap = _adjust_shares(stock_price_cap)
     # 時価総額と指数計算用の補正値を算出
     stock_price_cap = _calc_marketcap(stock_price_cap)
-    return _calc_correction_value(stock_price_cap)
+    stock_price_cap = _calc_correction_value(stock_price_cap)
+    
+    df = stock_price_cap[stock_price_cap['Code']=='9101']
+    #df = df[['Date', 'Code', 'Close', 'MarketCapClose']]
+    df['CapRet'] = df['MarketCapClose'].pct_change(1)
+    df['CloseRet'] = df['Close'].pct_change(1)
+    df.to_csv('test.csv')
+    
+    return stock_price_cap
 
 
 def _merge_stock_price_and_shares(stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
@@ -184,6 +193,7 @@ def _correct_shares_rate_for_non_adjustment(df: pd.DataFrame) -> pd.DataFrame:
     for shift_column, i in zip(shift_columns, shift_days):
         df[shift_column] = df.groupby('Code')['AdjustmentFactor'].shift(i).fillna(1)
     df.loc[((df[shift_columns] == 1).all(axis=1) | (df['SharesRate'] == 1)), 'SharesRate'] = 1
+    df[df['Code']=='9101'].to_csv('test.csv')
     return df
 
 def _merge_shares_rate(stock_price: pd.DataFrame, df_to_calc_shares_rate: pd.DataFrame) -> pd.DataFrame:
@@ -322,18 +332,18 @@ if __name__ == '__main__':
                       'stock_fin': fin_df,
                       'stock_price': price_df}
     new_sector_price, price_for_order = calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
-    #print((new_sector_price[['1d_return']].fillna(0).unstack() + 1).cumprod())
+    print((new_sector_price[['1d_return']].fillna(0).unstack() + 1).cumprod())
 
     print(new_sector_price[['1d_return']].dropna().sort_values(by='1d_return'))
 
-
-    sector = 'ITインフラ'
-    start_date = datetime(2013, 12, 30)
-    end_date = datetime(2014, 1, 6)
+    '''
+    sector = '海運'
+    start_date = datetime(2017, 9, 26)
+    end_date = datetime(2017, 9, 30)
     
     sector_redefinitions = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
     sector_condition = (price_for_order['Code'].isin(sector_redefinitions.loc[sector_redefinitions['Sector'] == sector, 'Code'].astype(str)))
     duration = (price_for_order['Date'] >= start_date) & (price_for_order['Date'] <= end_date)
     print(price_for_order.loc[sector_condition & duration, ['Date', 'Code', 'MarketCapClose_forCorrection']].set_index(['Code', 'Date']).unstack())
-    print(price_for_order.loc[sector_condition & duration, ['Date', 'Code', 'CorrectionValue']].set_index(['Code', 'Date']).unstack())
-
+    #print(price_for_order.loc[sector_condition & duration, ['Date', 'Code', 'CorrectionValue']].set_index(['Code', 'Date']).unstack())
+    '''

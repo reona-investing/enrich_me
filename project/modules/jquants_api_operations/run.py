@@ -43,4 +43,23 @@ def run_jquants_api_operations(update: bool = False, process: bool = False, read
 if __name__ == "__main__":
     # Example usage
     filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
+    from FlagManager import FlagManager, Flags
+    flag_manager = FlagManager()
+    flag_manager.set_flag(flag=Flags.PROCESS_STOCK_PRICE, value=True)
     list_df, fin_df, price_df = run_jquants_api_operations(update=True, process=True, read=True, filter=filter)
+    price_df[price_df['Code']=='9101'].to_csv('test_raw.csv')
+    
+    '''
+    import paths
+    data = []
+    for i in range(2013, 2026):
+        path = paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(i))
+        df = pd.read_parquet(path)
+        df['Date'] = pd.to_datetime(df['Date'])
+        df['Code'] = df['Code'].astype(str)
+        df = df[df['Code'] == '91010']
+        data.append(df[['Date', 'Code', 'Close', 'Volume', 'TurnoverValue', 'AdjustmentFactor']])
+    df = pd.concat(data, axis=0).sort_values('Date')
+    df.to_csv('test_processed.csv')
+    '''
+    
