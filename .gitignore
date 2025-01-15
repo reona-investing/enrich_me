@@ -6,8 +6,10 @@ dist/
 wheels/
 *.egg-info
 
-# Virtual environments
+# folfers except project
 .venv
+consideration
+TOPIX_prediction
 
 # env file
 project/modules/.env

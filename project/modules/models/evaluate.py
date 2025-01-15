@@ -131,7 +131,7 @@ class MetricsCalculator:
         self.get_numerai_corrs()
 
 
-    def get_return_by_bin(self, result_df: pd.DataFrame) -> pd.DataFrame:
+    def get_return_by_bin(self) -> pd.DataFrame:
         '''指定したbin数ごとのリターンを算出。'''
         df = self.result_df.dropna().copy()
         for column in self.original_cols:

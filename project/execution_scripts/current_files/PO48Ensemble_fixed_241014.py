@@ -21,17 +21,16 @@ import features_calculator
 import target_calculator
 from models import MLDataset
 import machine_learning
-from sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
-from sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
+from facades import TradingFacade
 import error_handler
 import asyncio
 
 def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
     -> Tuple[MLDataset, MLDataset, MLDataset]:
     if flag_manager.flags[Flags.LEARN]:
-        ml_dataset1 = MLDataset()
-        ml_dataset2 = MLDataset()
-        ml_dataset_ensembled = MLDataset()
+        ml_dataset1 = MLDataset(ML_DATASET_PATH1, init_load=False)
+        ml_dataset2 = MLDataset(ML_DATASET_PATH2, init_load=False)
+        ml_dataset_ensembled = MLDataset(ML_DATASET_ENSEMBLED_PATH, init_load=False)
     else:
         ml_dataset1 = MLDataset(ML_DATASET_PATH1)
         ml_dataset2 = MLDataset(ML_DATASET_PATH2)
@@ -55,10 +54,10 @@ async def read_and_update_data(filter: str) -> dict:
     return stock_dfs_dict
 
 def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end_day: datetime, 
-                      NEW_SECTOR_LIST_CSV: str, NEW_SECTOR_PRICE_PARQUET: str) -> dict:
+                      SECTOR_REDEFINITIONS_CSV: str, SECTOR_INDEX_PARQUET: str) -> dict:
     '''セクターインデックスの計算'''
     new_sector_price_df, order_price_df = \
-        sector_index_calculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET)
+        sector_index_calculator.calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     '''目的変数の算出'''
     raw_target_df, target_df = \
         target_calculator.daytime_return_PCAresiduals(new_sector_price_df,
@@ -99,7 +98,7 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
     if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''lightGBM用特徴量の算出'''
         features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
-                                                              pd.read_csv(NEW_SECTOR_LIST_CSV), stock_dfs_dict,
+                                                              pd.read_csv(SECTOR_REDEFINITIONS_CSV), stock_dfs_dict,
                                                               adopts_features_indices = True, adopts_features_price = True,
                                                               groups_setting = None, names_setting = None, currencies_type = 'relative',
                                                               adopt_1d_return = True, mom_duration = [5, 21], vola_duration = [5, 21],
@@ -139,76 +138,9 @@ def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble
     dataset_ensembled = MLDataset(ENSEMBLED_DATASET_PATH)
     return dataset_ensembled
 
-async def take_positions(ml_dataset, NEW_SECTOR_LIST_CSV, 
-                         num_sectors_to_trade, num_candidate_sectors,
-                         top_slope):
-    sbi_session = LoginHandler()
-    trade_possibility_manager = TradePossibilityManager(sbi_session)
-    order_manager = OrderManager(sbi_session)
-    margin_manager = MarginManager(sbi_session)
-    stock_selector = StockSelector(ml_dataset, trade_possibility_manager, margin_manager,
-                                   NEW_SECTOR_LIST_CSV, num_sectors_to_trade, 
-                                   num_candidate_sectors, top_slope)
-    order_maker = NewOrderMaker(stock_selector, order_manager)
-    failed_order_list = await order_maker.run_new_orders()                               
-    Slack.send_message(
-        message = 
-            f'発注が完了しました。\n' +
-            f'買： {stock_selector.buy_sectors}\n' +
-            f'売： {stock_selector.sell_sectors}'
-    )
-    if len(failed_order_list) > 0:
-        Slack.send_message(
-            message = 
-                f'以下の注文の発注に失敗しました。\n' +
-                f'{failed_order_list}'
-        )
-
-async def take_additionals():
-    sbi_session = LoginHandler()
-    order_manager = OrderManager(sbi_session)
-    order_maker = AdditionalOrderMaker(order_manager)
-    failed_order_list = await order_maker.run_additional_orders()
-    Slack.send_message(
-        message = 
-            f'追加発注が完了しました。'
-    )
-    if len(failed_order_list) > 0:
-        Slack.send_message(
-            message = 
-                f'以下の注文の発注に失敗しました。\n' +
-                f'{failed_order_list}'
-        )
-
-async def settle_positions():
-    sbi_session = LoginHandler()
-    order_manager = OrderManager(sbi_session)
-    position_settler = PositionSettler(order_manager)
-    await position_settler.settle_all_margins()
-    if len(order_manager.error_tickers) == 0:
-        Slack.send_message(message = '全銘柄の決済注文が完了しました。')
-    else:
-        Slack.send_message(
-            message = 
-                f'全銘柄の決済注文を試みました。\n' +
-                f'銘柄コード{order_manager.error_tickers}の決済注文に失敗しました。'
-                )
-
-async def fetch_invest_result(NEW_SECTOR_LIST_CSV):
-    sbi_session = LoginHandler()
-    history_manager = HistoryManager(sbi_session)
-    margin_manager = MarginManager(sbi_session)
-    history_updater = HistoryUpdater(history_manager, margin_manager, NEW_SECTOR_LIST_CSV)
-    trade_history, _, _, _, amount = await history_updater.update_information()
-    Slack.send_result(
-        message = 
-            f'取引履歴等の更新が完了しました。\n' +
-            f'{trade_history["日付"].iloc[-1].strftime("%Y-%m-%d")}の取引結果：{amount}円'
-            )
-
 #%% メイン関数
 async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_PATH:str,
-               NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PARQUET:str,
+               SECTOR_REDEFINITIONS_CSV:str, SECTOR_INDEX_PARQUET:str,
                universe_filter:str, trading_sector_num:int, candidate_sector_num:int,
                train_start_day:datetime, train_end_day:datetime,
                test_start_day:datetime, test_end_day:datetime,
@@ -216,8 +148,8 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
     '''
     モデルの実装
     ML_DATASET_PATH: 学習済みモデル、スケーラー、予測結果等を格納したデータセットのパスを格納したリスト
-    NEW_SECTOR_LIST_CSV: 銘柄と業種の対応リスト
-    NEW_SECTOR_PRICE_PARQUET: 業種別の株価インデックス
+    SECTOR_REDEFINITIONS_CSV: 銘柄と業種の対応リスト
+    SECTOR_INDEX_PARQUET: 業種別の株価インデックス
     universe_filter: ユニバースを絞るフィルタ
     trading_sector_num: 上位・下位何業種を取引対象とするか
     candidate_sector_num: 取引できない業種がある場合、上位・下位何業種を取引対象候補とするか
@@ -246,7 +178,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             stock_dfs_dict = await read_and_update_data(universe_filter)
             '''学習・予測'''
             ensemble_rates = [6.7, 1.3]
-            necessary_dfs_dict = get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET)
+            necessary_dfs_dict = get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
             
             ml_dataset1 = update_1st_model(ml_dataset1, necessary_dfs_dict, 
                                            train_start_day, train_end_day, test_start_day, test_end_day)
@@ -257,22 +189,24 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
                                                          ensemble_rates = ensemble_rates,
                                                          ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)          
             Slack.send_message(message = f'予測が完了しました。')
+        trade_facade = TradingFacade()
         '''新規建'''
         if flag_manager.flags[Flags.TAKE_NEW_POSITIONS]:
-            await take_positions(ml_dataset= ml_dataset_ensembled,
-                                 NEW_SECTOR_LIST_CSV = NEW_SECTOR_LIST_CSV,
-                                 num_sectors_to_trade = trading_sector_num,
-                                 num_candidate_sectors = candidate_sector_num,
-                                 top_slope = top_slope)
+            await trade_facade.take_positions(
+                ml_dataset= ml_dataset_ensembled,
+                SECTOR_REDEFINITIONS_CSV = SECTOR_REDEFINITIONS_CSV,
+                num_sectors_to_trade = trading_sector_num,
+                num_candidate_sectors = candidate_sector_num,
+                top_slope = top_slope)
         '''追加建'''
         if flag_manager.flags[Flags.TAKE_ADDITIONAL_POSITIONS]:
-            await take_additionals()
+            await trade_facade.take_additionals()
         '''決済注文'''
         if flag_manager.flags[Flags.SETTLE_POSITIONS]:
-            await settle_positions()
+            await trade_facade.settle_positions()
         '''取引結果の取得'''
         if flag_manager.flags[Flags.FETCH_RESULT]:
-            await fetch_invest_result(NEW_SECTOR_LIST_CSV)
+            await trade_facade.fetch_invest_result(SECTOR_REDEFINITIONS_CSV)
         Slack.finish(message = 'すべての処理が完了しました。')
     except:
         '''エラーログの出力'''
@@ -282,8 +216,8 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
 #%% パラメータ類
 if __name__ == '__main__':
     '''パス類'''
-    NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
-    NEW_SECTOR_PRICE_PARQUET = f'{paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
+    SECTOR_REDEFINITIONS_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
+    SECTOR_INDEX_PARQUET = f'{paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
     ML_DATASET_PATH1 = f'{paths.ML_DATASETS_FOLDER}/New48sectors'
     ML_DATASET_PATH2 = f'{paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors'
     ML_DATASET_EMSEMBLED_PATH = f'{paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
@@ -306,7 +240,7 @@ if __name__ == '__main__':
 #%% 実行
 if __name__ == '__main__':
     asyncio.run(main(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_EMSEMBLED_PATH, 
-                     NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PARQUET,
+                     SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
                      universe_filter, trading_sector_num, candidate_sector_num,
                      train_start_day, train_end_day, test_start_day, test_end_day,
                      top_slope, learn, predict))

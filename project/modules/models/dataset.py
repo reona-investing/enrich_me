@@ -6,14 +6,14 @@ from jquants_api_utils import get_next_open_date
 from datetime import datetime
 
 class MLDataset:
-    def __init__(self, dataset_folder_path: str = None):
+    def __init__(self, dataset_folder_path: str, init_load: bool = True):
         self.dataset_folder_path = dataset_folder_path
-        self._initialize_instance_vars()
+        self._initialize_instance_vars(init_load)
 
-    def _initialize_instance_vars(self):
+    def _initialize_instance_vars(self, init_load: bool):
         """インスタンス変数を初期化"""
         for attr_name, ext in FileHandler.instance_vars.items():
-            file_path = f"{self.dataset_folder_path}/{attr_name}{ext}" if self.dataset_folder_path else None
+            file_path = f"{self.dataset_folder_path}/{attr_name}{ext}" if init_load else None
             setattr(self, attr_name, FileHandler.load(file_path))
 
     def copy_from_other_dataset(self, copy_from: 'MLDataset'):

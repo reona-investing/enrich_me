@@ -117,8 +117,10 @@ def _apply_cumulative_adjustment_factor(
     if not is_latest_file:
         stock_price = _inherit_cumulative_values(stock_price, temp_cumprod)
 
-    temp_cumprod = stock_price.groupby('Code')['CumulativeAdjustmentFactor'].last().to_dict()
+    temp_cumprod = stock_price.groupby('Code')['CumulativeAdjustmentFactor'].first().to_dict() # 遡っていくため、初日の値を参照
     stock_price = _apply_manual_adjustments(stock_price, manual_adjustment_dict_list)
+
+    stock_price[stock_price['Code']=='9101'].to_csv(f'test_{datetime.now().strftime("%H_%M_%S")}.csv')
 
     for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
         stock_price[col] /= stock_price['CumulativeAdjustmentFactor']
@@ -128,7 +130,7 @@ def _apply_cumulative_adjustment_factor(
 def _calculate_cumulative_adjustment_factor(stock_price: pd.DataFrame) -> pd.DataFrame:
     """累積調整係数を計算します。"""
     stock_price = stock_price.sort_values('Date', ascending=False)
-    stock_price['AdjustmentFactor'] = stock_price['AdjustmentFactor'].shift(-1).fillna(1.0)
+    stock_price['AdjustmentFactor'] = stock_price['AdjustmentFactor'].shift(1).fillna(1.0)
     stock_price['CumulativeAdjustmentFactor'] = 1 / stock_price['AdjustmentFactor'].cumprod()
     return stock_price.sort_values('Date')
 
