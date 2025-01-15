@@ -28,9 +28,9 @@ import asyncio
 def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
     -> Tuple[MLDataset, MLDataset, MLDataset]:
     if flag_manager.flags[Flags.LEARN]:
-        ml_dataset1 = MLDataset()
-        ml_dataset2 = MLDataset()
-        ml_dataset_ensembled = MLDataset()
+        ml_dataset1 = MLDataset(ML_DATASET_PATH1, init_load=False)
+        ml_dataset2 = MLDataset(ML_DATASET_PATH2, init_load=False)
+        ml_dataset_ensembled = MLDataset(ML_DATASET_ENSEMBLED_PATH, init_load=False)
     else:
         ml_dataset1 = MLDataset(ML_DATASET_PATH1)
         ml_dataset2 = MLDataset(ML_DATASET_PATH2)

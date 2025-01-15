@@ -51,12 +51,6 @@ def calc_marketcap(stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.Dat
     stock_price_cap = _calc_marketcap(stock_price_cap)
     stock_price_cap = _calc_correction_value(stock_price_cap)
     
-    df = stock_price_cap[stock_price_cap['Code']=='9101']
-    #df = df[['Date', 'Code', 'Close', 'MarketCapClose']]
-    df['CapRet'] = df['MarketCapClose'].pct_change(1)
-    df['CloseRet'] = df['Close'].pct_change(1)
-    df.to_csv('test.csv')
-    
     return stock_price_cap
 
 
@@ -193,7 +187,6 @@ def _correct_shares_rate_for_non_adjustment(df: pd.DataFrame) -> pd.DataFrame:
     for shift_column, i in zip(shift_columns, shift_days):
         df[shift_column] = df.groupby('Code')['AdjustmentFactor'].shift(i).fillna(1)
     df.loc[((df[shift_columns] == 1).all(axis=1) | (df['SharesRate'] == 1)), 'SharesRate'] = 1
-    df[df['Code']=='9101'].to_csv('test.csv')
     return df
 
 def _merge_shares_rate(stock_price: pd.DataFrame, df_to_calc_shares_rate: pd.DataFrame) -> pd.DataFrame:
