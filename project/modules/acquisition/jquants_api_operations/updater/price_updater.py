@@ -1,12 +1,12 @@
 import pandas as pd
 from datetime import datetime
-import paths
+from utils import Paths
 from acquisition.jquants_api_operations.utils import FileHandler
 from utils.jquants_api_utils import cli
 from utils import flag_manager, Flags
 
 def update_price(
-    basic_path: str = paths.RAW_STOCK_PRICE_PARQUET
+    basic_path: str = Paths.RAW_STOCK_PRICE_PARQUET
 ) -> None:
     """
     株価情報を更新し、指定されたパスにParquet形式で保存します。

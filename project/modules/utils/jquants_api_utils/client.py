@@ -1,12 +1,12 @@
 from dotenv import load_dotenv
-import paths
+from utils.paths import Paths
 import jquantsapi
 import os
 from utils import SingletonMeta
 
 class Cli(metaclass=SingletonMeta):
     def __init__(self):
-        load_dotenv(f'{paths.MODULES_FOLDER}/.env')
+        load_dotenv(f'{Paths.MODULES_FOLDER}/.env')
         self.cli = jquantsapi.Client(
             mail_address=os.getenv('JQUANTS_EMAIL'),
             password=os.getenv('JQUANTS_PASS')

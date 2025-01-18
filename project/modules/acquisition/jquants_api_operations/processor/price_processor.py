@@ -3,14 +3,14 @@ import numpy as np
 from datetime import datetime
 from typing import Tuple, List, Dict
 from utils import flag_manager, Flags
-import paths
+from utils import Paths
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.processor.code_replacement_info import manual_adjustment_dict_list,codes_to_replace_dict
 
 
-def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
-                  processing_basic_path: str = paths.STOCK_PRICE_PARQUET):
+def process_price(raw_basic_path: str = Paths.RAW_STOCK_PRICE_PARQUET,
+                  processing_basic_path: str = Paths.STOCK_PRICE_PARQUET):
     """
     価格情報を加工して、機械学習用に整形します。
 

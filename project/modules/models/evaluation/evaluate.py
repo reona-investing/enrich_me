@@ -1,5 +1,5 @@
 import pandas as pd
-import paths
+from utils import Paths
 from typing import Literal
 from models import MLDataset
 from datetime import datetime
@@ -45,10 +45,10 @@ class LSControlHandler:
     
     def _get_topix_path(self) -> str:
         '''TOPIXデータのファイルパスを取得する。'''
-        df = pd.read_csv(paths.FEATURES_TO_SCRAPE_CSV)
+        df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
         topix_folder = df.loc[df['Name']=='TOPIX', 'Group'].values[0]
         topix_pkl = df.loc[df['Name']=='TOPIX', 'Path'].values[0]
-        return paths.SCRAPED_DATA_FOLDER + '/' + topix_folder + '/' + topix_pkl
+        return Paths.SCRAPED_DATA_FOLDER + '/' + topix_folder + '/' + topix_pkl
 
     def _calculate_return(self,  control_df: pd.DataFrame) -> pd.DataFrame:
         '''リターンを計算する。'''
@@ -383,7 +383,7 @@ class Visualizer:
 
 #%% デバッグ
 if __name__ == '__main__':
-    ML_DATASET_PATH = f'{paths.ML_DATASETS_FOLDER}/New48sectors'
+    ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/New48sectors'
     ml_dataset = MLDataset(ML_DATASET_PATH)
     ls_control_handler = LSControlHandler()
     ls_data_handler = LSDataHandler(ml_dataset = ml_dataset, start_day = datetime(2022, 1, 1))

@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
-import paths
+from utils import Paths
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.processor.code_replacement_info import codes_to_merge_dict, manual_adjustment_dict_list, codes_to_replace_dict
 
 
-def process_fin(raw_path: str = paths.RAW_STOCK_FIN_PARQUET,
-                processing_path: str = paths.STOCK_FIN_PARQUET) -> None: # 財務情報の加工
+def process_fin(raw_path: str = Paths.RAW_STOCK_FIN_PARQUET,
+                processing_path: str = Paths.STOCK_FIN_PARQUET) -> None: # 財務情報の加工
     '''raw_stock_finを、機械学習に使える形に加工します。
     Args:
         raw_path (str): 生の財務データが保存されているパス
@@ -21,7 +21,7 @@ def process_fin(raw_path: str = paths.RAW_STOCK_FIN_PARQUET,
     stock_fin = _calculate_additional_fins(stock_fin) # 追加の要素を算出
     stock_fin = _process_merger(stock_fin) # 合併処理を実施
     stock_fin = _finalize_df(stock_fin)
-    FileHandler.write_parquet(stock_fin, paths.STOCK_FIN_PARQUET)
+    FileHandler.write_parquet(stock_fin, Paths.STOCK_FIN_PARQUET)
 
 
 def _load_fin_data(raw_path: str) -> pd.DataFrame:
@@ -31,7 +31,7 @@ def _load_fin_data(raw_path: str) -> pd.DataFrame:
 
 def _format_dtypes(raw_stock_fin: pd.DataFrame) -> pd.DataFrame:
     '''各カラムに適切なデータ型を設定します。'''
-    dtypes_spec_df = pd.read_csv(paths.DTYPES_STOCK_FIN_CSV)
+    dtypes_spec_df = pd.read_csv(Paths.DTYPES_STOCK_FIN_CSV)
     dtypes_spec_dict = {row['列名']:eval(row['型']) for _, row in dtypes_spec_df.iterrows()} #eval関数で、文字列'str'をデータ型オブジェクトstrに変換
     columns_list = dtypes_spec_dict.keys()
     stock_fin = raw_stock_fin[[x for x in columns_list]].replace('', np.nan).infer_objects().copy()

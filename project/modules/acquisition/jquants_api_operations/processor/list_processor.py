@@ -1,10 +1,10 @@
 import pandas as pd
-import paths
+from utils import Paths
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
 
-def process_list(raw_path: str = paths.RAW_STOCK_LIST_PARQUET, 
-                 processing_path: str = paths.STOCK_LIST_PARQUET) -> None:
+def process_list(raw_path: str = Paths.RAW_STOCK_LIST_PARQUET, 
+                 processing_path: str = Paths.STOCK_LIST_PARQUET) -> None:
     """
     銘柄リストデータを加工して、機械学習用に整形します。
 

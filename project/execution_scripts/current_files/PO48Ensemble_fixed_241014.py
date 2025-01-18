@@ -12,13 +12,10 @@ from datetime import datetime
 import pandas as pd
 from typing import Tuple
 
-import paths #パス一覧
 from acquisition.jquants_api_operations import run_jquants_api_operations
-import sector_index_calculator
-from utils import flag_manager, Flags
+from utils import flag_manager, Flags, Paths
 from acquisition import features_scraper as scraper
-import features_calculator
-import target_calculator
+from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
 from models.machine_learning import lasso, lgbm
 import models.ensemble as ensemble
@@ -58,10 +55,10 @@ def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end
                       SECTOR_REDEFINITIONS_CSV: str, SECTOR_INDEX_PARQUET: str) -> dict:
     '''セクターインデックスの計算'''
     new_sector_price_df, order_price_df = \
-        sector_index_calculator.calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+        SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     '''目的変数の算出'''
     raw_target_df, target_df = \
-        target_calculator.daytime_return_PCAresiduals(new_sector_price_df,
+        TargetCalculator.daytime_return_PCAresiduals(new_sector_price_df,
                                                     reduce_components=1, train_start_day=train_start_day, train_end_day=train_end_day)
 
     return {'new_sector_price_df': new_sector_price_df, 
@@ -74,7 +71,7 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
                         -> MLDataset:
     if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''LASSO用特徴量の算出'''
-        features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
+        features_df = FeaturesCalculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
                                                              adopts_features_indices = True, adopts_features_price = False,
                                                              groups_setting = None, names_setting = None, currencies_type = 'relative',
                                                              adopt_1d_return = True, mom_duration = None, vola_duration = None,
@@ -98,7 +95,7 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
                         -> MLDataset:
     if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''lightGBM用特徴量の算出'''
-        features_df = features_calculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
+        features_df = FeaturesCalculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
                                                               pd.read_csv(SECTOR_REDEFINITIONS_CSV), stock_dfs_dict,
                                                               adopts_features_indices = True, adopts_features_price = True,
                                                               groups_setting = None, names_setting = None, currencies_type = 'relative',
@@ -211,17 +208,17 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         Slack.finish(message = 'すべての処理が完了しました。')
     except:
         '''エラーログの出力'''
-        error_handler.handle_exception(paths.ERROR_LOG_CSV)
-        Slack.send_error_log(f'エラーが発生しました。\n詳細は{paths.ERROR_LOG_CSV}を確認してください。')
+        error_handler.handle_exception(Paths.ERROR_LOG_CSV)
+        Slack.send_error_log(f'エラーが発生しました。\n詳細は{Paths.ERROR_LOG_CSV}を確認してください。')
 
 #%% パラメータ類
 if __name__ == '__main__':
     '''パス類'''
-    SECTOR_REDEFINITIONS_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
-    SECTOR_INDEX_PARQUET = f'{paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
-    ML_DATASET_PATH1 = f'{paths.ML_DATASETS_FOLDER}/New48sectors'
-    ML_DATASET_PATH2 = f'{paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors'
-    ML_DATASET_EMSEMBLED_PATH = f'{paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
+    SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
+    SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
+    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/New48sectors'
+    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors'
+    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''

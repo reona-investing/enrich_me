@@ -1,10 +1,10 @@
 import pandas as pd
-import paths
+from utils import Paths
 from utils.jquants_api_utils import cli
 from acquisition.jquants_api_operations.utils import FileHandler
 
 def update_list(
-    path: str = paths.RAW_STOCK_LIST_PARQUET
+    path: str = Paths.RAW_STOCK_LIST_PARQUET
 ) -> None:
     """
     銘柄一覧の更新を行い、指定されたパスにParquet形式で保存する。

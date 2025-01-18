@@ -10,9 +10,9 @@ if __name__ == '__main__':
 # モジュールのインポート
 from datetime import datetime
 
-import paths #パス一覧
+from utils import Paths #パス一覧
 from acquisition.jquants_api_operations import run_jquants_api_operations
-import sector_index_calculator
+from calculation import SectorIndexCalculator
 from models import MLDataset
 import asyncio
 
@@ -42,7 +42,7 @@ async def main(ML_DATASET_PATH:str, NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PK
     list_df, fin_df, price_df = run_jquants_api_operations(filter = universe_filter)
     stock_dfs_dict = {'stock_list': list_df, 'stock_fin': fin_df, 'stock_price': price_df}
 
-    new_sector_price_df, order_price_df = sector_index_calculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+    new_sector_price_df, order_price_df = SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
 
     '''リターン予測→ml_datasetの作成'''
     import torch
@@ -160,9 +160,9 @@ async def main(ML_DATASET_PATH:str, NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PK
 #%% パラメータ類
 if __name__ == '__main__':
     '''パス類'''
-    NEW_SECTOR_LIST_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_list.csv' #別でファイルを作っておく
-    NEW_SECTOR_PRICE_PKLGZ = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz' #出力のみなのでファイルがなくてもOK
-    ML_DATASET_PATH = f'{paths.ML_DATASETS_FOLDER}/New48sectors.pkl.gz'
+    NEW_SECTOR_LIST_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_list.csv' #別でファイルを作っておく
+    NEW_SECTOR_PRICE_PKLGZ = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price.pkl.gz' #出力のみなのでファイルがなくてもOK
+    ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/New48sectors.pkl.gz'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''

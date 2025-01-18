@@ -1,4 +1,4 @@
-import paths
+from utils import Paths
 import asyncio
 import nodriver as uc
 import os
@@ -13,8 +13,8 @@ import time
 from io import StringIO
 
 def _get_features_to_scrape_df() -> pd.DataFrame:
-    features_to_scrape_df = pd.read_csv(paths.FEATURES_TO_SCRAPE_CSV)
-    features_to_scrape_df['Path'] = paths.SCRAPED_DATA_FOLDER + '/' + \
+    features_to_scrape_df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
+    features_to_scrape_df['Path'] = Paths.SCRAPED_DATA_FOLDER + '/' + \
                                     features_to_scrape_df['Group'] + '/' + \
                                     features_to_scrape_df['Path']
     return features_to_scrape_df

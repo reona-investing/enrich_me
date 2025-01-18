@@ -4,7 +4,7 @@ from acquisition.jquants_api_operations.reader import read_list, read_fin, read_
 from typing import List
 import pandas as pd
 
-def run_jquants_api_operations(update: bool = False, process: bool = False, read: bool = False,
+def run_jquants_api_operations(update: bool = False, process: bool = False, read: bool = True,
                                filter: str = None, filtered_code_list: str = None) -> List[pd.DataFrame]:
     """
     一括処理を行います。
@@ -50,10 +50,10 @@ if __name__ == "__main__":
     price_df[price_df['Code']=='9101'].to_csv('test_raw.csv')
     
     '''
-    import paths
+    from utils import Paths
     data = []
     for i in range(2013, 2026):
-        path = paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(i))
+        path = Paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(i))
         df = pd.read_parquet(path)
         df['Date'] = pd.to_datetime(df['Date'])
         df['Code'] = df['Code'].astype(str)

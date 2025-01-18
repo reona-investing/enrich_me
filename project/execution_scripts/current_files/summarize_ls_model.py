@@ -12,7 +12,7 @@ import pandas as pd
 import quantstats as qs
 from IPython.display import HTML, display
 
-import paths
+from utils import Paths
 
 from models import MLDataset
 import evaluate_model
@@ -21,10 +21,10 @@ import evaluate_model
 def calculate_return_topix(start_date: datetime, end_date: datetime) -> pd.DataFrame:
     '''コントロールとしてTOPIXのリターンを算出'''
     #データ読み込み
-    df = pd.read_csv(paths.FEATURES_TO_SCRAPE_CSV)
+    df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
     topix_folder = df.loc[df['Name']=='TOPIX', 'Group'].values[0]
     topix_pkl = df.loc[df['Name']=='TOPIX', 'Path'].values[0]
-    topix_path = paths.SCRAPED_DATA_FOLDER + '/' + topix_folder + '/' + topix_pkl
+    topix_path = Paths.SCRAPED_DATA_FOLDER + '/' + topix_folder + '/' + topix_pkl
     topix_df = pd.read_parquet(topix_path)
     #リターン算出
     return_topix = pd.DataFrame()
@@ -60,7 +60,7 @@ def summarize_ls_model(strategy1_name: str, strategy2_name: str, apply_benchmark
 
     #storategy1とstorategy2の比較
     title = f'{strategy1_name} vs {strategy2_name}'
-    html_strategy1_vs_strategy2 = f'{paths.SUMMARY_REPORTS_FOLDER}/Summary_{strategy1_name}_vs_{strategy2_name}.html'
+    html_strategy1_vs_strategy2 = f'{Paths.SUMMARY_REPORTS_FOLDER}/Summary_{strategy1_name}_vs_{strategy2_name}.html'
     qs.reports.html(model1_obj.dataframes_dict['日次成績']['LS'], 
                     benchmark=model2_obj.dataframes_dict['日次成績']['LS'], 
                     output=html_strategy1_vs_strategy2,
@@ -72,7 +72,7 @@ def summarize_ls_model(strategy1_name: str, strategy2_name: str, apply_benchmark
 
         #storategy1とベンチマーク (TOPIX)の比較
         title = f'{strategy1_name} vs {benchmark_name}'
-        html_strategy1_vs_benchmark = f'{paths.SUMMARY_REPORTS_FOLDER}/Summary_{strategy1_name}_vs_{benchmark_name}.html'
+        html_strategy1_vs_benchmark = f'{Paths.SUMMARY_REPORTS_FOLDER}/Summary_{strategy1_name}_vs_{benchmark_name}.html'
         qs.reports.html(model1_obj.dataframes_dict['日次成績']['LS'], 
                         benchmark=return_topix['TOPIX_hold'], 
                         output=html_strategy1_vs_benchmark,
@@ -90,8 +90,8 @@ if __name__ == '__main__':
     #ベンチマークの採否
     apply_benchmark = True
     #モデルのデータセットのパス
-    model1_path = f'{paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
-    model2_path = f'{paths.ML_DATASETS_FOLDER}/New48sectors'
+    model1_path = f'{Paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
+    model2_path = f'{Paths.ML_DATASETS_FOLDER}/New48sectors'
     #テストの開始日と終了日
     start_date = datetime(2022,1,1)
     end_date = datetime.today()

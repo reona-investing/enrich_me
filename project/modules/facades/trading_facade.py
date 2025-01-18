@@ -1,8 +1,8 @@
 import os
-import paths
+from utils import Paths
 from utils import SlackNotifier
-from sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
-from sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
+from trading.sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
+from trading.sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
 from models import MLDataset
 
 class TradingFacade:
@@ -14,7 +14,7 @@ class TradingFacade:
         self.margin_manager = MarginManager(self.login_handler)
         self.order_manager = OrderManager(self.login_handler)
         self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
-        self.paths = paths
+        self.Paths = Paths
 
     async def take_positions(self, 
                              ml_dataset: MLDataset, 

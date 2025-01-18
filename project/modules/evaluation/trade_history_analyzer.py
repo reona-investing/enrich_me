@@ -1,5 +1,5 @@
 #%%モジュールのインポート
-import paths
+from utils import Paths
 
 import os
 from datetime import datetime
@@ -17,13 +17,13 @@ class TradeHistoryAnalyzer:
         #データフレームを格納する辞書を初期化
         self.dataframes_dict = {}
         # 取引履歴の読み込み
-        trade_history = pd.read_csv(paths.TRADE_HISTORY_CSV)
+        trade_history = pd.read_csv(Paths.TRADE_HISTORY_CSV)
         trade_history['日付'] = pd.to_datetime(trade_history['日付'])
         trade_history = trade_history[(trade_history['日付'] >= start_date) & (trade_history['日付'] <= end_date)]
         self.trade_history  = trade_history
 
         # 総入金額の読み込み
-        deposit_history = pd.read_csv(paths.DEPOSIT_HISTORY_CSV)
+        deposit_history = pd.read_csv(Paths.DEPOSIT_HISTORY_CSV)
         deposit_history['日付'] = pd.to_datetime(deposit_history['日付'])
         deposit_history = deposit_history[(deposit_history['日付'] >= start_date) & (deposit_history['日付'] <= end_date)]
         deposit_history = deposit_history.set_index('日付', drop=True)
@@ -31,7 +31,7 @@ class TradeHistoryAnalyzer:
         self.deposit_history = deposit_history
         
         # 総入金額の読み込み
-        buying_power_history = pd.read_csv(paths.BUYING_POWER_HISTORY_CSV)
+        buying_power_history = pd.read_csv(Paths.BUYING_POWER_HISTORY_CSV)
         buying_power_history['日付'] = pd.to_datetime(buying_power_history['日付'])
         buying_power_history = buying_power_history[(buying_power_history['日付'] >= start_date) & (buying_power_history['日付'] <= end_date)]
         buying_power_history = buying_power_history.set_index('日付', drop=True)

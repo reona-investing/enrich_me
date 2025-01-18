@@ -1,11 +1,11 @@
 import os
 import pandas as pd
 from datetime import datetime
-import paths
+from utils import Paths
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.reader.reader_utils import filter_stocks
 
-def read_list(path: str = paths.STOCK_LIST_PARQUET, 
+def read_list(path: str = Paths.STOCK_LIST_PARQUET, 
               filter: str = None, 
               filtered_code_list: list[str] = None) -> pd.DataFrame:
     """
@@ -20,8 +20,8 @@ def read_list(path: str = paths.STOCK_LIST_PARQUET,
     df = FileHandler.read_parquet(path)
     return filter_stocks(df, df, filter, filtered_code_list)
 
-def read_fin(path: str = paths.STOCK_FIN_PARQUET, 
-             list_path: str = paths.STOCK_LIST_PARQUET, 
+def read_fin(path: str = Paths.STOCK_FIN_PARQUET, 
+             list_path: str = Paths.STOCK_LIST_PARQUET, 
              filter: str = None, 
              filtered_code_list: list[str] = None,
              end_date: datetime = datetime.today()) -> pd.DataFrame:
@@ -41,8 +41,8 @@ def read_fin(path: str = paths.STOCK_FIN_PARQUET,
     df = filter_stocks(df, list_df, filter, filtered_code_list)
     return df[df['Date']<=end_date]
 
-def read_price(basic_path: str = paths.STOCK_PRICE_PARQUET, 
-               list_path: str = paths.STOCK_LIST_PARQUET, 
+def read_price(basic_path: str = Paths.STOCK_PRICE_PARQUET, 
+               list_path: str = Paths.STOCK_LIST_PARQUET, 
                filter: str = None, 
                filtered_code_list: list[str] = None,
                end_date: datetime = datetime.today()) ->pd.DataFrame: # 価格情報の読み込み
@@ -72,7 +72,7 @@ def _generate_price_df(basic_path: str, list_path: str, filter: str, filtered_co
     dfs = []
     for my_year in range(2013, end_date.year + 1):
         if os.path.exists(basic_path.replace('0000', str(my_year))):
-            df = pd.read_parquet(paths.STOCK_PRICE_PARQUET.replace('0000', str(my_year)))
+            df = pd.read_parquet(Paths.STOCK_PRICE_PARQUET.replace('0000', str(my_year)))
             df = df[['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume',
                     'AdjustmentFactor', 'CumulativeAdjustmentFactor', 'TurnoverValue']]
             df = filter_stocks(df, list_df, filtered_code_list=filtered_code_list, filter=filter)

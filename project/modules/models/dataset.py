@@ -234,7 +234,7 @@ class FileHandler:
                 pickle.dump(data, f)
 
 if __name__ == '__main__':
-    import paths
-    dataset_path = f'{paths.ML_DATASETS_FOLDER}/New48sectors_mock'
+    from utils import Paths
+    dataset_path = f'{Paths.ML_DATASETS_FOLDER}/New48sectors_mock'
     ml_dataset = MLDataset(dataset_path)
     ml_dataset.save_instance(dataset_path)
