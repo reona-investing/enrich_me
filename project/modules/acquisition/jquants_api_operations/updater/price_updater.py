@@ -1,9 +1,9 @@
 import pandas as pd
 from datetime import datetime
 import paths
-from jquants_api_operations.utils import FileHandler
-from jquants_api_utils import cli
-from FlagManager import flag_manager, Flags
+from acquisition.jquants_api_operations.utils import FileHandler
+from utils.jquants_api_utils import cli
+from utils import flag_manager, Flags
 
 def update_price(
     basic_path: str = paths.RAW_STOCK_PRICE_PARQUET

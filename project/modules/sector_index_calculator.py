@@ -314,7 +314,7 @@ def _calc_index_value(stock_price: pd.DataFrame, SECTOR_REDEFINITIONS_CSV:str) -
 
 #%% デバッグ
 if __name__ == '__main__':
-    from jquants_api_operations import run_jquants_api_operations
+    from acquisition.jquants_api_operations import run_jquants_api_operations
     SECTOR_REDEFINITIONS_CSV = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
     SECTOR_INDEX_PARQUET = f'{paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price_test.parquet'
     list_df, fin_df, price_df = run_jquants_api_operations(

@@ -1,8 +1,8 @@
 import pandas as pd
 from datetime import datetime
 import paths
-from jquants_api_utils import cli
-from jquants_api_operations.utils import FileHandler
+from utils.jquants_api_utils import cli
+from acquisition.jquants_api_operations.utils import FileHandler
 
 def update_fin(
     path: str = paths.RAW_STOCK_FIN_PARQUET

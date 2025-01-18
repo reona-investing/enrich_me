@@ -11,7 +11,7 @@ if __name__ == '__main__':
 from datetime import datetime
 
 import paths #パス一覧
-from jquants_api_operations import run_jquants_api_operations
+from acquisition.jquants_api_operations import run_jquants_api_operations
 import sector_index_calculator
 from models import MLDataset
 import asyncio

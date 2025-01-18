@@ -12,6 +12,45 @@ import scipy
 from IPython.display import display
 
 #%% 関数群
+def lasso(ml_dataset: MLDataset, dataset_path:str, learn: bool = True, max_features: int = 5, min_features: int = 3, **kwargs) -> MLDataset:
+    '''
+    ml_dataset: 機械学習用のデータセット
+    dataset_path: データセットのファイルパス
+    learn: Trueなら学習を実施，Falseなら既存モデルを用いて予測のみ
+    **kwargs: 学習時，ハイパーパラメータをデフォルト値から変更する場合のみ使用
+    '''
+
+    if learn == False and (ml_dataset.ml_models is None or ml_dataset.ml_scalers is None):
+        # モデルがない場合，強制的に学習を実施
+        print('learn=Falseが設定されましたが，モデルがありません．学習を実施します．')
+        learn = True
+
+    if learn:
+        # learn=Trueのときのみ学習
+        if ml_dataset.target_train_df.index.nlevels == 1:
+            #シングルセクターの場合、単回学習とする。
+            model, scaler = _lasso_learn_single_sector(ml_dataset.target_train_df, ml_dataset.features_train_df, max_features, min_features, **kwargs)
+            ml_dataset.archive_ml_objects(ml_models=[model], ml_scalers=[scaler])
+        else:
+            #マルチセクターの場合、セクターごとに学習する。
+            ml_dataset.ml_models, ml_dataset.ml_scalers = _lasso_learn_multi_sectors(ml_dataset.target_train_df, ml_dataset.features_train_df, max_features, min_features, **kwargs)
+
+    if ml_dataset.target_train_df.index.nlevels == 1:
+        # シングルセクターの場合、単回で予測する。
+        ml_dataset.pred_result_df = _lasso_pred_single_sector(ml_dataset.target_test_df, ml_dataset.features_test_df, ml_dataset.ml_models[0], ml_dataset.ml_scalers[0])
+    else:
+        #マルチセクターの場合、セクターごとに予測する。
+        ml_dataset.pred_result_df = _lasso_pred_multi_sectors(ml_dataset.target_test_df, ml_dataset.features_test_df, ml_dataset.ml_models, ml_dataset.ml_scalers)
+
+    #データセットの保存と復元
+    if dataset_path is None:
+        print('データセットの出力パスが指定されていないため、出力しません。')
+    else:
+        ml_dataset.save_instance(dataset_path)
+        ml_dataset = MLDataset(dataset_path)
+
+    return ml_dataset
+
 def _lasso_learn_single_sector(y: pd.DataFrame, X: pd.DataFrame, max_features: int, min_features: int, **kwargs) -> Tuple[Lasso, StandardScaler]:
     '''
     LASSOで学習して，モデルとスケーラーを返す関数
@@ -137,78 +176,6 @@ def _get_feature_importances_df(model:object, feature_names:pd.core.indexes.base
 
     return feature_importances_df
 
-def _numerai_corr_lgbm(preds, data):
-    import numpy as np
-    import pandas as pd
-    from scipy.stats import norm
-
-    # データセットからターゲットを取得
-    target = data.get_label()
-
-    # predsとtargetをDataFrameに変換
-    df = pd.DataFrame({'Pred': preds, 'Target': target, 'Date': data.get_field('date')})
-
-    # Target_rankとPred_rankを計算
-    df['Target_rank'] = df.groupby('Date')['Target'].rank(ascending=False)
-    df['Pred_rank'] = df.groupby('Date')['Pred'].rank(ascending=False)
-
-    # 日次のnumerai_corrを計算
-    def _get_daily_numerai_corr(target_rank, pred_rank):
-        pred_rank = np.array(pred_rank)
-        scaled_pred_rank = (pred_rank - 0.5) / len(pred_rank)
-        gauss_pred_rank = norm.ppf(scaled_pred_rank)
-        pred_pow = np.sign(gauss_pred_rank) * np.abs(gauss_pred_rank) ** 1.5
-
-        target = np.array(target_rank)
-        centered_target = target - target.mean()
-        target_pow = np.sign(centered_target) * np.abs(centered_target) ** 1.5
-
-        return np.corrcoef(pred_pow, target_pow)[0, 1]
-
-    numerai_corr = df.groupby('Date').apply(lambda x: _get_daily_numerai_corr(x['Target_rank'], x['Pred_rank'])).mean()
-
-    # LightGBMのカスタムメトリックの形式で返す
-    return 'numerai_corr', numerai_corr, True
-
-def lasso(ml_dataset: MLDataset, dataset_path:str, learn: bool = True, max_features: int = 5, min_features: int = 3, **kwargs) -> MLDataset:
-    '''
-    ml_dataset: 機械学習用のデータセット
-    dataset_path: データセットのファイルパス
-    learn: Trueなら学習を実施，Falseなら既存モデルを用いて予測のみ
-    **kwargs: 学習時，ハイパーパラメータをデフォルト値から変更する場合のみ使用
-    '''
-
-    if learn == False and (ml_dataset.ml_models is None or ml_dataset.ml_scalers is None):
-        # モデルがない場合，強制的に学習を実施
-        print('learn=Falseが設定されましたが，モデルがありません．学習を実施します．')
-        learn = True
-
-    if learn:
-        # learn=Trueのときのみ学習
-        if ml_dataset.target_train_df.index.nlevels == 1:
-            #シングルセクターの場合、単回学習とする。
-            model, scaler = _lasso_learn_single_sector(ml_dataset.target_train_df, ml_dataset.features_train_df, max_features, min_features, **kwargs)
-            ml_dataset.archive_ml_objects(ml_models=[model], ml_scalers=[scaler])
-        else:
-            #マルチセクターの場合、セクターごとに学習する。
-            ml_dataset.ml_models, ml_dataset.ml_scalers = _lasso_learn_multi_sectors(ml_dataset.target_train_df, ml_dataset.features_train_df, max_features, min_features, **kwargs)
-
-    if ml_dataset.target_train_df.index.nlevels == 1:
-        # シングルセクターの場合、単回で予測する。
-        ml_dataset.pred_result_df = _lasso_pred_single_sector(ml_dataset.target_test_df, ml_dataset.features_test_df, ml_dataset.ml_models[0], ml_dataset.ml_scalers[0])
-    else:
-        #マルチセクターの場合、セクターごとに予測する。
-        ml_dataset.pred_result_df = _lasso_pred_multi_sectors(ml_dataset.target_test_df, ml_dataset.features_test_df, ml_dataset.ml_models, ml_dataset.ml_scalers)
-
-    #データセットの保存と復元
-    if dataset_path is None:
-        print('データセットの出力パスが指定されていないため、出力しません。')
-    else:
-        ml_dataset.save_instance(dataset_path)
-        ml_dataset = MLDataset(dataset_path)
-
-    return ml_dataset
-
 
 def lgbm(ml_dataset: MLDataset, dataset_path: str, learn: bool = True, categorical_features: list = None, **kwargs):
     # データの準備
@@ -253,20 +220,36 @@ def lgbm(ml_dataset: MLDataset, dataset_path: str, learn: bool = True, categoric
     
     return ml_dataset
 
-def ensemble_by_rank(ml_datasets: list, ensemble_rates: list) -> pd.Series:
-    '''
-    2つ以上のモデルの結果をアンサンブルする（予測順位ベース）
-    ml_datasets: アンサンブルしたいモデルのMLDatasetをリストに格納
-    ensemble_rates: 各モデルの予測結果を合成する際の重みづけ
-    '''
-    assert len(ml_datasets) == len(ensemble_rates), "ml_datasetsとensemble_ratesには同じ個数のデータをセットしてください。"
-    for i in range(len(ml_datasets)):
-        if i == 0:
-            ensembled_rank = ml_datasets[i].pred_result_df.groupby('Date')['Pred'].rank(ascending=False) * ensemble_rates[i]
-        else:
-            ensembled_rank += ml_datasets[i].pred_result_df.groupby('Date')['Pred'].rank(ascending=False) * ensemble_rates[i]
-    
-    ensembled_rank = pd.DataFrame(ensembled_rank, index=ml_datasets[len(ml_datasets) - 1].pred_result_df.index, columns=['Pred'])
+def _numerai_corr_lgbm(preds, data):
+    import numpy as np
+    import pandas as pd
+    from scipy.stats import norm
 
-    return ensembled_rank.groupby('Date')[['Pred']].rank(ascending=False)
+    # データセットからターゲットを取得
+    target = data.get_label()
+
+    # predsとtargetをDataFrameに変換
+    df = pd.DataFrame({'Pred': preds, 'Target': target, 'Date': data.get_field('date')})
+
+    # Target_rankとPred_rankを計算
+    df['Target_rank'] = df.groupby('Date')['Target'].rank(ascending=False)
+    df['Pred_rank'] = df.groupby('Date')['Pred'].rank(ascending=False)
+
+    # 日次のnumerai_corrを計算
+    def _get_daily_numerai_corr(target_rank, pred_rank):
+        pred_rank = np.array(pred_rank)
+        scaled_pred_rank = (pred_rank - 0.5) / len(pred_rank)
+        gauss_pred_rank = norm.ppf(scaled_pred_rank)
+        pred_pow = np.sign(gauss_pred_rank) * np.abs(gauss_pred_rank) ** 1.5
+
+        target = np.array(target_rank)
+        centered_target = target - target.mean()
+        target_pow = np.sign(centered_target) * np.abs(centered_target) ** 1.5
+
+        return np.corrcoef(pred_pow, target_pow)[0, 1]
+
+    numerai_corr = df.groupby('Date').apply(lambda x: _get_daily_numerai_corr(x['Target_rank'], x['Pred_rank'])).mean()
+
+    # LightGBMのカスタムメトリックの形式で返す
+    return 'numerai_corr', numerai_corr, True
     

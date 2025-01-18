@@ -1,6 +1,6 @@
-from jquants_api_operations.updater import update_list, update_fin, update_price
-from jquants_api_operations.processor import process_list, process_price, process_fin
-from jquants_api_operations.reader import read_list, read_fin, read_price
+from acquisition.jquants_api_operations.updater import update_list, update_fin, update_price
+from acquisition.jquants_api_operations.processor import process_list, process_price, process_fin
+from acquisition.jquants_api_operations.reader import read_list, read_fin, read_price
 from typing import List
 import pandas as pd
 
@@ -43,7 +43,7 @@ def run_jquants_api_operations(update: bool = False, process: bool = False, read
 if __name__ == "__main__":
     # Example usage
     filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
-    from FlagManager import FlagManager, Flags
+    from utils.flag_manager import FlagManager, Flags
     flag_manager = FlagManager()
     flag_manager.set_flag(flag=Flags.PROCESS_STOCK_PRICE, value=True)
     list_df, fin_df, price_df = run_jquants_api_operations(update=True, process=True, read=True, filter=filter)

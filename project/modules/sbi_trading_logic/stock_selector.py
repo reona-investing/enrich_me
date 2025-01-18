@@ -2,7 +2,7 @@ import shutil
 import pandas as pd
 from typing import Tuple
 from IPython.display import display
-from jquants_api_utils import cli
+from utils.jquants_api_utils import cli
 from models import MLDataset
 from sbi import MarginManager, TradePossibilityManager
 import paths

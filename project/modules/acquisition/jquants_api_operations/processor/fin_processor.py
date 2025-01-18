@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import paths
-from jquants_api_operations.processor.formatter import Formatter
-from jquants_api_operations.utils import FileHandler
-from jquants_api_operations.processor.code_replacement_info import codes_to_merge_dict, manual_adjustment_dict_list,codes_to_replace_dict
+from acquisition.jquants_api_operations.processor.formatter import Formatter
+from acquisition.jquants_api_operations.utils import FileHandler
+from acquisition.jquants_api_operations.processor.code_replacement_info import codes_to_merge_dict, manual_adjustment_dict_list, codes_to_replace_dict
 
 
 def process_fin(raw_path: str = paths.RAW_STOCK_FIN_PARQUET,

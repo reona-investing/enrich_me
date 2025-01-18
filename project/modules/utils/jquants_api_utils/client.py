@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import paths
 import jquantsapi
 import os
-from common_utils import SingletonMeta
+from utils import SingletonMeta
 
 class Cli(metaclass=SingletonMeta):
     def __init__(self):

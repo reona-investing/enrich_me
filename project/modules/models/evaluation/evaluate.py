@@ -5,7 +5,7 @@ from models import MLDataset
 from datetime import datetime
 import numpy as np
 from scipy.stats import spearmanr, norm
-import calculate_stats
+from models.evaluation import calculate_stats
 import ipywidgets as widgets
 from IPython.display import display
 

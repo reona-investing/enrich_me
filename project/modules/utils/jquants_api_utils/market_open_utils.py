@@ -1,7 +1,7 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import pandas as pd
-from jquants_api_utils.client import cli
+from utils.jquants_api_utils import cli
 
 def get_next_open_date(latest_date: datetime) -> datetime:
     """翌開場日の取得."""

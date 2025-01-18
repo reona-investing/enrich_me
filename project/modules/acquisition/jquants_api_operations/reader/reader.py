@@ -2,8 +2,8 @@ import os
 import pandas as pd
 from datetime import datetime
 import paths
-from jquants_api_operations.utils import FileHandler
-from jquants_api_operations.reader.utils import filter_stocks
+from acquisition.jquants_api_operations.utils import FileHandler
+from acquisition.jquants_api_operations.reader.reader_utils import filter_stocks
 
 def read_list(path: str = paths.STOCK_LIST_PARQUET, 
               filter: str = None, 

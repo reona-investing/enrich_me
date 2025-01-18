@@ -1,7 +1,7 @@
 #プログラム開始のライン通知
-import SlackNotifier
+from utils import SlackNotifier
 import os
-Slack = SlackNotifier.SlackNotifier(program_name=os.path.basename(__file__))
+Slack = SlackNotifier(program_name=os.path.basename(__file__))
 Slack.start(
     message = 'プログラムを開始します。',
     should_send_program_name = True
@@ -13,16 +13,17 @@ import pandas as pd
 from typing import Tuple
 
 import paths #パス一覧
-from jquants_api_operations import run_jquants_api_operations
+from acquisition.jquants_api_operations import run_jquants_api_operations
 import sector_index_calculator
-from FlagManager import flag_manager, Flags
-import features_scraper as scraper
+from utils import flag_manager, Flags
+from acquisition import features_scraper as scraper
 import features_calculator
 import target_calculator
-from models import MLDataset
-import machine_learning
+from models.dataset import MLDataset
+from models.machine_learning import lasso, lgbm
+import models.ensemble as ensemble
 from facades import TradingFacade
-import error_handler
+from utils import error_handler
 import asyncio
 
 def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
@@ -87,8 +88,8 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
                                 order_price_df=necessary_dfs_dict['order_price_df'])
     if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''LASSO（学習は必要時、予測は毎回）'''
-        ml_dataset = machine_learning.lasso(ml_dataset, dataset_path = ML_DATASET_PATH1, learn = flag_manager.flags[Flags.LEARN],
-                                            min_features = 3, max_features = 5)
+        ml_dataset = lasso(ml_dataset, dataset_path = ML_DATASET_PATH1, learn = flag_manager.flags[Flags.LEARN],
+                           min_features = 3, max_features = 5)
     return ml_dataset
 
 def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset, 
@@ -119,8 +120,8 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
 
     if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''lightGBM（学習は必要時、予測は毎回）'''
-        ml_dataset2 = machine_learning.lgbm(ml_dataset = ml_dataset2, dataset_path = ML_DATASET_PATH2, 
-                                            learn = flag_manager.flags[Flags.LEARN], categorical_features = ['Sector_cat'])
+        ml_dataset2 = lgbm(ml_dataset = ml_dataset2, dataset_path = ML_DATASET_PATH2,
+                           learn = flag_manager.flags[Flags.LEARN], categorical_features = ['Sector_cat'])
     return ml_dataset2
 
 def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble_rates: list, ENSEMBLED_DATASET_PATH: str) \
@@ -130,7 +131,7 @@ def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble
     if len(datasets) != len(ensemble_rates):
         raise ValueError('datasetsとensemble_ratesの要素数を同じにしてください。')
     ensembled_pred_df = datasets[0].pred_result_df[['Target']]
-    ensembled_pred_df['Pred'] = machine_learning.ensemble_by_rank(ml_datasets = datasets, 
+    ensembled_pred_df['Pred'] = ensemble.by_rank.ensemble_by_rank(ml_datasets = datasets, 
                                                     ensemble_rates = ensemble_rates)
     dataset_ensembled.copy_from_other_dataset(datasets[0])
     dataset_ensembled.archive_pred_result(ensembled_pred_df)

@@ -298,7 +298,7 @@ def calculate_features(new_sector_price:pd.DataFrame,
 #%% デバッグ
 if __name__ == '__main__':
 
-    from jquants_api_operations import run_jquants_api_operations
+    from acquisition.jquants_api_operations import run_jquants_api_operations
     import sector_index_calculator
     from IPython.display import display
 

@@ -1,9 +1,7 @@
 import pandas as pd
-from typing import Protocol
-import os
 import paths
-from jquants_api_utils import cli
-from jquants_api_operations.utils import FileHandler
+from utils.jquants_api_utils import cli
+from acquisition.jquants_api_operations.utils import FileHandler
 
 def update_list(
     path: str = paths.RAW_STOCK_LIST_PARQUET

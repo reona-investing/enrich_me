@@ -1,5 +1,5 @@
 from .file_handler import FileHandler
 
-all = [
-    'FileHandler',
-    ]
+__all__ = [
+    'FileHandler'
+]

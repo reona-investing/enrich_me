@@ -2,11 +2,11 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Tuple, List, Dict
-from FlagManager import flag_manager, Flags
+from utils import flag_manager, Flags
 import paths
-from jquants_api_operations.processor.formatter import Formatter
-from jquants_api_operations.utils import FileHandler
-from jquants_api_operations.processor.code_replacement_info import manual_adjustment_dict_list,codes_to_replace_dict
+from acquisition.jquants_api_operations.processor.formatter import Formatter
+from acquisition.jquants_api_operations.utils import FileHandler
+from acquisition.jquants_api_operations.processor.code_replacement_info import manual_adjustment_dict_list,codes_to_replace_dict
 
 
 def process_price(raw_basic_path: str = paths.RAW_STOCK_PRICE_PARQUET,
