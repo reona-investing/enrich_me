@@ -1,9 +1,9 @@
-from .list_updater import update_list
-from .fin_updater import update_fin
-from .price_updater import update_price
+from .list_updater import ListUpdater
+from .fin_updater import FinUpdater
+from .price_updater import PriceUpdater
 
 __all__ = [
-    'update_list',
-    'update_fin',
-    'update_price'
+    'ListUpdater',
+    'FinUpdater',
+    'PriceUpdater'
 ]

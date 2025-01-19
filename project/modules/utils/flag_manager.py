@@ -91,5 +91,4 @@ if __name__ == "__main__":
     flag_manager_1 = FlagManager()
     print(flag_manager_1.get_flags())
 # TODO update_dataとupdate_modelの制約条件を実装する。
-# TODO 既存のフラグマネージャ―をこれに置き換える。
 

@@ -40,7 +40,7 @@ async def main(ML_DATASET_PATH:str, NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PK
     # ml_datasetは必ず生成するので、最初に生成してしまう。
     ml_dataset = MLDataset(ML_DATASET_PATH)
     list_df, fin_df, price_df = run_jquants_api_operations(filter = universe_filter)
-    stock_dfs_dict = {'stock_list': list_df, 'stock_fin': fin_df, 'stock_price': price_df}
+    stock_dfs_dict = {'list': list_df, 'fin': fin_df, 'price': price_df}
 
     new_sector_price_df, order_price_df = SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
 

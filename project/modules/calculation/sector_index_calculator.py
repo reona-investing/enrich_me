@@ -10,15 +10,15 @@ class SectorIndexCalculator:
         '''
         セクターインデックスを算出します。
         Args:
-            stock_dfs_dict (dict): 'stock_list', 'stock_fin', 'stock_price'が定義されたデータフレーム
+            stock_dfs_dict (dict): 'list', 'fin', 'price'が定義されたデータフレーム
             SECTOR_REDEFINITIONS_CSV (str): セクター定義の設定ファイルのパス
             SECTOR_INDEX_PARQUET (str): セクターインデックスを出力するparquetファイルのパス
         Returns:
             pd.DataFrame: セクターインデックスを格納
             pd.DataFrame: 発注用に、個別銘柄の終値と時価総額を格納
         '''
-        stock_price = stock_dfs_dict['stock_price']
-        stock_fin = stock_dfs_dict['stock_fin']
+        stock_price = stock_dfs_dict['price']
+        stock_fin = stock_dfs_dict['fin']
         #価格情報に発行済み株式数の情報を結合
         stock_price_for_order = SectorIndexCalculator.calc_marketcap(stock_price, stock_fin)
         #インデックス値の算出
@@ -332,9 +332,9 @@ if __name__ == '__main__':
         read = True,
         filter= "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
       )
-    stock_dfs_dict = {'stock_list': list_df,
-                      'stock_fin': fin_df,
-                      'stock_price': price_df}
+    stock_dfs_dict = {'list': list_df,
+                      'fin': fin_df,
+                      'price': price_df}
     new_sector_price, price_for_order = SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     print((new_sector_price[['1d_return']].fillna(0).unstack() + 1).cumprod())
 

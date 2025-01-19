@@ -11,15 +11,13 @@ Slack.start(
 from datetime import datetime
 import pandas as pd
 from typing import Tuple
-
-from acquisition.jquants_api_operations import run_jquants_api_operations
 from utils import flag_manager, Flags, Paths
 from acquisition import features_scraper as scraper
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
 from models.machine_learning import lasso, lgbm
 import models.ensemble as ensemble
-from facades import TradingFacade
+from facades import TradingFacade, StockAcquisitionFacade
 from utils import error_handler
 import asyncio
 
@@ -40,10 +38,7 @@ async def read_and_update_data(filter: str) -> dict:
     update = process = False
     if flag_manager.flags[Flags.FETCH_DATA]:
         update = process = True
-    list_df, fin_df, price_df = run_jquants_api_operations(update=update, process=process, read=True, filter = filter)
-    stock_dfs_dict = {'stock_list': list_df,
-                      'stock_fin': fin_df,
-                      'stock_price': price_df}
+    stock_dfs_dict = StockAcquisitionFacade(update=update, process=process, filter = filter).get_stock_data_dict()
     if flag_manager.flags[Flags.UPDATE_DATASET]:    
         '''各種金融データ取得or読み込み'''
         await scraper.scrape_all_indices(

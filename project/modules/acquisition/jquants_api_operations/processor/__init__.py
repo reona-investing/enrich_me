@@ -1,9 +1,9 @@
-from .list_processor import process_list
-from .price_processor import process_price
-from .fin_processor import process_fin
+from .list_processor import ListProcessor
+from .price_processor import PriceProcessor
+from .fin_processor import FinProcessor
 
 __all__ = [
-    'process_list',
-    'process_price',
-    'process_fin'
+    'ListProcessor',
+    'PriceProcessor',
+    'FinProcessor'
 ]

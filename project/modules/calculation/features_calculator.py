@@ -241,7 +241,7 @@ class FeaturesCalculator:
         # サイズファクター（業種内の平均サイズファクター）
         if adopt_size_factor:
             new_sector_list['Code'] = new_sector_list['Code'].astype(str)
-            stock_price_cap = SectorIndexCalculator.calc_marketcap(stock_dfs_dict['stock_price'], stock_dfs_dict['stock_fin'])
+            stock_price_cap = SectorIndexCalculator.calc_marketcap(stock_dfs_dict['price'], stock_dfs_dict['fin'])
             stock_price_cap = stock_price_cap[stock_price_cap['Code'].isin(new_sector_list['Code'])]
             stock_price_cap = pd.merge(stock_price_cap, new_sector_list[['Code', 'Sector']], on='Code', how='left')
             stock_price_cap = stock_price_cap[['Date', 'Code', 'Sector', 'MarketCapClose']]
@@ -252,7 +252,7 @@ class FeaturesCalculator:
 
         # EPSファクター
         if adopt_eps_factor:
-            eps_df = stock_dfs_dict['stock_fin'][[
+            eps_df = stock_dfs_dict['fin'][[
                 'Code', 'Date', 'EarningsPerShare', 'ForecastEarningsPerShare', 'NextYearForecastEarningsPerShare',
                 ]].copy()
             eps_df.loc[
@@ -262,11 +262,11 @@ class FeaturesCalculator:
                 eps_df[['ForecastEarningsPerShare', 'NextYearForecastEarningsPerShare']].fillna(0)
             eps_df['ForecastEPS'] = eps_df['ForecastEarningsPerShare'].values + eps_df['NextYearForecastEarningsPerShare'].values
             eps_df = eps_df[['Code', 'Date', 'ForecastEPS']]
-            eps_df = pd.merge(stock_dfs_dict['stock_price'][['Date', 'Code']], eps_df, how='outer', on=['Date', 'Code'])
+            eps_df = pd.merge(stock_dfs_dict['price'][['Date', 'Code']], eps_df, how='outer', on=['Date', 'Code'])
             eps_df = pd.merge(new_sector_list[['Code', 'Sector']], eps_df, on='Code', how='right')
             eps_df['ForecastEPS'] = eps_df.groupby('Code')['ForecastEPS'].ffill()
             eps_df['ForecastEPS'] = eps_df.groupby('Code')['ForecastEPS'].bfill()
-            eps_df = pd.merge(stock_dfs_dict['stock_price'][['Date', 'Code']], eps_df, how='left', on=['Date', 'Code'])
+            eps_df = pd.merge(stock_dfs_dict['price'][['Date', 'Code']], eps_df, how='left', on=['Date', 'Code'])
             eps_df['ForecastEPS'] = eps_df.groupby('Code')['ForecastEPS'].ffill()
             eps_df['ForecastEPS'] = eps_df.groupby('Code')['ForecastEPS'].bfill()
             eps_df = eps_df.groupby(['Date', 'Sector'])[['ForecastEPS']].mean()
@@ -311,9 +311,9 @@ if __name__ == '__main__':
     universe_filter = \
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     list_df, fin_df, price_df = run_jquants_api_operations(filter=universe_filter)    
-    stock_dfs_dict = {'stock_list': list_df,
-                      'stock_fin': fin_df,
-                      'stock_price': price_df}
+    stock_dfs_dict = {'list': list_df,
+                      'fin': fin_df,
+                      'price': price_df}
     new_sector_price_df, order_price_df = \
         SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     

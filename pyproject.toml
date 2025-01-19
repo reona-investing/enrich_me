@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "dtw>=1.4.0",
     "easyocr>=1.7.2",
+    "fastdtw>=0.3.4",
     "fastparquet>=2024.5.0",
     "ipykernel>=6.29.5",
     "ipython>=8.28.0",
@@ -24,7 +25,6 @@ dependencies = [
     "pyarrow>=17.0.0",
     "pyclustering>=0.10.1.2",
     "pydantic>=2.10.3",
-    "pytesseract>=0.3.13",
     "python-dotenv>=1.0.1",
     "quantstats>=0.0.62",
     "scikit-learn>=1.5.2",
