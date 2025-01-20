@@ -1,5 +1,5 @@
 import pandas as pd
-from utils import Paths
+from utils.paths import Paths
 from typing import Literal
 from models import MLDataset
 from datetime import datetime

@@ -1,5 +1,5 @@
 #%% モジュールのインポート
-from utils import Paths
+from utils.paths import Paths
 import pandas as pd
 from typing import Literal
 from calculation.sector_index_calculator import SectorIndexCalculator

@@ -4,9 +4,9 @@ from pathlib import Path
 from enum import Enum
 
 class Paths:
-    PROJECT_FOLDER = Path.resolve(Path(__file__)).parents[2]
+    PROJECT_FOLDER = Path.resolve(Path(__file__)).parents[3]
 
-    MODULES_FOLDER = Path.resolve(Path(__file__)).parents[1]
+    MODULES_FOLDER = Path.resolve(Path(__file__)).parents[2]
     CONFIG_AND_SETTINGS_FOLDER = f'{PROJECT_FOLDER}/config_and_settings'
     STOCK_RAWDATA_FOLDER = f'{PROJECT_FOLDER}/rawdata_JQuantsAPI'
     STOCK_PROCESSED_DATA_FOLDER = f'{PROJECT_FOLDER}/processed_data_JQuantsAPI'

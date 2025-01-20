@@ -5,7 +5,7 @@ from IPython.display import display
 from utils.jquants_api_utils import cli
 from models import MLDataset
 from trading.sbi import MarginManager, TradePossibilityManager
-from utils import Paths
+from utils.paths import Paths
 
 class StockSelector:
     def __init__(self, 

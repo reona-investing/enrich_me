@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-from utils import Paths
+from utils.paths import Paths
 from utils.jquants_api_utils import cli
 from acquisition.jquants_api_operations.utils import FileHandler
 

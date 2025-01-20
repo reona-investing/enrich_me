@@ -1,5 +1,5 @@
 #%% モジュールのインポート
-from utils import Paths
+from utils.paths import Paths
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta

@@ -10,7 +10,7 @@ if __name__ == '__main__':
 # モジュールのインポート
 from datetime import datetime
 
-from utils import Paths #パス一覧
+from utils.paths import Paths #パス一覧
 from acquisition.jquants_api_operations import run_jquants_api_operations
 from calculation import SectorIndexCalculator
 from models import MLDataset

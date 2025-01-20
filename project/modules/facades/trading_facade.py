@@ -1,6 +1,6 @@
 import os
-from utils import Paths
-from utils import SlackNotifier
+from utils.paths import Paths
+from utils.notifier import SlackNotifier
 from trading.sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
 from trading.sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
 from models import MLDataset

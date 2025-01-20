@@ -8,7 +8,7 @@ import unicodedata
 import os
 from datetime import datetime
 from pathlib import Path
-from utils import Paths
+from utils.paths import Paths
 
 class HistoryManager:
     def __init__(self, login_handler: LoginHandler):

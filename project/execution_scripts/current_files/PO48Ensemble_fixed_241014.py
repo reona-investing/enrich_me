@@ -1,5 +1,5 @@
 #プログラム開始のライン通知
-from utils import SlackNotifier
+from utils.notifier import SlackNotifier
 import os
 Slack = SlackNotifier(program_name=os.path.basename(__file__))
 Slack.start(
@@ -11,14 +11,15 @@ Slack.start(
 from datetime import datetime
 import pandas as pd
 from typing import Tuple
-from utils import flag_manager, Flags, Paths
+from utils.flag_manager import flag_manager, Flags
+from utils.paths import Paths
 from acquisition import features_scraper as scraper
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
 from models.machine_learning import lasso, lgbm
 import models.ensemble as ensemble
 from facades import TradingFacade, StockAcquisitionFacade
-from utils import error_handler
+from utils.error_handler import error_handler
 import asyncio
 
 def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
@@ -123,7 +124,7 @@ def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble
     if len(datasets) != len(ensemble_rates):
         raise ValueError('datasetsとensemble_ratesの要素数を同じにしてください。')
     ensembled_pred_df = datasets[0].pred_result_df[['Target']]
-    ensembled_pred_df['Pred'] = ensemble.by_rank.ensemble_by_rank(ml_datasets = datasets, 
+    ensembled_pred_df['Pred'] = ensemble.by_rank(ml_datasets = datasets, 
                                                     ensemble_rates = ensemble_rates)
     dataset_ensembled.copy_from_other_dataset(datasets[0])
     dataset_ensembled.archive_pred_result(ensembled_pred_df)

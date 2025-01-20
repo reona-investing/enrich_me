@@ -12,7 +12,7 @@ import pandas as pd
 import quantstats as qs
 from IPython.display import HTML, display
 
-from utils import Paths
+from utils.paths import Paths
 
 from models import MLDataset
 import evaluate_model

@@ -1,5 +1,5 @@
 import pandas as pd
-from utils import Paths
+from utils.paths import Paths
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
 

@@ -119,7 +119,7 @@ class TargetCalculator:
 
 #%% デバッグ
 if __name__ == '__main__':
-    from utils import Paths
+    from utils.paths import Paths
     
     NEW_SECTOR_PRICE_PKLGZ = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/sector_price/New48sectors_price.parquet'
     df = pd.read_parquet(NEW_SECTOR_PRICE_PKLGZ)

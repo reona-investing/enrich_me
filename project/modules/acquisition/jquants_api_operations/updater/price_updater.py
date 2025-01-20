@@ -1,9 +1,9 @@
 import pandas as pd
 from datetime import datetime
-from utils import Paths
+from utils.paths import Paths
 from acquisition.jquants_api_operations.utils import FileHandler
 from utils.jquants_api_utils import cli
-from utils import flag_manager, Flags
+from utils.flag_manager import flag_manager, Flags
 
 
 class PriceUpdater:

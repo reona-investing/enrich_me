@@ -5,7 +5,7 @@ from typing import Tuple
 from datetime import datetime
 from IPython.display import display
 from trading.sbi import MarginManager, HistoryManager
-from utils import Paths
+from utils.paths import Paths
 #from sbi_trading_logic.order_maker import NewOrderMaker
 
 

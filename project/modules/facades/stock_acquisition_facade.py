@@ -65,7 +65,7 @@ if __name__ == "__main__":
     stock_df_dict = StockAcquisitionFacade(update=True, process=True, filter=filter).get_stock_data_dict()
     
     '''
-    from utils import Paths
+    from utils.paths import Paths
     data = []
     for i in range(2013, 2026):
         path = Paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(i))

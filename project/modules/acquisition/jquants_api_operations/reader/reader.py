@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from datetime import datetime
-from utils import Paths
+from utils.paths import Paths
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.reader.reader_utils import filter_stocks
 

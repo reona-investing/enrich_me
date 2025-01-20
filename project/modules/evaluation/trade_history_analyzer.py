@@ -1,5 +1,5 @@
 #%%モジュールのインポート
-from utils import Paths
+from utils.paths import Paths
 
 import os
 from datetime import datetime

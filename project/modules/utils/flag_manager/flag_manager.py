@@ -1,6 +1,6 @@
 from datetime import datetime, time
 from utils.jquants_api_utils import is_market_open
-from utils import SingletonMeta
+from utils.singleton import SingletonMeta
 from enum import Enum
 from typing import List
 

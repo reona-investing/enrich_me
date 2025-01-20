@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup as soup
 import os
 from pathlib import Path
 import re
-from utils import Paths
+from utils.paths import Paths
 import csv
 
 class TradePossibilityManager:

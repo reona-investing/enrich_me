@@ -1,4 +1,4 @@
-from utils import Paths
+from utils.paths import Paths
 import asyncio
 import nodriver as uc
 import os

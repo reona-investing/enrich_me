@@ -2,7 +2,7 @@ import math
 import pandas as pd
 from typing import Literal, Optional
 from trading.sbi import TradeParameters, OrderManager
-from utils import Paths
+from utils.paths import Paths
 from trading.sbi_trading_logic.stock_selector import StockSelector
 
 class OrderMakerBase:

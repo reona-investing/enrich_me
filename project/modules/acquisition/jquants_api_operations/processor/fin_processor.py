@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from utils import Paths
+from utils.paths import Paths
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.processor.code_replacement_info import codes_to_merge_dict, manual_adjustment_dict_list, codes_to_replace_dict
