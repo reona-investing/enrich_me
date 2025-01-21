@@ -19,16 +19,18 @@ class PageNavigator:
         await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
         self.tab = self.login_handler.session.tab
         if self.should_return_to_home:
-            await self.home()
+            await self._home()
             self.should_return_to_home = False
 
+    async def _home(self):
+        await self.tab.get('https://site2.sbisec.co.jp/ETGate/')
 
     async def home(self):
         '''
         トップページに戻ります。
         '''
         await self._set_tab()
-        await self.tab.get('https://site2.sbisec.co.jp/ETGate/')
+        await self._home()
 
 
     async def domestic_margin(self):
