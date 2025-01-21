@@ -1,5 +1,6 @@
 import pandas as pd
 from trading.sbi.session.login_handler import LoginHandler
+from trading.sbi.session.page_navigator import PageNavigator
 from trading.sbi.browser.browser_utils import BrowserUtils
 from trading.sbi.browser.file_utils import FileUtils
 from bs4 import BeautifulSoup as soup
@@ -11,9 +12,8 @@ from pathlib import Path
 from utils.paths import Paths
 
 class HistoryManager:
-    def __init__(self, login_handler: LoginHandler):
+    def __init__(self, page_navigator: PageNavigator):
         """取引履歴管理クラス"""
-        self.tab = None
         self.save_dir_path = Paths.TRADE_HISTORY_FOLDER
         os.makedirs(self.save_dir_path, exist_ok=True)
         self.save_file_path = Paths.TRADE_HISTORY_CSV
@@ -22,28 +22,15 @@ class HistoryManager:
         self.today_margin_trades_df = pd.DataFrame()
         self.cashflow_transactions_df = pd.DataFrame()
         self.today_stock_trades_df = pd.DataFrame()
-        self.login_handler = login_handler
+        self.page_navigator = page_navigator
 
-    async def _set_tab(self):
-        await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
-        self.tab = self.login_handler.session.tab
 
     async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
         """
         過去の取引履歴をスクレイピングして取得
         self.today_margin_trades_df: 取引履歴データ
         """
-        await self._set_tab()
-
-        button = await self.session.tab.select('img[title=口座管理]')
-        await button.click()
-        await self.session.tab.wait(1)
-        button = await self.session.tab.find('当日約定一覧')
-        await button.click()
-        await self.session.tab.wait(1)
-        button = await self.session.tab.find('国内株式(信用)')
-        await button.click()
-        await self.session.tab.wait(1)
+        await self.page_navigator.domestic_margin()
         html_content = await self.session.tab.get_content()
         html = soup(html_content, 'html.parser')
         table = html.find("td", string=re.compile("銘柄"))
@@ -85,9 +72,7 @@ class HistoryManager:
         過去の取引履歴をスクレイピングして取得
         self.past_margin_trades_df: 取引履歴データ
         """
-        await self._set_tab()
-
-        df = await self._fetch_past_margin_trades_csv(mydate=mydate)
+        df = await self.page_navigator.fetch_past_margin_trades_csv(mydate=mydate)
         df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
         df = df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
         take_df = df[(df['取引']=='信用新規買')|(df['取引']=='信用新規売')]
@@ -104,27 +89,6 @@ class HistoryManager:
         self.past_margin_trades_df = self._format_contracts_df(df, sector_list_df)
         self.past_margin_trades_df['日付'] = pd.to_datetime(self.past_margin_trades_df['日付']).dt.date
         print(self.past_margin_trades_df)
-
-
-    async def _fetch_past_margin_trades_csv(self, mydate: datetime) -> pd.DataFrame: 
-        # ナビゲーション
-        button = await self.tab.find('取引履歴')
-        await button.click()
-        await self.tab.wait(1)
-        button = await self.tab.select('#shinT')
-        await button.click()
-        element_num = {'from_yyyy':f'{mydate.year}', 'from_mm':f'{mydate.month:02}', 'from_dd':f'{mydate.day:02}',
-                       'to_yyyy':f'{mydate.year}', 'to_mm':f'{mydate.month:02}', 'to_dd':f'{mydate.day:02}'}
-        for key, value in element_num.items():
-            pulldown_selector = f'select[name="ref_{key}"] option[value="{value}"]'
-            await BrowserUtils.select_pulldown(self.tab, pulldown_selector)
-        button = await self.tab.find('照会')
-        await button.click()
-        await self.tab.wait(1)
-        await self.tab.set_download_path(Path(Paths.DOWNLOAD_FOLDER))
-        button = await self.tab.find('CSVダウンロード')
-        await button.click()
-        await self.tab.wait(5)
 
         csvs = list(Path(Paths.DOWNLOAD_FOLDER).glob("*.csv"))
         if not csvs:
@@ -161,36 +125,25 @@ class HistoryManager:
     async def fetch_cashflow_transactions(self):
         """
         直近1週間の入出金履歴をスクレイピングして取得
-        self.cashflow_transactions_df: 取引履歴データ
         """
-        await self._set_tab()
-        
-        button = await self.tab.find('入出金明細')
-        await button.click()
-        await self.tab.wait(1)
-        
+        await self.page_navigator.cashflow_transactions()        
         df = await self._convert_fetched_data_to_df()
-
-        button = await self.tab.find('総合トップ')
-        await button.click()
-
         if len(df) == 0:
             print('直近1週間の入出金履歴はありません。')
             return
         self.cashflow_transactions_df = self._format_cashflow_transactions_df(df)
-
-
         print('入出金の履歴')
         print(self.cashflow_transactions_df)
 
     async def _convert_fetched_data_to_df(self) -> pd.DataFrame:
+        # TODO タブ操作をすべて切り出したい。
         try:
-            selected_element = await self.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+            selected_element = await self.page_navigator.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
         except:
             return pd.DataFrame()
         await selected_element.select_option()
-        await self.tab.wait(1)
-        parent_element = await self.tab.select('#fc-page-table > div > ul')
+        await self.page_navigator.tab.wait(1)
+        parent_element = await self.page_navigator.tab.select('#fc-page-table > div > ul')
         elements = parent_element.children
         
         data_for_df = []
@@ -229,18 +182,9 @@ class HistoryManager:
         直近1週間の入出金履歴をスクレイピングして取得
         self.today_margin_trades_df: 取引履歴データ
         """
-        await self._set_tab()
-       
-        button = await self.tab.select('img[title=口座管理]')
-        await button.click()
-        await self.tab.wait(1)
-        button = await self.tab.find('当日約定一覧')
-        await button.click()
-        await self.tab.wait(1)
-        button = await self.tab.find('国内株式(信用)')
-        await button.click()
-        await self.tab.wait(1)
-        html_content = await self.tab.get_content()
+        await self.page_navigator.domestic_margin()
+        html_content = await self.page_navigator.tab.get_content()
+        # TODO tab操作をすべて切り出したい。
         html = soup(html_content, 'html.parser')
         table = html.find("td", string=re.compile("銘柄"))
         if table is None:
@@ -282,19 +226,9 @@ class HistoryManager:
         今日の現物取引をスクレイピングして取得
         self.today_stock_trades_df: 現物取引データ
         """
-        await self._set_tab()
-
-        button = await self.tab.select('img[title=取引]')
-        await button.click()
-        await self.tab.wait(1)
-        button = await self.tab.find('当日約定一覧')
-        await button.click()
-        await self.tab.wait(1)
-        button = await self.tab.find('国内株式(現物)')
-        await button.click()
-        await self.tab.wait(1)
-
-        html_content = await self.tab.get_content()
+        await self.page_navigator.domestic_stock()
+        # TODO tab操作はすべて切り出したい。
+        html_content = await self.page_navigator.tab.get_content()
         html = soup(html_content, 'html.parser')
         table = html.find('td', string=re.compile('銘柄'))
         if table is None:
