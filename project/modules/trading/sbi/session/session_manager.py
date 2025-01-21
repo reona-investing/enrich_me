@@ -1,4 +1,3 @@
-import os
 import nodriver as uc
 from dotenv import load_dotenv
 

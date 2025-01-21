@@ -1,6 +1,6 @@
 import math
 import pandas as pd
-from typing import Literal, Optional
+from typing import Literal
 from trading.sbi import TradeParameters, OrderManager
 from utils.paths import Paths
 from trading.sbi_trading_logic.stock_selector import StockSelector

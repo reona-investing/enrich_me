@@ -1,6 +1,6 @@
 import os
 import json
-from typing import List, Dict, Optional
+from typing import List, Dict
 from datetime import datetime
 from utils.paths import Paths
 from trading.sbi.operations.trade_parameters import TradeParameters

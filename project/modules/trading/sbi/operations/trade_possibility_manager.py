@@ -1,9 +1,7 @@
 import pandas as pd
 from trading.sbi.session.login_handler import LoginHandler
-from bs4 import BeautifulSoup as soup
 import os
 from pathlib import Path
-import re
 from utils.paths import Paths
 import csv
 
