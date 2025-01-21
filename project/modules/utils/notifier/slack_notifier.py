@@ -16,8 +16,16 @@ class SlackNotifier:
         self.SLACK_RESULT = os.getenv('SLACK_RESULT')
         self.program_name = program_name
 
-    def send_message(self, message: str, channel: str):
+    def send_message(self, message: str, channel: str = None):
+        '''
+        SLACKにメッセージを送ります。
+        Args:
+            message (str): 送信するメッセージ
+            channel (str): 送信先のチャンネルID (NoneのときはGeneralが指定される)
+        '''
         try:
+            if channel is None:
+                channel = self.SLACK_GENERAL
             # Slack APIを使用してメッセージを送信
             response = self.client.chat_postMessage(
                 channel=channel,
@@ -28,18 +36,39 @@ class SlackNotifier:
             print(f"Slack APIエラー: {e.response['error']}")
 
     def send_error_log(self, message: str):
+        '''
+        SLACKにエラーログを送ります。
+        Args:
+            message (str): 送信するメッセージ
+        '''
         self.send_message(message, self.SLACK_ERROR_LOG)
 
     def send_result(self, message: str):
+        '''
+        SLACKに当日の結果を送ります。
+        Args:
+            message (str): 送信するメッセージ
+        '''
         self.send_message(message, self.SLACK_RESULT)
 
     def start(self, message: str, should_send_program_name: bool = False):
+        '''
+        SLACKにプログラム開始メッセージを送ります。
+        Args:
+            message (str): 送信するメッセージ
+            should_send_program_name (bool): メッセージにプログラム名を含めるか
+        '''
         self.start_time = time.time()
         if self.program_name and should_send_program_name:
             message = f'{self.program_name}\n{message}'
         self.send_message(message, self.SLACK_GENERAL)
 
     def finish(self, message: str):
+        '''
+        SLACKにプログラム終了メッセージを送ります。
+        Args:
+            message (str): 送信するメッセージ
+        '''
         exec_time = int(time.time() - self.start_time)
         minutes, seconds = divmod(exec_time, 60)
         message = f'{message}\n実行時間： {minutes}分{seconds}秒'

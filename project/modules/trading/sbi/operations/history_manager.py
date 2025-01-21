@@ -1,8 +1,6 @@
 import pandas as pd
-from trading.sbi.session.login_handler import LoginHandler
-from trading.sbi.session.page_navigator import PageNavigator
-from trading.sbi.browser.browser_utils import BrowserUtils
-from trading.sbi.browser.file_utils import FileUtils
+from trading.sbi.session import LoginHandler
+from trading.sbi.browser import PageNavigator, BrowserUtils, FileUtils
 from bs4 import BeautifulSoup as soup
 import re
 import unicodedata
@@ -12,7 +10,7 @@ from pathlib import Path
 from utils.paths import Paths
 
 class HistoryManager:
-    def __init__(self, page_navigator: PageNavigator):
+    def __init__(self, login_handler: LoginHandler):
         """取引履歴管理クラス"""
         self.save_dir_path = Paths.TRADE_HISTORY_FOLDER
         os.makedirs(self.save_dir_path, exist_ok=True)
@@ -22,7 +20,9 @@ class HistoryManager:
         self.today_margin_trades_df = pd.DataFrame()
         self.cashflow_transactions_df = pd.DataFrame()
         self.today_stock_trades_df = pd.DataFrame()
-        self.page_navigator = page_navigator
+        self.login_handler = login_handler
+        self.page_navigator = PageNavigator(self.login_handler)
+        self.browser_utils = BrowserUtils(self.login_handler)
 
 
     async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
@@ -31,7 +31,7 @@ class HistoryManager:
         self.today_margin_trades_df: 取引履歴データ
         """
         await self.page_navigator.domestic_margin()
-        html_content = await self.session.tab.get_content()
+        html_content = await self.browser_utils.get_html_content()
         html = soup(html_content, 'html.parser')
         table = html.find("td", string=re.compile("銘柄"))
         if table is None:
@@ -136,14 +136,16 @@ class HistoryManager:
         print(self.cashflow_transactions_df)
 
     async def _convert_fetched_data_to_df(self) -> pd.DataFrame:
-        # TODO タブ操作をすべて切り出したい。
         try:
-            selected_element = await self.page_navigator.tab.select('#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)')
+            selected_element = await self.browser_utils.select_element(
+                selector_text = '#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)', 
+                is_css = True)
         except:
             return pd.DataFrame()
         await selected_element.select_option()
-        await self.page_navigator.tab.wait(1)
-        parent_element = await self.page_navigator.tab.select('#fc-page-table > div > ul')
+        parent_element = await self.browser_utils.select_element(
+            selector_text = '#fc-page-table > div > ul',
+            is_css = True)
         elements = parent_element.children
         
         data_for_df = []
@@ -183,8 +185,7 @@ class HistoryManager:
         self.today_margin_trades_df: 取引履歴データ
         """
         await self.page_navigator.domestic_margin()
-        html_content = await self.page_navigator.tab.get_content()
-        # TODO tab操作をすべて切り出したい。
+        html_content = await self.browser_utils.get_html_content()
         html = soup(html_content, 'html.parser')
         table = html.find("td", string=re.compile("銘柄"))
         if table is None:
@@ -227,8 +228,7 @@ class HistoryManager:
         self.today_stock_trades_df: 現物取引データ
         """
         await self.page_navigator.domestic_stock()
-        # TODO tab操作はすべて切り出したい。
-        html_content = await self.page_navigator.tab.get_content()
+        html_content = await self.browser_utils.get_html_content()
         html = soup(html_content, 'html.parser')
         table = html.find('td', string=re.compile('銘柄'))
         if table is None:

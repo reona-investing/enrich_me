@@ -1,7 +1,7 @@
 from trading.sbi.operations.position_manager import PositionManager
 from trading.sbi.operations.trade_possibility_manager import TradePossibilityManager
 from trading.sbi.operations.trade_parameters import TradeParameters
-from trading.sbi.browser.browser_utils import BrowserUtils
+from trading.sbi.browser import PageNavigator, BrowserUtils
 from trading.sbi.session.login_handler import LoginHandler
 import os
 import re
@@ -63,21 +63,20 @@ class OrderManager:
     }
 
     def __init__(self, login_handler: LoginHandler):
-        self.login_handler: LoginHandler = login_handler
-        self.position_manager: PositionManager = PositionManager()
-        self.trade_possibility_manager: TradePossibilityManager = TradePossibilityManager(login_handler)
-        self.browser_utils: BrowserUtils = BrowserUtils()
-        self.has_successfully_ordered: bool = False
-        self.error_tickers: list = []
+        self.login_handler = login_handler
+        self.position_manager = PositionManager()
+        self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
+        self.page_navigator = PageNavigator(self.login_handler)
+        self.browser_utils = BrowserUtils(self.login_handler)
+        self.has_successfully_ordered = False
+        self.error_tickers = []
 
     async def place_new_order(self, trade_params: TradeParameters) -> bool:
         """
         指定された取引パラメータを使用して新規注文を行う。
         """
-        await self.login_handler.sign_in()
-        self.tab = self.login_handler.session.tab
         try:
-            await self._navigate_to_trade_page()
+            await self.page_navigator.trade()
             await self._select_trade_type(trade_params)
             await self._input_stock_and_quantity(trade_params)
             await self._input_sashinari_params(trade_params)
@@ -91,75 +90,74 @@ class OrderManager:
             self.error_tickers.append(trade_params.symbol_code)
             has_successfully_ordered = False
         finally:
-            self.login_handler.session.tab = self.tab
             return has_successfully_ordered
-
-    async def _navigate_to_trade_page(self) -> None:
-        """
-        取引ページに遷移する。
-        """
-        trade_button = await self.tab.wait_for('img[title="取引"]')
-        await trade_button.click()
-        await self.tab.wait(2)
 
     async def _select_trade_type(self, trade_params: TradeParameters) -> None:
         """
         取引タイプを選択する。
         """
-        trade_type_button = await self.tab.wait_for(f'#{_get_selector(self.order_param_dicts, "取引", trade_params.trade_type)}')
-        await trade_type_button.click()
+        await self.browser_utils.wait_and_click(f'#{_get_selector(self.order_param_dicts, "取引", trade_params.trade_type)}')
 
     async def _input_stock_and_quantity(self, trade_params: TradeParameters) -> None:
         """
         銘柄コードと数量を入力する。
         """
-        stock_code_input = await self.tab.select('input[name="stock_sec_code"]')
-        await stock_code_input.send_keys(trade_params.symbol_code)
+        await self.browser_utils.send_keys_to_element('input[name="stock_sec_code"]',
+                                                      is_css = True, 
+                                                      keys = trade_params.symbol_code)
 
-        quantity_input = await self.tab.select('input[name="input_quantity"]')
-        await quantity_input.send_keys(str(trade_params.unit))
+        await self.browser_utils.send_keys_to_element('input[name="input_quantity"]', 
+                                                      is_css = True,
+                                                      keys = str(trade_params.unit))
 
     async def _input_sashinari_params(self, trade_params: TradeParameters) -> None:
-        button = await self.tab.find(trade_params.order_type)
-        await button.click()
-
+        await self.browser_utils.click_element(trade_params.order_type)
+        
         if trade_params.order_type == '成行':
             if trade_params.order_type_value is not None:
-                selector = f'select[name="nariyuki_condition"] option[value="{self.order_param_dicts["成行タイプ"][trade_params.order_type_value]}"]'
-                await self.browser_utils.select_pulldown(self.tab, selector)
+                selector = \
+                    f'select[name="nariyuki_condition"] option[value="{self.order_param_dicts["成行タイプ"][trade_params.order_type_value]}"]'
+                await self.browser_utils.select_pulldown(selector)
 
         if trade_params.order_type == "指値":
-            form = await self.tab.select('#gsn0 > input[type=text]')
-            await form.send_keys(str(trade_params.limit_order_price))
+            await self.browser_utils.send_keys_to_element('#gsn0 > input[type=text]',
+                                                          is_css = True,
+                                                          keys = str(trade_params.limit_order_price))
 
             if trade_params.order_type_value is not None:
-                selector = f'select[name="sasine_condition"] option[value="{self.order_param_dicts["指値タイプ"][trade_params.order_type_value]}"]'
-                await self.browser_utils.select_pulldown(self.tab, selector)
+                selector = \
+                    f'select[name="sasine_condition"] option[value="{self.order_param_dicts["指値タイプ"][trade_params.order_type_value]}"]'
+                await self.browser_utils.select_pulldown(selector)
 
         if trade_params.order_type == "逆指値":
-            choice = await self.tab.select('#gsn2 > table > tbody > tr > td:nth-child(2) > label:nth-child(5) > input[type=radio]')
-            await choice.click()
-
-            await self.tab.select('#gsn2 > table > tbody > tr > td:nth-child(2) > select:nth-child(6)')
-            choice = await self.tab.select(
-                f'#gsn2 > table > tbody > tr > td:nth-child(2) > select:nth-child(6) > option:nth-child({self.order_param_dicts["逆指値タイプ"][trade_params.stop_order_type]})'
-            )
-            await choice.send_keys(trade_params.stop_order_trigger_price)
+            await self.browser_utils.click_element(
+                '#gsn2 > table > tbody > tr > td:nth-child(2) > label:nth-child(5) > input[type=radio]',
+                is_css = True)
+            await self.browser_utils.select_element(
+                '#gsn2 > table > tbody > tr > td:nth-child(2) > select:nth-child(6)',
+                is_css = True)
+            await self.browser_utils.send_keys_to_element(
+                f'#gsn2 > table > tbody > tr > td:nth-child(2) > select:nth-child(6) > option:nth-child({self.order_param_dicts["逆指値タイプ"][trade_params.stop_order_type]})',
+                is_css = True,
+                keys = trade_params.stop_order_trigger_price)
 
             if trade_params.stop_order_type == "指値":
-                form = await self.tab.select('#gsn2 > table > tbody > tr > td:nth-child(2) > input[type=text]:nth-child(7)')
-                await form.send_keys(trade_params.stop_order_price)
+                await self.browser_utils.send_keys_to_element(
+                    '#gsn2 > table > tbody > tr > td:nth-child(2) > input[type=text]:nth-child(7)',
+                    is_css = True,
+                    keys = trade_params.stop_order_price
+                )
 
     async def _get_duration_params(self, trade_params: TradeParameters) -> None:
         """
         期間のパラメータを入力する。
         """
-        button = await self.tab.find(trade_params.period_type)
-        await button.click()
+        await self.browser_utils.click_element(trade_params.period_type)
         if trade_params.period_type == "期間指定":
             if trade_params.period_value is None and trade_params.period_index is None:
                 raise ValueError("期間を指定してください。period_value or period_index")
-            period_option_div = await self.tab.select('select[name="limit_in"]')
+            period_option_div = \
+                await self.browser_utils.select_element('select[name="limit_in"]', is_css = True)
 
             if trade_params.period_value is not None:
                 options = await period_option_div.select('option')
@@ -168,7 +166,7 @@ class OrderManager:
                     raise ValueError("period_valueが存在しません")
                 else:
                     selector = f'option[value="{trade_params.period_value}"]'
-                    await self.browser_utils.select_pulldown(self.tab, selector)
+                    await self.browser_utils.select_pulldown(selector)
             if trade_params.period_index is not None:
                 period_options = await period_option_div.select('option')
                 if trade_params.period_index < len(period_options):
@@ -180,28 +178,24 @@ class OrderManager:
         """
         預り区分と信用取引区分を選択する。
         """
-        deposit_type_button = await self.tab.find(trade_params.trade_section)
-        await deposit_type_button.click()
-
-        credit_trade_type_button = await self.tab.find(trade_params.margin_trade_section)
-        await credit_trade_type_button.click()
+        await self.browser_utils.click_element(trade_params.trade_section)
+        await self.browser_utils.click_element(trade_params.margin_trade_section)
 
     async def _input_trade_pass(self):
         '''取引パスワードを入力する。'''
-        trade_password_input = await self.tab.select('input[id="pwd3"]')
-        await trade_password_input.send_keys(os.getenv('SBI_TRADEPASS'))
+        await self.browser_utils.send_keys_to_element('input[id="pwd3"]',
+                                                      is_css = True,
+                                                      keys = os.getenv('SBI_TRADEPASS'))
 
     async def _confirm_order(self, trade_params: TradeParameters) -> bool:
         '''注文を確定する。'''
         await self._input_trade_pass()
-        skip_button = await self.tab.select('input[id="shouryaku"]')
-        await skip_button.click()
-        order_button = await self.tab.select('img[title="注文発注"]')
-        await order_button.click()
-        await self.tab.wait(1)
+        await self.browser_utils.click_element('input[id="shouryaku"]', is_css = True)
+        await self.browser_utils.click_element('img[title="注文発注"]', is_css = True)
+        await self.browser_utils.wait(1)
 
         order_index = self._append_trade_params_to_orders(trade_params)
-        html_content = await self.tab.get_content()
+        html_content = await self.browser_utils.get_html_content()
         text_to_show = f'{trade_params.symbol_code} {trade_params.trade_type} {trade_params.unit}株:'
         if "ご注文を受け付けました。" in html_content:
             print(f"{text_to_show} 注文が成功しました")
@@ -229,8 +223,6 @@ class OrderManager:
         """
         すべての注文をキャンセルする。
         """
-        await self.login_handler.sign_in()
-        self.tab = self.login_handler.session.tab
         try:
             await self.extract_order_list()
 
@@ -239,27 +231,19 @@ class OrderManager:
                 return
 
             for i in range(len(self.order_list_df)):
-                await self._navigate_to_cancel_page()
-                await self._cancel_single_order(i)
+                await self.page_navigator.order_cancel()
+                await self._cancel_single_order()
         except Exception as e:
             print(f"注文キャンセル中にエラーが発生しました: {e}")
             traceback.print_exc()  # スタックトレースを出力
-        finally:
-            self.login_handler.session.tab = self.tab
 
     async def extract_order_list(self) -> None:
         """
         現在の注文一覧を取得する。
         """
         try:
-            await self.login_handler.sign_in()
-            self.tab = self.login_handler.session.tab
-            await self._navigate_to_trade_page()
-            button = await self.tab.wait_for(text='注文照会')
-            await button.click()
-            await self.tab.wait(3)
-
-            html_content = await self.tab.get_content()
+            await self.page_navigator.order_inquiry()
+            html_content = await self.browser_utils.get_html_content()
             html = soup(html_content, "html.parser")
             table = html.find("th", string=re.compile("注文状況"))
             if table is None:
@@ -320,24 +304,14 @@ class OrderManager:
         data.append(row)
         return data
 
-    async def _navigate_to_cancel_page(self) -> None:
-        await self._navigate_to_trade_page()
-        button = await self.tab.find('注文照会')
-        await button.click()
-        await self.tab.wait(1)
-        button = await self.tab.find('取消')
-        await button.click()
-        await self.tab.wait(1)
 
-    async def _cancel_single_order(self, index: int) -> None:
+    async def _cancel_single_order(self) -> None:
         await self._input_trade_pass()
-        button = await self.tab.select('input[value=注文取消]')
-        await button.click()
-        await self.tab.wait(1)
-        await self._handle_cancel_response(index)
+        await self.browser_utils.click_element('input[value=注文取消]', is_css = True)
+        await self._handle_cancel_response()
 
-    async def _handle_cancel_response(self, index: int) -> None:
-        html_content = await self.tab.get_content()
+    async def _handle_cancel_response(self) -> None:
+        html_content = await self.browser_utils.get_html_content()
 
         code = await self._get_element("銘柄コード")
         code = str(code)
@@ -352,7 +326,7 @@ class OrderManager:
             print(f"{code} {unit}株 {order_type}：注文取消に失敗しました。")
 
     async def _get_element(self, text: str):
-        element = await self.tab.find(text)
+        element = await self.browser_utils.select_element(text)
         element = element.parent.parent.children[1]
         return re.sub(r'\s+', '', element.text)
 
@@ -373,10 +347,7 @@ class OrderManager:
         """
         現在のポジションと市場条件に基づいて発注待ちの注文を再発注する。
         """
-        await self.login_handler.sign_in()
-        self.tab = self.login_handler.session.tab
-        await self._navigate_to_trade_page()
-
+        await self.page_navigator.trade()
         pending_positions = self.position_manager.get_pending_positions()
         for position in pending_positions:
             trade_params = TradeParameters(**position['order_params'])
@@ -384,8 +355,6 @@ class OrderManager:
 
 
     async def settle_all_margins(self):
-        await self.login_handler.sign_in()
-        self.tab = self.login_handler.session.tab
         await self._extract_margin_list()
         await self.extract_order_list()
 
@@ -408,40 +377,33 @@ class OrderManager:
                 i += 1
                 continue
             else:
-                button = await self.tab.wait_for('img[title=取引]')
-                await button.click()
-                button = await self.tab.wait_for(text='信用返済')
-                await button.click()
+                await self.browser_utils.wait_and_click('img[title=取引]', is_css = True)
+                await self.browser_utils.wait_and_click('信用返済')
                 for _ in range(10):
                     try:
-                        position_link = await self.tab.wait_for(
+                        await self.browser_utils.wait_and_click(
                             f'#MAINAREA02_780 > form > table:nth-child(18) > tbody > tr > td > \
                             table > tbody > tr > td > table > tbody > tr:nth-child({i +  n + 1}) > \
                             td:nth-child(10) > a:nth-child(1) > u > font', 
+                            is_css = True,
                             timeout = 5
                         )
-                        await position_link.click()
                         break
                     except:
                         n += 1
-                all_shares_button = await self.tab.wait_for('input[value="全株指定"]')
-                await all_shares_button.click()
-                order_input_button = await self.tab.wait_for('input[value="注文入力へ"]')
-                await order_input_button.click()
-                await self.tab.wait(1)
-                order_type_elements = await self.tab.select_all('input[name="in_sasinari_kbn"]')
+                await self.browser_utils.wait_and_click('input[value="全株指定"]', is_css = True)
+                await self.browser_utils.wait_and_click('input[value="注文入力へ"]', is_css = True)
+                await self.browser_utils.wait(1)
+                order_type_elements = await self.browser_utils.select_all('input[name="in_sasinari_kbn"]')
                 await order_type_elements[1].click()  # 成行
                 selector = f'select[name="nariyuki_condition"] option[value="H"]'
-                await self.browser_utils.select_pulldown(self.tab, selector)
-                trade_password_input = await self.tab.wait_for('input[id="pwd3"]')
-                await trade_password_input.send_keys(os.getenv('SBI_TRADEPASS'))
-                skip_button = await self.tab.wait_for('input[id="shouryaku"]')
-                await skip_button.click()
-                order_button = await self.tab.wait_for('img[title="注文発注"]')
-                await order_button.click()
-                await self.tab.wait(1.2)
+                await self.browser_utils.select_pulldown(selector)
+                await self.browser_utils.send_keys_to_element('input[id="pwd3"]', is_css = True, keys = os.getenv('SBI_TRADEPASS'))
+                await self.browser_utils.wait_and_click('input[id="shouryaku"]', is_css = True)
+                await self.browser_utils.wait_and_click('img[title="注文発注"]', is_css =  True)
+                await self.browser_utils.wait(1.2)
                 try:
-                    await self.tab.wait_for(text='ご注文を受け付けました。')                
+                    await self.browser_utils.wait_for('ご注文を受け付けました。')                
                     print(f"{margin_tickers[i]}：正常に決済注文完了しました。")
                     
                 except:
@@ -453,7 +415,6 @@ class OrderManager:
                         self.error_tickers.append(margin_tickers[i])
                         retry_count = 0
                         i += 1
-                html_content = await self.tab.get_content()
                 symbol_code = str(await self._get_element('銘柄コード'))
                 extracted_unit = await self._get_element('株数')
                 extracted_unit = int(extracted_unit[:-1].replace(',', ''))
@@ -470,23 +431,16 @@ class OrderManager:
 
                 retry_count = 0
                 i += 1
-
-
-        self.login_handler.session.tab = self.tab
         print(f'全銘柄の決済処理が完了しました。')
 
 
     async def _extract_margin_list(self):
-        await self._navigate_to_margin_page()
-        html_content = await self.tab.get_content()
+        await self.page_navigator.margin()
+        html_content = await self.browser_utils.get_html_content()
         self.margin_list_df = self._parse_margin_table(html_content)
 
     async def _navigate_to_margin_page(self):
-        button = await self.tab.wait_for('img[title=口座管理]')
-        await button.click()
-        button = await self.tab.wait_for('area[title=信用建玉]')
-        await button.click()
-        await self.tab.wait(3)
+        await self.page_navigator.credit_position()
 
     def _parse_margin_table(self, html_content: str) -> pd.DataFrame:
         html = soup(html_content, "html.parser")
@@ -533,9 +487,7 @@ class OrderManager:
         """
         注文エラーを処理し、必要に応じて再試行する。
         """
-        await self.login_handler.sign_in()
-        self.tab = self.login_handler.session.tab
-        await self._navigate_to_trade_page()
+        await self.page_navigator.trade()
 
         error_positions = self.position_manager.get_error_positions()
         for position in error_positions:

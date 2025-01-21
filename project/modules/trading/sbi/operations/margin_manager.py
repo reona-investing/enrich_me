@@ -1,24 +1,26 @@
 from bs4 import BeautifulSoup as soup
 from trading.sbi.session import LoginHandler
+from trading.sbi.browser import BrowserUtils, PageNavigator
 import re
 
 class MarginManager:
     def __init__(self, login_handler: LoginHandler):
-        """信用建余力・買付余力取得クラス"""
+        """
+        信用建余力・買付余力取得クラス
+        """
         self.login_handler = login_handler
+        self.page_navigator = PageNavigator(self.login_handler)
+        self.browser_utils = BrowserUtils(self.login_handler)
         self.margin_power = None
         self.buying_power = None
 
     async def fetch(self):
         """信用建余力と買付余力を取得して返す"""
         # 口座管理ページに遷移
-        await self.login_handler.sign_in()
-        button = await self.login_handler.session.tab.wait_for('img[title="口座管理"]')
-        await button.click()
-        await self.login_handler.session.tab.wait(3)
+        await self.page_navigator.account_management()
 
         # ページのHTMLを取得
-        html_content = await self.login_handler.session.tab.get_content()
+        html_content = await self.browser_utils.get_html_content()
         html = soup(html_content, "html.parser")
 
         # 信用建余力を取得

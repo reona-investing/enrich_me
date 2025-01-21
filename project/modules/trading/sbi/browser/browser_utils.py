@@ -1,23 +1,121 @@
 import nodriver as uc
+from trading.sbi.session import LoginHandler
 
 class BrowserUtils:
-    @staticmethod
-    async def select_pulldown(tab: uc.core.tab.Tab, css_selector: str):
-        """プルダウンメニューのオプションを選択"""
-        await tab.evaluate(f'''
+    def __init__(self, login_handler: LoginHandler):
+        '''
+        ブラウザを用いた操作を定義します。
+        Args:
+            login_handler (LoginHandler): SBI証券へのログイン状態を確認します。
+        '''
+        self.login_handler = login_handler
+        self.tab = None
+
+
+    async def _set_tab(self):
+        self.tab = await self.login_handler.sign_in()
+
+
+    async def wait(self, t: int | float):
+        """
+        指定した秒数待機します。
+        Args:
+            t (int|float): 待機秒数
+        """
+        if type(t) is int or type(t) is float:
+            if t > 0:
+                await self.tab.wait(t)
+
+    async def select_element(self, selector_text: str, is_css: bool = False):
+        """
+        指定した文字列 or cssセレクタ要素を返します。
+        Args:
+            selector_text (str): 表示を待ちたい文字列 or CSSセレクタ
+            is_css (bool): TrueならCSSセレクタ、Falseなら文字列の表示を待つ
+        """
+        await self._set_tab()
+        if is_css:
+            element = await self.tab.select(selector_text)
+        else:
+            element = await self.tab.find(selector_text)
+        return element
+
+    async def select_all(self, css_selector: str):
+        '''
+        特定のcssセレクタを持つ要素をすべて取得します。
+        '''
+        await self._set_tab()
+        elements = await self.tab.select_all(css_selector)
+        return elements
+
+    async def click_element(self, selector_text: str, is_css: bool = False):
+        """
+        指定した要素の表示を待ってからクリックします。
+        Args:
+            selector_text (str): 表示を待ちたい文字列 or CSSセレクタ
+            is_css (bool): TrueならCSSセレクタ、Falseなら文字列の表示を待つ
+        """
+        element = await self.select_element(selector_text, is_css)
+        await element.click()
+
+
+    async def send_keys_to_element(self, selector_text: str, is_css: bool = False, keys: str = None):
+        """
+        指定した要素の表示を待ってから文字列を送信します。
+        Args:
+            selector_text (str): 表示を待ちたい文字列 or CSSセレクタ
+            is_css (bool): TrueならCSSセレクタ、Falseなら文字列の表示を待つ
+            keys (str): 送信する文字列
+        """
+        element = await self.select_element(selector_text, is_css)
+        await element.send_keys(keys)
+
+
+    async def select_pulldown(self, css_selector: str):
+        """
+        プルダウンメニューのオプションを選択します。
+        Args:
+            css_selector (str): 選択したいプルダウンメニューのCSSセレクタ
+        """
+        await self._set_tab()
+        await self.tab.evaluate(f'''
             var option = document.querySelector('{css_selector}');
             option.selected = true;
             var event = new Event('change', {{ bubbles: true }});
             option.parentElement.dispatchEvent(event);
         ''')
-        await tab.wait(0.5)
+        await self.tab.wait(0.5)
 
-    @staticmethod
-    async def wait_and_click(tab: uc.core.tab.Tab, selector_text: str, is_css: bool = False):
-        """指定した要素を待ってからクリック"""
+
+    async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 10):
+        """
+        指定した要素の表示を待ってからクリックします。
+        Args:
+            selector (str): 表示を待ちたい文字列またはcssセレクタ
+            is_css (bool): Trueならcssセレクタ、Falseなら文字列
+            timeout (int|float|None): タイムアウト秒数
+        Returns:
+            element: 要素
+        """
         if is_css:
-            element = await tab.select(selector_text)
+            element = await self.tab.wait_for(selector=selector, timeout=timeout)
         else:
-            element = await tab.find(selector_text)
+            element = await self.tab.wait_for(text=selector, timeout=timeout)
+        return element
+
+    async def wait_and_click(self, selector: str, is_css: bool = False, timeout: int | float | None = 10):
+        """
+        指定した要素の表示を待ってからクリックします。
+        Args:
+            selector (str): 表示を待ちたい文字列またはcssセレクタ
+            is_css (bool): Trueならcssセレクタ、Falseなら文字列
+            timeout (int|float|None): タイムアウト秒数
+        """
+        element = await self.wait_for(selector, is_css, timeout)
         await element.click()
-        await tab.wait(1)
+    
+    async def get_html_content(self):
+        await self._set_tab()
+        html_content = await self.tab.get_content()
+        return html_content
+

@@ -2,7 +2,6 @@ import os
 from utils.paths import Paths
 from utils.notifier import SlackNotifier
 from trading.sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
-from trading.sbi.session import PageNavigator
 from trading.sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
 from models import MLDataset
 
@@ -10,9 +9,8 @@ class TradingFacade:
     def __init__(self):
         """SBI取引操作を統括するファサード"""
         self.login_handler = LoginHandler()
-        self.page_navigator = PageNavigator(self.login_handler)
         self.slack = SlackNotifier(program_name=os.path.basename(__file__))
-        self.history_manager = HistoryManager(self.page_navigator)
+        self.history_manager = HistoryManager(self.login_handler)
         self.margin_manager = MarginManager(self.login_handler)
         self.order_manager = OrderManager(self.login_handler)
         self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
