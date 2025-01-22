@@ -2,7 +2,7 @@ from trading.sbi.session import LoginHandler
 from datetime import datetime
 from pathlib import Path
 from utils.paths import Paths
-from trading.sbi.browser.browser_utils import BrowserUtils
+from trading.sbi.browser import BrowserUtils
 
 class PageNavigator:
     def __init__(self, login_handler: LoginHandler):
@@ -46,6 +46,14 @@ class PageNavigator:
         '''
         await self._set_tab()
         await self._home()
+
+
+    async def domestic_top(self):
+        '''
+        国内株式トップページに遷移します。
+        '''
+        await self._set_tab()
+        await self.tab.get('https://site0.sbisec.co.jp/marble/domestic/top.do?')
 
 
     async def trade(self):

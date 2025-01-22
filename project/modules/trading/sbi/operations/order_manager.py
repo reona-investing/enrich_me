@@ -435,7 +435,7 @@ class OrderManager:
 
 
     async def _extract_margin_list(self):
-        await self.page_navigator.margin()
+        await self.page_navigator.credit_position()
         html_content = await self.browser_utils.get_html_content()
         self.margin_list_df = self._parse_margin_table(html_content)
 

@@ -1,5 +1,6 @@
 import pandas as pd
-from trading.sbi.session.login_handler import LoginHandler
+from trading.sbi.session import LoginHandler
+from trading.sbi.browser import PageNavigator, BrowserUtils
 import os
 from pathlib import Path
 from utils.paths import Paths
@@ -11,6 +12,8 @@ class TradePossibilityManager:
         self.download_path = Paths.DOWNLOAD_FOLDER
         os.makedirs(self.download_path, exist_ok=True)
         self.login_handler = login_handler
+        self.page_navigator = PageNavigator(self.login_handler)
+        self.browser_utils = BrowserUtils(self.login_handler)
 
     async def fetch(self) -> dict:
         """
@@ -18,23 +21,19 @@ class TradePossibilityManager:
         Returns:
             dict: 銘柄ごとの建玉上限と売建受注枠
         """
-        await self.login_handler.sign_in()
-        self.tab = self.login_handler.session.tab
-
         self._remove_files_in_download_folder()
         
         # 取引可能性情報ページに遷移
-        button = await self.tab.wait_for('#navi01P > ul > li:nth-child(3) > a')
-        await button.click()
-        button = await self.tab.wait_for('#rightNav\\ mt-8 > div:nth-child(1) > ul > li:nth-child(5) > a')
-        await button.click()
-        await self.tab.wait(5)
+        await self.page_navigator.domestic_top()
+        await self.browser_utils.wait(1)
+        await self.browser_utils.wait_and_click('#navi01P > ul > li:nth-child(3) > a', is_css = False)
+        await self.browser_utils.wait_and_click('#rightNav\\ mt-8 > div:nth-child(1) > ul > li:nth-child(5) > a', is_css = False)
+        await self.browser_utils.wait(5)
 
         # ダウンロード処理
-        await self.tab.set_download_path(Path(self.download_path))
-        download_link = await self.tab.wait_for('#csvDownload')
-        await download_link.click()
-        await self.tab.wait(5)
+        await self.browser_utils.set_download_path(Path(self.download_path))
+        await self.browser_utils.wait_and_click('#csvDownload', is_css = True)
+        await self.browser_utils.wait(5)
 
         # CSVファイルの読み込み
         csv_file = self._get_latest_csv()
@@ -43,7 +42,6 @@ class TradePossibilityManager:
         # データ整形
         trade_data["一人あたり建玉上限数"] = trade_data["一人あたり建玉上限数"].replace("-", 1000000).astype(int)
         sellable_condition = (trade_data["売建受注枠"] != "受付不可") & (trade_data["信用区分（HYPER）"] == "")
-        self.login_handler.session.tab = self.tab
 
         # 結果の辞書化
         self.data_dict = {

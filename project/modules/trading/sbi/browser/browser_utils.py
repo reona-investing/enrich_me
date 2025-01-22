@@ -1,5 +1,6 @@
 import nodriver as uc
 from trading.sbi.session import LoginHandler
+from typing import Path
 
 class BrowserUtils:
     def __init__(self, login_handler: LoginHandler):
@@ -115,7 +116,17 @@ class BrowserUtils:
         await element.click()
     
     async def get_html_content(self):
+        '''
+        現在のタブからhtmlを取得します。
+        '''
         await self._set_tab()
         html_content = await self.tab.get_content()
         return html_content
 
+    async def set_download_path(self, path: Path):
+        '''
+        ブラウザからのダウンロード先パスを指定します。
+        Args:
+            path (Path): ダウンロード先パス
+        '''
+        await self.tab.set_download_path(path)
