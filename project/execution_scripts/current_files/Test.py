@@ -212,9 +212,9 @@ if __name__ == '__main__':
     '''パス類'''
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
     SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
-    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/New48sectors'
-    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors'
-    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
+    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/New48sectors_to2023'
+    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors_to2023'
+    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled_to2023'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''
@@ -224,11 +224,11 @@ if __name__ == '__main__':
     top_slope = 1
     '''学習期間'''
     train_start_day = datetime(2014, 1, 1)
-    train_end_day = datetime(2024, 12, 31)
+    train_end_day = datetime(2023, 12, 31)
     test_start_day = datetime(2014, 1, 1)
     test_end_day = datetime(2099, 12, 31) #ずっと先の未来を指定
     '''学習するか否か'''
-    learn = False
+    learn = True
     predict = None
 
 #%% 実行

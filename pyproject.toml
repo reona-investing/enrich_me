@@ -18,6 +18,7 @@ dependencies = [
     "matplotlib>=3.9.2",
     "nbformat>=5.10.4",
     "nodriver>=0.37",
+    "notebook>=7.3.2",
     "numpy>=1.26.4",
     "opencv-python>=4.10.0.84",
     "pandas>=2.2.3",

@@ -359,27 +359,29 @@ class Visualizer:
 
     def display_result(self):
         '''任意のデータフレームを動的に描画'''
-        #ウィジェットの構成要素の定義
+        # ウィジェットの構成要素の定義
         dropdown = widgets.Dropdown(
             options=self.metrics_dfs.keys(),
             description='選択：'
-          )
+        )
         button = widgets.Button(description="表示")
         output = widgets.Output()
-        #ボタンクリック時の挙動を定義
-        def on_button_click(sb):
+
+        # ボタンクリック時の挙動を定義
+        def on_button_click(b):
             selected_df = self.metrics_dfs[dropdown.value]
             with output:
+                output.clear_output()  # 以前の出力をクリア
                 pd.set_option('display.max_rows', None)  # 表示行数を無制限に設定
                 pd.set_option('display.max_columns', None)  # 表示列数を無制限に設定
-                output.clear_output()
-                display(selected_df)
+                display(selected_df)  # 選択されたデータフレームを表示
                 pd.reset_option('display.max_rows')  # 表示行数をデフォルトに戻す
                 pd.reset_option('display.max_columns')  # 表示列数をデフォルトに戻す
+
         button.on_click(on_button_click)
-        #ウィジェットの表示
-        display(widgets.HBox([dropdown, button]))
-        display(output)
+
+        # ウィジェットの表示
+        display(widgets.HBox([dropdown, button]), output)  # outputをウィジェットに追加
 
 #%% デバッグ
 if __name__ == '__main__':
