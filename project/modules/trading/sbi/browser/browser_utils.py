@@ -1,6 +1,6 @@
 import nodriver as uc
 from trading.sbi.session import LoginHandler
-from typing import Path
+from pathlib import Path
 
 class BrowserUtils:
     def __init__(self, login_handler: LoginHandler):
@@ -23,6 +23,7 @@ class BrowserUtils:
         Args:
             t (int|float): 待機秒数
         """
+        await self._set_tab()
         if type(t) is int or type(t) is float:
             if t > 0:
                 await self.tab.wait(t)
