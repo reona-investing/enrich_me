@@ -12,6 +12,11 @@ class EvaluationMaterials:
     pred_result_df: pd.DataFrame
     raw_target_df: pd.DataFrame
 
+@dataclass
+class StockSelectionMaterials:
+    order_price_df: pd.DataFrame
+    pred_result_df: pd.DataFrame
+
 
 class MLDataset:
     def __init__(self, dataset_folder_path: str, init_load: bool = True):
@@ -105,11 +110,20 @@ class MLDataset:
 
 
     def get_materials_for_evaluation(self) -> EvaluationMaterials:
+        '''モデルの性能評価に使うオブジェクトをまとめたデータクラスを返します。'''
         return EvaluationMaterials(
             pred_result_df = self.pred_result_df,
             raw_target_df = self.raw_target_df,
             )
 
+
+    def get_materials_for_stock_selection(self) -> StockSelectionMaterials:
+        '''銘柄選択に使うオブジェクトをまとめたデータクラスを返します。'''
+        return StockSelectionMaterials(
+            order_price_df = self.order_price_df,
+            pred_result_df = self.pred_result_df,
+            )
+    
 
     def retrieve_target_and_features(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         '''

@@ -34,7 +34,9 @@ class TradingFacade:
                 ※ 1.0のとき傾斜なし
 
         '''
-        stock_selector = StockSelector(ml_dataset, self.trade_possibility_manager, self.margin_manager,
+        materials = ml_dataset.get_materials_for_stock_selection()
+        stock_selector = StockSelector(materials.order_price_df, materials.pred_result_df,
+                                       self.trade_possibility_manager, self.margin_manager,
                                        SECTOR_REDEFINITIONS_CSV, num_sectors_to_trade, num_candidate_sectors, top_slope)
         order_maker = NewOrderMaker(stock_selector, self.order_manager)
         failed_order_list = await order_maker.run_new_orders()

@@ -3,13 +3,13 @@ import pandas as pd
 from typing import Tuple
 from IPython.display import display
 from utils.jquants_api_utils import cli
-from models import MLDataset
 from trading.sbi import MarginManager, TradePossibilityManager
 from utils.paths import Paths
 
 class StockSelector:
     def __init__(self, 
-                 ml_dataset: MLDataset,
+                 order_price_df: pd.DataFrame,
+                 pred_result_df: pd.DataFrame,
                  trade_possibility_manager: TradePossibilityManager,
                  margin_manager: MarginManager,
                  sector_definisions_csv: str,
@@ -19,8 +19,8 @@ class StockSelector:
                  ):
         self.trade_possibility_manager = trade_possibility_manager
         self.margin_manager = margin_manager
-        self.order_price_df = ml_dataset.order_price_df
-        self.pred_result_df = ml_dataset.pred_result_df
+        self.order_price_df = order_price_df
+        self.pred_result_df = pred_result_df
         self.new_sectors_df = pd.read_csv(sector_definisions_csv)
         self.num_sectors_to_trade = num_sectors_to_trade
         self.num_candidate_sectors = num_candidate_sectors
@@ -412,12 +412,14 @@ class StockSelector:
 if __name__  == '__main__':
     async def main():
         from trading.sbi.session import LoginHandler
+        from models import MLDataset
         ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/New48sectors')
+        materials = ml.get_materials_for_stock_selection()
         lh = LoginHandler()
         tpm = TradePossibilityManager(lh)
         mm = MarginManager(lh)
         sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
-        ss = StockSelector(ml, tpm, mm, sd)
+        ss = StockSelector(materials.order_price_df, materials.pred_result_df, tpm, mm, sd)
         long, short, today = await ss.select()
         print(short)
     
