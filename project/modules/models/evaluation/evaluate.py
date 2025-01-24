@@ -1,7 +1,6 @@
 import pandas as pd
 from utils.paths import Paths
 from typing import Literal
-from models import MLDataset
 from datetime import datetime
 import numpy as np
 from scipy.stats import spearmanr, norm
@@ -65,14 +64,15 @@ class LSDataHandler:
     type (Literal[str]): コントロールの種類を指定。デフォルトはTOPIX。
     """
     def __init__(self, 
-                 ml_dataset: MLDataset, 
+                 pred_result_df: pd.DataFrame,
+                 raw_target_df: pd.DataFrame,
                  start_day: datetime = datetime(2013, 1, 1),
                  end_day: datetime = datetime.today(),
                  ls_control: LSControlHandler = LSControlHandler(),
                  ):
         self.datetime_manager = DatetimeManager(start_day, end_day)
-        pred_result_df = self.datetime_manager.extract_duration(ml_dataset.pred_result_df)
-        raw_target_df = self.datetime_manager.extract_duration(ml_dataset.raw_target_df)
+        pred_result_df = self.datetime_manager.extract_duration(pred_result_df)
+        raw_target_df = self.datetime_manager.extract_duration(raw_target_df)
         self.control_df = self.datetime_manager.extract_duration(ls_control.control_df)
         self.control_type = ls_control.control_type
         self.original_cols = pred_result_df.columns
@@ -119,19 +119,19 @@ class MetricsCalculator:
         self._calculate_all_metrics()
     
     def _calculate_all_metrics(self):
-        self.get_return_by_bin()
-        self.get_longshort_df()
-        self.get_longshort_probability()
-        self.get_longshort_sub_control()
-        self.get_monthly_longshort()
-        self.get_daily_sector_performances()
-        self.get_monthly_sector_performances()
-        self.get_total_sector_performances()
-        self.get_spearman_corr()
-        self.get_numerai_corrs()
+        self.calc_return_by_bin()
+        self.calc_longshort_df()
+        self.calc_longshort_probability()
+        self.calc_longshort_sub_control()
+        self.calc_monthly_longshort()
+        self.calc_daily_sector_performances()
+        self.calc_monthly_sector_performances()
+        self.calc_total_sector_performances()
+        self.calc_spearman_corr()
+        self.calc_numerai_corrs()
+    
 
-
-    def get_return_by_bin(self) -> pd.DataFrame:
+    def calc_return_by_bin(self) -> pd.DataFrame:
         '''指定したbin数ごとのリターンを算出。'''
         df = self.result_df.dropna().copy()
         for column in self.original_cols:
@@ -141,7 +141,7 @@ class MetricsCalculator:
         self.metrics_dfs['分位成績（集計）'] = self.metrics_dfs['分位成績'].stack(future_stack=True).groupby('Pred_Bin').describe().T
 
 
-    def get_longshort_df(self) -> pd.DataFrame:
+    def calc_longshort_df(self) -> pd.DataFrame:
         '''ロング・ショートそれぞれの結果を算出する。'''
         df = self.result_df.copy()
         short_df = - df.loc[df['Pred_Rank'] <= self.trade_sectors_num]
@@ -175,7 +175,7 @@ class MetricsCalculator:
         self.metrics_dfs['日次成績（集計）'] = longshort_agg
 
 
-    def get_longshort_probability(self) -> pd.DataFrame:
+    def calc_longshort_probability(self) -> pd.DataFrame:
         '''Long, Short, LSの各リターンを算出する。'''
         longshort_df = self.metrics_dfs['日次成績'][['LS']].copy()
         longshort_df['CumMean'] = longshort_df['LS'].expanding().mean().shift(1)
@@ -197,7 +197,7 @@ class MetricsCalculator:
         self.metrics_dfs['日次成績（確率分布）'] = longshort_df
 
 
-    def get_longshort_sub_control(self):
+    def calc_longshort_sub_control(self):
         '''コントロールを差し引いたリターン結果を表示する。'''
         longshort_df = pd.merge(self.metrics_dfs['日次成績'], self.control_df[[f'{self.control_type}_daytime']], how='left', left_index=True, right_index=True)
         longshort_df['Long'] -= longshort_df[f'{self.control_type}_daytime']
@@ -216,7 +216,7 @@ class MetricsCalculator:
         self.metrics_dfs[f'日次成績（集計・{self.control_type}差分）'] = longshort_agg
 
 
-    def get_monthly_longshort(self):
+    def calc_monthly_longshort(self):
         '''月次のリターンを算出'''
         monthly_longshort = (self.metrics_dfs['日次成績'][['Long', 'Short', 'LS']] + 1).resample('ME').prod() - 1
         monthly_longshort_sub_control = (self.metrics_dfs[f'日次成績（{self.control_type}差分）'][['Long', 'Short', 'LS']] + 1).resample('ME').prod() - 1
@@ -226,7 +226,7 @@ class MetricsCalculator:
         self.metrics_dfs[f'月次成績（{self.control_type}差分）'] = monthly_longshort_sub_control
 
 
-    def get_daily_sector_performances(self):
+    def calc_daily_sector_performances(self):
         '''業種ごとの成績を算出する'''
         df = self.result_df.copy()
         long_theshold = len(df.index.get_level_values('Sector').unique()) - self.trade_sectors_num + 1
@@ -237,7 +237,7 @@ class MetricsCalculator:
         sector_performances_daily = sector_performances_daily.reset_index().sort_values(['Date', 'Pred_Rank'], ascending=True).set_index(['Date', 'Sector'], drop=True)
         self.metrics_dfs['セクター別成績（日次）'] = sector_performances_daily.copy()
 
-    def get_monthly_sector_performances(self):
+    def calc_monthly_sector_performances(self):
         '''業種ごとの月次リターンの算出'''
         long_sectors = self.long_sectors.copy()
         short_sectors = self.short_sectors.copy()
@@ -260,7 +260,7 @@ class MetricsCalculator:
         monthly_sector_performances = pd.merge(long_monthly, short_monthly, how='outer', left_index=True, right_index=True).fillna(0)
         self.metrics_dfs['セクター別成績（月次）'] = monthly_sector_performances.copy()
 
-    def get_total_sector_performances(self):
+    def calc_total_sector_performances(self):
         #全期間トータル
         long_sectors = self.long_sectors.groupby('Sector')[['Target_Rank']].describe().droplevel(0, axis=1)
         long_sectors = long_sectors[['count', 'mean', '50%', 'std']]
@@ -276,7 +276,7 @@ class MetricsCalculator:
 
 
     '''以下、相関係数関係'''
-    def get_spearman_corr(self):
+    def calc_spearman_corr(self):
         '''
       日次のsperamanの順位相関係数と，その平均や標準偏差を算出
         '''
@@ -285,21 +285,21 @@ class MetricsCalculator:
         self.metrics_dfs['Spearman相関'] = pd.DataFrame(daily_spearman, index=dateindex, columns=['SpearmanCorr'])
         self.metrics_dfs['Spearman相関（集計）'] = self.metrics_dfs['Spearman相関'].describe()
 
-    def get_numerai_corrs(self):
+    def calc_numerai_corrs(self):
         '''
         日次のnumerai_corrと，その平均や標準偏差を算出
         numerai_corr：上位・下位の予測に重みづけされた，より実践的な指標．
         '''
         #Target順位化の有無（RawReturnとの相関も算出したい．））
-        daily_numerai = self.result_df.groupby('Date').apply(lambda x: self._get_daily_numerai_corr(x['Target_Rank'], x['Pred_Rank']))
-        daily_numerai_rank = self.result_df.groupby('Date').apply(lambda x: self._get_daily_numerai_rank_corr(x['Target_Rank'], x['Pred_Rank']))
+        daily_numerai = self.result_df.groupby('Date').apply(lambda x: self._calc_daily_numerai_corr(x['Target_Rank'], x['Pred_Rank']))
+        daily_numerai_rank = self.result_df.groupby('Date').apply(lambda x: self._calc_daily_numerai_rank_corr(x['Target_Rank'], x['Pred_Rank']))
         #データフレーム化
         dateindex = self.result_df.index.get_level_values('Date').unique()
         self.metrics_dfs['Numerai相関'] = pd.concat([daily_numerai, daily_numerai_rank], axis=1)
         self.metrics_dfs['Numerai相関'].columns = ['NumeraiCorr', 'Rank_NumeraiCorr']
         self.metrics_dfs['Numerai相関（集計）'] = self.metrics_dfs['Numerai相関'].describe()
 
-    def _get_daily_numerai_corr(self, target: pd.Series, pred_rank: pd.Series):
+    def _calc_daily_numerai_corr(self, target: pd.Series, pred_rank: pd.Series):
         '''
         日次のnumerai_corrを算出
         '''
@@ -316,7 +316,7 @@ class MetricsCalculator:
 
         return np.corrcoef(pred_p15, target_p15)[0, 1]
 
-    def _get_daily_numerai_rank_corr(self, target_rank: pd.Series, pred_rank: pd.Series):
+    def _calc_daily_numerai_rank_corr(self, target_rank: pd.Series, pred_rank: pd.Series):
         '''
         日次のnumerai_corr（Targetをランク化）を算出
         '''
@@ -385,10 +385,12 @@ class Visualizer:
 
 #%% デバッグ
 if __name__ == '__main__':
+    from models import MLDataset
     ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/New48sectors'
     ml_dataset = MLDataset(ML_DATASET_PATH)
+    materials = ml_dataset.get_materials_for_evaluation()
     ls_control_handler = LSControlHandler()
-    ls_data_handler = LSDataHandler(ml_dataset = ml_dataset, start_day = datetime(2022, 1, 1))
+    ls_data_handler = LSDataHandler(materials.pred_result_df, materials.raw_target_df, start_day = datetime(2022, 1, 1))
     metrics_calculator = MetricsCalculator(ls_data_handler = ls_data_handler, bin_num = 5)
     visualizer = Visualizer(metrics_calculator)
     visualizer.display_result()

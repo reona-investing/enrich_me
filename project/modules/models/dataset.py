@@ -2,19 +2,29 @@ import os
 import pickle
 import pandas as pd
 from typing import Tuple
+from dataclasses import dataclass
 from utils.jquants_api_utils import get_next_open_date
 from datetime import datetime
+
+
+@dataclass
+class EvaluationMaterials:
+    pred_result_df: pd.DataFrame
+    raw_target_df: pd.DataFrame
+
 
 class MLDataset:
     def __init__(self, dataset_folder_path: str, init_load: bool = True):
         self.dataset_folder_path = dataset_folder_path
         self._initialize_instance_vars(init_load)
 
+
     def _initialize_instance_vars(self, init_load: bool):
         """インスタンス変数を初期化"""
         for attr_name, ext in FileHandler.instance_vars.items():
             file_path = f"{self.dataset_folder_path}/{attr_name}{ext}" if init_load else None
             setattr(self, attr_name, FileHandler.load(file_path))
+
 
     def copy_from_other_dataset(self, copy_from: 'MLDataset'):
         """
@@ -23,6 +33,7 @@ class MLDataset:
         """
         for attr_name in FileHandler.instance_vars.keys():
             setattr(self, attr_name, getattr(copy_from, attr_name))
+    
 
     def archive_dfs(self, target_df: pd.DataFrame, features_df: pd.DataFrame,
                     train_start_day: datetime, train_end_day: datetime,
@@ -67,15 +78,19 @@ class MLDataset:
         self.raw_target_df = raw_target_df
         self.order_price_df = order_price_df
 
+
     def archive_ml_objects(self, ml_models:list, ml_scalers:list):
         self.ml_models = ml_models
         self.ml_scalers = ml_scalers
 
+
     def archive_raw_target(self, raw_target_df:pd.DataFrame):
         self.raw_target_df = raw_target_df
 
+
     def archive_pred_result(self, pred_result_df:pd.DataFrame):
         self.pred_result_df = pred_result_df
+
 
     def save_instance(self, dataset_folder_path:str):
         """インスタンスを保存"""
@@ -87,6 +102,14 @@ class MLDataset:
             if attr is not None:
                 file_path = f"{self.dataset_folder_path}/{attr_name}{ext}"
                 FileHandler.save(file_path, attr)
+
+
+    def get_materials_for_evaluation(self) -> EvaluationMaterials:
+        return EvaluationMaterials(
+            pred_result_df = self.pred_result_df,
+            raw_target_df = self.raw_target_df,
+            )
+
 
     def retrieve_target_and_features(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         '''

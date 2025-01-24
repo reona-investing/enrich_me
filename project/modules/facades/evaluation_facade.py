@@ -11,7 +11,8 @@ class EvaluationFacade:
                  bin_num: int = None,
                  top_slope: float = 1.0,
                  ):
-        self.ls_data_handler = LSDataHandler(ml_dataset, start_day = start_day, end_day = end_day)
+        materials = ml_dataset.get_materials_for_evaluation()
+        self.ls_data_handler = LSDataHandler(materials.pred_result_df, materials.raw_target_df, start_day = start_day, end_day = end_day)
         self.met_calc = MetricsCalculator(self.ls_data_handler, trade_sector_num, bin_num, top_slope)
         self.visualizer = Visualizer(self.met_calc)
     def display(self):
