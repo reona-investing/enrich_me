@@ -16,7 +16,7 @@ from utils.paths import Paths
 from acquisition import features_scraper as scraper
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
-from models.machine_learning import lasso, lgbm
+from models.machine_learning import LassoModel, lgbm
 import models.ensemble as ensemble
 from facades import TradingFacade, StockAcquisitionFacade
 from utils.error_handler import error_handler
@@ -79,9 +79,14 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
                                            outlier_threshold = 3,)
         ml_dataset.archive_raw_target(necessary_dfs_dict['raw_target_df'])
         ml_dataset.archive_order_price(necessary_dfs_dict['order_price_df'])
+    lasso_model = LassoModel()
     if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''LASSO（学習は必要時、予測は毎回）'''
-        ml_dataset = lasso(ml_dataset, learn = flag_manager.flags[Flags.LEARN], min_features = 3, max_features = 5)
+        trainer_outputs = lasso_model.train(ml_dataset.train_test_materials.target_train_df, ml_dataset.train_test_materials.features_train_df)
+        ml_dataset.archive_ml_objects(trainer_outputs.models, trainer_outputs.scalers)
+    pred_result_df = lasso_model.predict(ml_dataset.train_test_materials.target_test_df, ml_dataset.train_test_materials.features_test_df, 
+                                     ml_dataset.ml_object_materials.models, ml_dataset.ml_object_materials.scalers)
+    ml_dataset.archive_pred_result(pred_result_df)
     return ml_dataset
 
 def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset, 
