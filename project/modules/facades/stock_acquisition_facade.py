@@ -1,7 +1,7 @@
 from acquisition.jquants_api_operations.updater import ListUpdater, FinUpdater, PriceUpdater
 from acquisition.jquants_api_operations.processor import ListProcessor, FinProcessor, PriceProcessor
 from acquisition.jquants_api_operations.reader import Reader
-from typing import List, Literal
+from typing import Literal
 import pandas as pd
 
 

@@ -74,15 +74,14 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
                                                              adopt_size_factor = False, adopt_eps_factor = False,
                                                              adopt_sector_categorical = False, add_rank = False)
         '''LASSO用データセットの更新'''
-        ml_dataset.archive_dfs(necessary_dfs_dict['target_df'], features_df, # 目的変数・特徴量dfをデータセットに登録
-                                train_start_day, train_end_day, test_start_day, test_end_day,
-                                outlier_theshold = 3,
-                                raw_target_df=necessary_dfs_dict['raw_target_df'], 
-                                order_price_df=necessary_dfs_dict['order_price_df'])
+        ml_dataset.archive_train_test_data(necessary_dfs_dict['target_df'], features_df,
+                                           train_start_day, train_end_day, test_start_day, test_end_day,
+                                           outlier_threshold = 3,)
+        ml_dataset.archive_raw_target(necessary_dfs_dict['raw_target_df'])
+        ml_dataset.archive_order_price(necessary_dfs_dict['order_price_df'])
     if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''LASSO（学習は必要時、予測は毎回）'''
-        ml_dataset = lasso(ml_dataset, dataset_path = ML_DATASET_PATH1, learn = flag_manager.flags[Flags.LEARN],
-                           min_features = 3, max_features = 5)
+        ml_dataset = lasso(ml_dataset, learn = flag_manager.flags[Flags.LEARN], min_features = 3, max_features = 5)
     return ml_dataset
 
 def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset, 
@@ -98,39 +97,36 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
                                                               adopt_1d_return = True, mom_duration = [5, 21], vola_duration = [5, 21],
                                                               adopt_size_factor = True, adopt_eps_factor = True,
                                                               adopt_sector_categorical = True, add_rank = True)
-        features_df = pd.merge(features_df, ml_dataset1.pred_result_df[['Pred']], how='outer',
+        pred_in_1st_model = ml_dataset1.evaluation_materials.pred_result_df
+        features_df = pd.merge(features_df, pred_in_1st_model[['Pred']], how='outer',
                             left_index=True, right_index=True) # LASSOでの予測結果をlightGBMの特徴量として追加
         features_df = features_df.rename(columns={'Pred':'1stModel_pred'})
 
         '''lightGBM用データセットの更新'''
         # 目的変数・特徴量dfをデータセットに登録
-        ml_dataset2.archive_dfs(necessary_dfs_dict['target_df'], features_df,
-                                train_start_day, train_end_day, test_start_day, test_end_day,
-                                outlier_theshold = 3, 
-                                raw_target_df=necessary_dfs_dict['raw_target_df'], 
-                                order_price_df=necessary_dfs_dict['order_price_df'],
-                                no_shift_features=['1stModel_pred'], reuse_features_df_of_others=True)
+        ml_dataset2.archive_train_test_data(necessary_dfs_dict['target_df'], features_df,
+                                            train_start_day, train_end_day, test_start_day, test_end_day,
+                                            outlier_threshold = 3,
+                                            no_shift_features=['1stModel_pred'], 
+                                            reuse_features_df=True)
+        ml_dataset2.archive_raw_target(necessary_dfs_dict['raw_target_df'])
+        ml_dataset2.archive_order_price(necessary_dfs_dict['order_price_df'])
 
     if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''lightGBM（学習は必要時、予測は毎回）'''
-        ml_dataset2 = lgbm(ml_dataset = ml_dataset2, dataset_path = ML_DATASET_PATH2,
-                           learn = flag_manager.flags[Flags.LEARN], categorical_features = ['Sector_cat'])
+        ml_dataset2 = lgbm(ml_dataset = ml_dataset2, learn = flag_manager.flags[Flags.LEARN], categorical_features = ['Sector_cat'])
     return ml_dataset2
 
-def ensemble_pred_results(dataset_ensembled: MLDataset, datasets: list, ensemble_rates: list, ENSEMBLED_DATASET_PATH: str) \
-    -> MLDataset:
-    if len(datasets) == 0 or len(datasets) == 0:
-        raise ValueError('datasetsとensemble_ratesには1つ以上の要素を指定してください。')
-    if len(datasets) != len(ensemble_rates):
-        raise ValueError('datasetsとensemble_ratesの要素数を同じにしてください。')
-    ensembled_pred_df = datasets[0].pred_result_df[['Target']]
-    ensembled_pred_df['Pred'] = ensemble.by_rank(ml_datasets = datasets, 
-                                                    ensemble_rates = ensemble_rates)
+def ensemble_pred_results(datasets: list[MLDataset], ensemble_rates: list[float], 
+                          ENSEMBLED_DATASET_PATH: str | os.PathLike[str]) -> MLDataset:
+    ensembled_pred_df = datasets[0].evaluation_materials.pred_result_df[['Target']]
+    ensembled_pred_df['Pred'] = ensemble.by_rank(datasets = datasets,
+                                                 ensemble_rates = ensemble_rates)
+    dataset_ensembled = MLDataset(ENSEMBLED_DATASET_PATH)
     dataset_ensembled.copy_from_other_dataset(datasets[0])
     dataset_ensembled.archive_pred_result(ensembled_pred_df)
-    dataset_ensembled.save_instance(ENSEMBLED_DATASET_PATH)
-    dataset_ensembled = MLDataset(ENSEMBLED_DATASET_PATH)
-    return dataset_ensembled
+    dataset_ensembled.save()
+    return MLDataset(ENSEMBLED_DATASET_PATH)
 
 #%% メイン関数
 async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_PATH:str,
@@ -178,8 +174,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
                                            train_start_day, train_end_day, test_start_day, test_end_day)
             ml_dataset2 = update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dict,
                                            train_start_day, train_end_day, test_start_day, test_end_day)
-            ml_dataset_ensembled = ensemble_pred_results(dataset_ensembled = ml_dataset_ensembled,
-                                                         datasets = [ml_dataset1, ml_dataset2], 
+            ml_dataset_ensembled = ensemble_pred_results(datasets = [ml_dataset1, ml_dataset2], 
                                                          ensemble_rates = ensemble_rates,
                                                          ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)          
             Slack.send_message(message = f'予測が完了しました。')
@@ -212,9 +207,9 @@ if __name__ == '__main__':
     '''パス類'''
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
     SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
-    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/New48sectors'
-    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/LGBM_after_New48sectors'
-    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/LGBM_New48sectors_Ensembled'
+    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250125'
+    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LGBM_learned_in_250125'
+    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''

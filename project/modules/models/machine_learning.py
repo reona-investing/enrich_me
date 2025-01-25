@@ -12,7 +12,7 @@ import scipy
 from IPython.display import display
 
 #%% 関数群
-def lasso(ml_dataset: MLDataset, dataset_path:str, learn: bool = True, max_features: int = 5, min_features: int = 3, **kwargs) -> MLDataset:
+def lasso(ml_dataset: MLDataset, learn: bool = True, max_features: int = 5, min_features: int = 3, **kwargs) -> MLDataset:
     '''
     ml_dataset: 機械学習用のデータセット
     dataset_path: データセットのファイルパス
@@ -20,36 +20,43 @@ def lasso(ml_dataset: MLDataset, dataset_path:str, learn: bool = True, max_featu
     **kwargs: 学習時，ハイパーパラメータをデフォルト値から変更する場合のみ使用
     '''
 
-    if learn == False and (ml_dataset.ml_models is None or ml_dataset.ml_scalers is None):
+    if learn == False and (ml_dataset.ml_object_materials.models is None or ml_dataset.ml_object_materials.scalers is None):
         # モデルがない場合，強制的に学習を実施
         print('learn=Falseが設定されましたが，モデルがありません．学習を実施します．')
         learn = True
 
     if learn:
         # learn=Trueのときのみ学習
-        if ml_dataset.target_train_df.index.nlevels == 1:
+        if ml_dataset.train_test_materials.target_train_df.index.nlevels == 1:
             #シングルセクターの場合、単回学習とする。
-            model, scaler = _lasso_learn_single_sector(ml_dataset.target_train_df, ml_dataset.features_train_df, max_features, min_features, **kwargs)
-            ml_dataset.archive_ml_objects(ml_models=[model], ml_scalers=[scaler])
+            model, scaler = _lasso_learn_single_sector(ml_dataset.train_test_materials.target_train_df, 
+                                                       ml_dataset.train_test_materials.features_train_df, 
+                                                       max_features, min_features, **kwargs)
+            ml_dataset.archive_ml_objects(models = [model], scalers = [scaler])
         else:
             #マルチセクターの場合、セクターごとに学習する。
-            ml_dataset.ml_models, ml_dataset.ml_scalers = _lasso_learn_multi_sectors(ml_dataset.target_train_df, ml_dataset.features_train_df, max_features, min_features, **kwargs)
+            models, scalers = _lasso_learn_multi_sectors(ml_dataset.train_test_materials.target_train_df, 
+                                                         ml_dataset.train_test_materials.features_train_df, 
+                                                         max_features, min_features, **kwargs)
+            ml_dataset.archive_ml_objects(models = models, scalers = scalers)
 
-    if ml_dataset.target_train_df.index.nlevels == 1:
+    if ml_dataset.train_test_materials.target_train_df.index.nlevels == 1:
         # シングルセクターの場合、単回で予測する。
-        ml_dataset.pred_result_df = _lasso_pred_single_sector(ml_dataset.target_test_df, ml_dataset.features_test_df, ml_dataset.ml_models[0], ml_dataset.ml_scalers[0])
+        pred_result_df = _lasso_pred_single_sector(ml_dataset.train_test_materials.target_test_df,
+                                                   ml_dataset.train_test_materials.features_test_df,
+                                                   ml_dataset.ml_object_materials.models[0], 
+                                                   ml_dataset.ml_object_materials.scalers[0])
     else:
         #マルチセクターの場合、セクターごとに予測する。
-        ml_dataset.pred_result_df = _lasso_pred_multi_sectors(ml_dataset.target_test_df, ml_dataset.features_test_df, ml_dataset.ml_models, ml_dataset.ml_scalers)
+        pred_result_df = _lasso_pred_multi_sectors(ml_dataset.train_test_materials.target_test_df, 
+                                                   ml_dataset.train_test_materials.features_test_df,
+                                                   ml_dataset.ml_object_materials.models, 
+                                                   ml_dataset.ml_object_materials.scalers)
+    ml_dataset.archive_pred_result(pred_result_df = pred_result_df)
 
-    #データセットの保存と復元
-    if dataset_path is None:
-        print('データセットの出力パスが指定されていないため、出力しません。')
-    else:
-        ml_dataset.save_instance(dataset_path)
-        ml_dataset = MLDataset(dataset_path)
+    ml_dataset.save()
+    return MLDataset(ml_dataset.dataset_folder_path)
 
-    return ml_dataset
 
 def _lasso_learn_single_sector(y: pd.DataFrame, X: pd.DataFrame, max_features: int, min_features: int, **kwargs) -> Tuple[Lasso, StandardScaler]:
     '''
@@ -177,17 +184,15 @@ def _get_feature_importances_df(model:object, feature_names:pd.core.indexes.base
     return feature_importances_df
 
 
-def lgbm(ml_dataset: MLDataset, dataset_path: str, learn: bool = True, categorical_features: list = None, **kwargs):
+def lgbm(ml_dataset: MLDataset, learn: bool = True, categorical_features: list = None, **kwargs):
     # データの準備
-    X_train = ml_dataset.features_train_df
-    y_train = ml_dataset.target_train_df['Target']
-    X_test = ml_dataset.features_test_df
-    y_test = ml_dataset.target_test_df['Target']
+    X_train = ml_dataset.train_test_materials.features_train_df
+    y_train = ml_dataset.train_test_materials.target_train_df['Target']
+    X_test = ml_dataset.train_test_materials.features_test_df
 
     if learn:
         # LightGBM用のデータセットを作成
         train_data = lgb.Dataset(X_train, label=y_train, categorical_feature=categorical_features)
-        test_data = lgb.Dataset(X_test, label=y_test, reference=train_data, categorical_feature=categorical_features)
 
         # ハイパーパラメータの設定
         params = {
@@ -201,25 +206,17 @@ def lgbm(ml_dataset: MLDataset, dataset_path: str, learn: bool = True, categoric
             'lambda_l1':0.5,
         }
 
-        # コールバックの設定
-        callbacks = [lgb.early_stopping(stopping_rounds=100)]
         # モデルのトレーニング
-        ml_dataset.ml_models = ml_dataset.ml_scalers = []
-        ml_dataset.ml_models.append(lgb.train(params, train_data, feval=_numerai_corr_lgbm, num_boost_round=100000))
+        models = [lgb.train(params, train_data, feval=_numerai_corr_lgbm, num_boost_round=100000)]
+        ml_dataset.archive_ml_objects(models=models, scalers=[])
 
     # 予測
-    ml_dataset.pred_result_df = ml_dataset.target_test_df.copy()
-    ml_dataset.pred_result_df['Pred'] = ml_dataset.ml_models[0].predict(X_test, num_iteration=ml_dataset.ml_models[0].best_iteration)
-
-    #データセットの保存と復元
-    if dataset_path is None:
-        print('データセットの出力パスが指定されていないため、出力しません。')
-    else:
-        ml_dataset.save_instance(dataset_path)
-        ml_dataset = MLDataset(dataset_path)
+    pred_result_df = ml_dataset.train_test_materials.target_test_df.copy()
+    pred_result_df['Pred'] = ml_dataset.ml_object_materials.models[0].predict(X_test, num_iteration=ml_dataset.ml_object_materials.models[0].best_iteration)
+    ml_dataset.archive_pred_result(pred_result_df)
+    ml_dataset.save()
+    return MLDataset(ml_dataset.dataset_folder_path)
     
-    return ml_dataset
-
 def _numerai_corr_lgbm(preds, data):
     import numpy as np
     import pandas as pd

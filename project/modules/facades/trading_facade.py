@@ -34,7 +34,7 @@ class TradingFacade:
                 ※ 1.0のとき傾斜なし
 
         '''
-        materials = ml_dataset.get_materials_for_stock_selection()
+        materials = ml_dataset.stock_selection_materials
         stock_selector = StockSelector(materials.order_price_df, materials.pred_result_df,
                                        self.trade_possibility_manager, self.margin_manager,
                                        SECTOR_REDEFINITIONS_CSV, num_sectors_to_trade, num_candidate_sectors, top_slope)
