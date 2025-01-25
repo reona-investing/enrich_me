@@ -117,16 +117,20 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
         ml_dataset2 = lgbm(ml_dataset = ml_dataset2, learn = flag_manager.flags[Flags.LEARN], categorical_features = ['Sector_cat'])
     return ml_dataset2
 
-def ensemble_pred_results(datasets: list[MLDataset], ensemble_rates: list[float], 
-                          ENSEMBLED_DATASET_PATH: str | os.PathLike[str]) -> MLDataset:
-    ensembled_pred_df = datasets[0].evaluation_materials.pred_result_df[['Target']]
-    ensembled_pred_df['Pred'] = ensemble.by_rank(datasets = datasets,
-                                                 ensemble_rates = ensemble_rates)
+
+def ensemble_pred_results(ensemble_inputs: list[pd.DataFrame, float]) -> pd.DataFrame:
+    ensembled_pred_df = ensemble_inputs[0][0][['Target']]
+    ensembled_pred_df['Pred'] = ensemble.by_rank(inputs = ensemble_inputs)
+    return ensembled_pred_df
+
+
+def update_ensembled_model(ENSEMBLED_DATASET_PATH: str | os.PathLike[str], ensembled_pred_df: pd.DataFrame, copy_from: MLDataset) -> MLDataset:
     dataset_ensembled = MLDataset(ENSEMBLED_DATASET_PATH)
-    dataset_ensembled.copy_from_other_dataset(datasets[0])
+    dataset_ensembled.copy_from_other_dataset(copy_from)
     dataset_ensembled.archive_pred_result(ensembled_pred_df)
     dataset_ensembled.save()
-    return MLDataset(ENSEMBLED_DATASET_PATH)
+    return dataset_ensembled
+
 
 #%% メイン関数
 async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_PATH:str,
@@ -167,16 +171,20 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             '''データの更新・読み込み'''
             stock_dfs_dict = await read_and_update_data(universe_filter)
             '''学習・予測'''
-            ensemble_rates = [6.7, 1.3]
+            ensemble_weights = [6.7, 1.3]
             necessary_dfs_dict = get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
             
             ml_dataset1 = update_1st_model(ml_dataset1, necessary_dfs_dict, 
                                            train_start_day, train_end_day, test_start_day, test_end_day)
             ml_dataset2 = update_2nd_model(ml_dataset1, ml_dataset2, stock_dfs_dict, necessary_dfs_dict,
                                            train_start_day, train_end_day, test_start_day, test_end_day)
-            ml_dataset_ensembled = ensemble_pred_results(datasets = [ml_dataset1, ml_dataset2], 
-                                                         ensemble_rates = ensemble_rates,
-                                                         ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH)          
+            pred_result_df1 = ml_dataset1.evaluation_materials.pred_result_df
+            pred_result_df2 = ml_dataset2.evaluation_materials.pred_result_df
+            ensembled_pred_df = ensemble_pred_results(ensemble_inputs = [(pred_result_df1, ensemble_weights[0]),
+                                                                         (pred_result_df2, ensemble_weights[1]),] )
+            update_ensembled_model(ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH, 
+                                   ensembled_pred_df = ensembled_pred_df,
+                                   copy_from = ml_dataset1)  
             Slack.send_message(message = f'予測が完了しました。')
         trade_facade = TradingFacade()
         '''新規建'''

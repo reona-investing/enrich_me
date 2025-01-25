@@ -1,21 +1,21 @@
 
 import pandas as pd
-from models.dataset import MLDataset
 
-def by_rank(datasets: list[MLDataset], ensemble_rates: list[float]) -> pd.Series:
+def by_rank(inputs: list[tuple[pd.DataFrame, float]]) -> pd.DataFrame:
     '''
-    2つ以上のモデルの結果をアンサンブルする（予測順位ベース）
-    ml_datasets: アンサンブルしたいモデルのMLDatasetをリストに格納
-    ensemble_rates: 各モデルの予測結果を合成する際の重みづけ
+    2つ以上のモデルの結果を予測順位ベースでアンサンブルする。
+    Args:
+        inputs (list): （予測結果データフレーム, 重み)のタプルを格納したリスト
+    Returns:
+        pd.DataFrame: アンサンブル後の予測順位を格納したデータフレーム
     '''
-    assert len(datasets) == len(ensemble_rates), "ml_datasetsとensemble_ratesには同じ個数のデータをセットしてください。"
-    assert len(datasets) != 0, 'datasetsとensemble_ratesには1つ以上の要素を指定してください。'
-    for i in range(len(datasets)):
-        if i == 0:
-            ensembled_rank = datasets[i].evaluation_materials.pred_result_df.groupby('Date')['Pred'].rank(ascending=False) * ensemble_rates[i]
-        else:
-            ensembled_rank += datasets[i].evaluation_materials.pred_result_df.groupby('Date')['Pred'].rank(ascending=False) * ensemble_rates[i]
-    
-    ensembled_rank = pd.DataFrame(ensembled_rank, index=datasets[len(datasets) - 1].evaluation_materials.pred_result_df.index, columns=['Pred'])
+    assert len(inputs) > 0, 'inputsには1つ以上の要素を指定してください。'
 
-    return ensembled_rank.groupby('Date')[['Pred']].rank(ascending=False)
+    ensembled_rank = None
+    for pred_result_df, weight in inputs:
+        rank = pred_result_df.groupby('Date')['Pred'].rank(ascending=False) * weight
+        ensembled_rank = rank if ensembled_rank is None else ensembled_rank + rank
+
+    ensembled_rank_df = pd.DataFrame(ensembled_rank, index=inputs[0][0].index, columns=['Pred'])
+
+    return ensembled_rank_df.groupby('Date')[['Pred']].rank(ascending=False)
