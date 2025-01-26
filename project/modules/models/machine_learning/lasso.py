@@ -1,21 +1,12 @@
-#%% モジュールのインポート
-from models import MLDataset
-
 import pandas as pd
 import numpy as np
 from typing import Tuple
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV
-import lightgbm as lgb
 import scipy
 from IPython.display import display
-from dataclasses import dataclass
-
-@dataclass
-class TrainerOutputs:
-    models: list[Lasso] = None
-    scalers: list[StandardScaler] = None
+from models.machine_learning.dataclass import TrainerOutputs
 
 
 class LassoTrainer:
@@ -29,6 +20,7 @@ class LassoTrainer:
         '''
         self.target_train_df = target_train_df
         self.features_train_df = features_train_df
+
 
     def train(self, max_features: int = 5, min_features: int = 3, **kwargs) -> TrainerOutputs:
         '''
@@ -160,8 +152,8 @@ class LassoPredictor:
         Args:
             target_test_df (pd.DataFrame): テスト用の目的変数データフレーム
             features_test_df (pd.DataFrame): テスト用の特徴量データフレーム
-            models (list[object]): LASSOモデルを格納したリスト
-            scalers (list[object]): LASSOモデルに対応したスケーラーを格納したリスト
+            models (list[Lasso]): LASSOモデルを格納したリスト
+            scalers (list[SrandaedScaler]): LASSOモデルに対応したスケーラーを格納したリスト
         '''
         self.target_test_df = target_test_df
         self.features_test_df = features_test_df
@@ -254,72 +246,3 @@ class LassoModel:
         predictor = LassoPredictor(target_test_df, features_test_df, models, scalers)
         pred_result_df = predictor.predict()
         return pred_result_df
-
-
-# TODO Lassoとlgbmでファイルを分ける。
-def lgbm(ml_dataset: MLDataset, learn: bool = True, categorical_features: list = None, **kwargs):
-    # データの準備
-    X_train = ml_dataset.train_test_materials.features_train_df
-    y_train = ml_dataset.train_test_materials.target_train_df['Target']
-    X_test = ml_dataset.train_test_materials.features_test_df
-
-    if learn:
-        # LightGBM用のデータセットを作成
-        train_data = lgb.Dataset(X_train, label=y_train, categorical_feature=categorical_features)
-
-        # ハイパーパラメータの設定
-        params = {
-            'objective': 'regression',
-            'metric': 'rmse',
-            'boosting_type': 'gbdt',
-            'learning_rate': 0.001,
-            'num_leaves': 7,
-            'verbose': -1,
-            'random_seed':42,
-            'lambda_l1':0.5,
-        }
-
-        # モデルのトレーニング
-        models = [lgb.train(params, train_data, feval=_numerai_corr_lgbm, num_boost_round=100000)]
-        ml_dataset.archive_ml_objects(models=models, scalers=[])
-
-    # 予測
-    pred_result_df = ml_dataset.train_test_materials.target_test_df.copy()
-    pred_result_df['Pred'] = ml_dataset.ml_object_materials.models[0].predict(X_test, num_iteration=ml_dataset.ml_object_materials.models[0].best_iteration)
-    ml_dataset.archive_pred_result(pred_result_df)
-    ml_dataset.save()
-    return MLDataset(ml_dataset.dataset_folder_path)
-    
-def _numerai_corr_lgbm(preds, data):
-    import numpy as np
-    import pandas as pd
-    from scipy.stats import norm
-
-    # データセットからターゲットを取得
-    target = data.get_label()
-
-    # predsとtargetをDataFrameに変換
-    df = pd.DataFrame({'Pred': preds, 'Target': target, 'Date': data.get_field('date')})
-
-    # Target_rankとPred_rankを計算
-    df['Target_rank'] = df.groupby('Date')['Target'].rank(ascending=False)
-    df['Pred_rank'] = df.groupby('Date')['Pred'].rank(ascending=False)
-
-    # 日次のnumerai_corrを計算
-    def _get_daily_numerai_corr(target_rank, pred_rank):
-        pred_rank = np.array(pred_rank)
-        scaled_pred_rank = (pred_rank - 0.5) / len(pred_rank)
-        gauss_pred_rank = norm.ppf(scaled_pred_rank)
-        pred_pow = np.sign(gauss_pred_rank) * np.abs(gauss_pred_rank) ** 1.5
-
-        target = np.array(target_rank)
-        centered_target = target - target.mean()
-        target_pow = np.sign(centered_target) * np.abs(centered_target) ** 1.5
-
-        return np.corrcoef(pred_pow, target_pow)[0, 1]
-
-    numerai_corr = df.groupby('Date').apply(lambda x: _get_daily_numerai_corr(x['Target_rank'], x['Pred_rank'])).mean()
-
-    # LightGBMのカスタムメトリックの形式で返す
-    return 'numerai_corr', numerai_corr, True
-    

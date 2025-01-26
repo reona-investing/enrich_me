@@ -15,7 +15,7 @@ from IPython.display import HTML, display
 from utils.paths import Paths
 
 from models import MLDataset
-import evaluate_model
+from models.evaluation import LSDataHandler
 
 #%% サブ関数
 def calculate_return_topix(start_date: datetime, end_date: datetime) -> pd.DataFrame:
@@ -53,10 +53,10 @@ def summarize_ls_model(strategy1_name: str, strategy2_name: str, apply_benchmark
     model1 = MLDataset(model1_path)
     model2 = MLDataset(model2_path)
 
-    model1_obj = evaluate_model.LongShortModel(model_name = strategy1_name, pred_result_df = model1.pred_result_df, raw_target_df = model1.raw_target_df,
-                                start_date = start_date, end_date = end_date, bin_num = 5)
-    model2_obj = evaluate_model.LongShortModel(model_name = strategy2_name, pred_result_df = model2.pred_result_df, raw_target_df = model1.raw_target_df,
-                                start_date = start_date, end_date = end_date, bin_num = 5)
+    model1_obj = LSDataHandler(model_name = strategy1_name, pred_result_df = model1.pred_result_df, raw_target_df = model1.raw_target_df,
+                               start_date = start_date, end_date = end_date, bin_num = 5)
+    model2_obj = LSDataHandler(model_name = strategy2_name, pred_result_df = model2.pred_result_df, raw_target_df = model1.raw_target_df,
+                               start_date = start_date, end_date = end_date, bin_num = 5)
 
     #storategy1とstorategy2の比較
     title = f'{strategy1_name} vs {strategy2_name}'

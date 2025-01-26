@@ -16,7 +16,7 @@ from utils.paths import Paths
 from acquisition import features_scraper as scraper
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
-from models.machine_learning import LassoModel, lgbm
+from models.machine_learning import LassoModel, LgbmModel
 import models.ensemble as ensemble
 from facades import TradingFacade, StockAcquisitionFacade
 from utils.error_handler import error_handler
@@ -117,9 +117,17 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
         ml_dataset2.archive_raw_target(necessary_dfs_dict['raw_target_df'])
         ml_dataset2.archive_order_price(necessary_dfs_dict['order_price_df'])
 
+    lgbm_model = LgbmModel()
     if flag_manager.flags[Flags.UPDATE_MODELS]:
         '''lightGBM（学習は必要時、予測は毎回）'''
-        ml_dataset2 = lgbm(ml_dataset = ml_dataset2, learn = flag_manager.flags[Flags.LEARN], categorical_features = ['Sector_cat'])
+        trainer_outputs = lgbm_model.train(ml_dataset2.train_test_materials.target_train_df, 
+                                           ml_dataset2.train_test_materials.features_train_df,
+                                           categorical_features = ['Sector_cat'])
+        ml_dataset2.archive_ml_objects(models = trainer_outputs.models, scalers = None)
+    pred_result_df = lgbm_model.predict(ml_dataset2.train_test_materials.target_test_df,
+                                        ml_dataset2.train_test_materials.features_test_df,
+                                        ml_dataset2.ml_object_materials.models)
+    ml_dataset2.archive_pred_result(pred_result_df)
     return ml_dataset2
 
 
