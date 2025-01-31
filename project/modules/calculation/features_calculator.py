@@ -301,7 +301,7 @@ class FeaturesCalculator:
 #%% デバッグ
 if __name__ == '__main__':
 
-    from acquisition.jquants_api_operations import run_jquants_api_operations
+    from facades.stock_acquisition_facade import StockAcquisitionFacade
     from IPython.display import display
 
     '''パス類'''
@@ -310,10 +310,7 @@ if __name__ == '__main__':
     '''ユニバースを絞るフィルタ'''
     universe_filter = \
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
-    list_df, fin_df, price_df = run_jquants_api_operations(filter=universe_filter)    
-    stock_dfs_dict = {'list': list_df,
-                      'fin': fin_df,
-                      'price': price_df}
+    stock_dfs_dict = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()   
     new_sector_price_df, order_price_df = \
         SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     
@@ -337,3 +334,5 @@ if __name__ == '__main__':
                                                         )
     from datetime import datetime
     display(features_df[features_df.index.get_level_values(0)>=datetime(2022,1,1)].iloc[:-48])
+
+    print(features_df.loc[features_df.index.get_level_values(1)=='ITインフラ', 'JPY_1d_return'])

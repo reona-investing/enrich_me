@@ -80,7 +80,7 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
         ml_dataset.archive_raw_target(necessary_dfs_dict['raw_target_df'])
         ml_dataset.archive_order_price(necessary_dfs_dict['order_price_df'])
     lasso_model = LassoModel()
-    if flag_manager.flags[Flags.UPDATE_MODELS]:
+    if flag_manager.flags[Flags.LEARN]:
         '''LASSO（学習は必要時、予測は毎回）'''
         trainer_outputs = lasso_model.train(ml_dataset.train_test_materials.target_train_df, ml_dataset.train_test_materials.features_train_df)
         ml_dataset.archive_ml_objects(trainer_outputs.models, trainer_outputs.scalers)
@@ -118,7 +118,7 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
         ml_dataset2.archive_order_price(necessary_dfs_dict['order_price_df'])
 
     lgbm_model = LgbmModel()
-    if flag_manager.flags[Flags.UPDATE_MODELS]:
+    if flag_manager.flags[Flags.LEARN]:
         '''lightGBM（学習は必要時、予測は毎回）'''
         trainer_outputs = lgbm_model.train(ml_dataset2.train_test_materials.target_train_df, 
                                            ml_dataset2.train_test_materials.features_train_df,
@@ -195,13 +195,15 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             pred_result_df2 = ml_dataset2.evaluation_materials.pred_result_df
             ensembled_pred_df = ensemble_pred_results(ensemble_inputs = [(pred_result_df1, ensemble_weights[0]),
                                                                          (pred_result_df2, ensemble_weights[1]),] )
-            update_ensembled_model(ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH, 
-                                   ensembled_pred_df = ensembled_pred_df,
-                                   copy_from = ml_dataset1)  
+            ml_dataset_ensembled = update_ensembled_model(ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH, 
+                                                          ensembled_pred_df = ensembled_pred_df,
+                                                          
+                                                          copy_from = ml_dataset1)  
             Slack.send_message(message = f'予測が完了しました。')
         trade_facade = TradingFacade()
         '''新規建'''
         if flag_manager.flags[Flags.TAKE_NEW_POSITIONS]:
+            
             await trade_facade.take_positions(
                 ml_dataset= ml_dataset_ensembled,
                 SECTOR_REDEFINITIONS_CSV = SECTOR_REDEFINITIONS_CSV,
@@ -249,8 +251,8 @@ if __name__ == '__main__':
 
 #%% 実行
 if __name__ == '__main__':
-    asyncio.run(main(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_EMSEMBLED_PATH, 
-                     SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
-                     universe_filter, trading_sector_num, candidate_sector_num,
-                     train_start_day, train_end_day, test_start_day, test_end_day,
-                     top_slope, learn, predict))
+    asyncio.get_event_loop().run_until_complete(main(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_EMSEMBLED_PATH, 
+                                                     SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
+                                                     universe_filter, trading_sector_num, candidate_sector_num,
+                                                     train_start_day, train_end_day, test_start_day, test_end_day,
+                                                     top_slope, learn, predict))

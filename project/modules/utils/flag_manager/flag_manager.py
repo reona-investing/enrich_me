@@ -52,12 +52,14 @@ class FlagManager(metaclass=SingletonMeta):
         for flag in turn_true:
             if not isinstance(flag, Flags):
                 raise ValueError(f"Invalid flag type: {type(flag)}. Must be an instance of Flag.")
-            self.set_flag(flag, True)  # Trueに設定
+            self.set_flag(flag, True)
+            self._update_dependent_flags()
 
         for flag in turn_false:
             if not isinstance(flag, Flags):
                 raise ValueError(f"Invalid flag type: {type(flag)}. Must be an instance of Flag.")
-            self.set_flag(flag, False)  # Falseに設定
+            self.set_flag(flag, False)
+            self._update_dependent_flags()
 
     def _is_between(self, current_time, start_time, end_time):
         """現在時刻が指定した時間範囲内にあるかを判定"""

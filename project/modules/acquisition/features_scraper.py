@@ -1,10 +1,7 @@
 from utils.paths import Paths
 import asyncio
 import nodriver as uc
-import os
 from bs4 import BeautifulSoup as soup
-import re
-import json
 from datetime import datetime, timedelta
 import pandas as pd
 import pytz

@@ -99,6 +99,7 @@ class BrowserUtils:
         Returns:
             element: 要素
         """
+        await self._set_tab()
         if is_css:
             element = await self.tab.wait_for(selector=selector, timeout=timeout)
         else:
