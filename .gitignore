@@ -12,9 +12,7 @@ consideration
 TOPIX_prediction
 
 # env file
-project/modules/.env
-TOPIX_prediction
-consideration
+.env
 
 # Data, Deliverables, and Temporary Files
 project/debug_files
