@@ -50,8 +50,6 @@ class Reader:
     def read_price(self,
                    basic_path: str = Paths.STOCK_PRICE_PARQUET, 
                    list_path: str = Paths.STOCK_LIST_PARQUET, 
-                   filter: str = None, 
-                   filtered_code_list: list[str] = None,
                    end_date: datetime = datetime.today()) ->pd.DataFrame: # 価格情報の読み込み
         """
         価格情報を読み込み、調整を行います。
@@ -62,7 +60,7 @@ class Reader:
         Returns:
             pd.DataFrame: 価格情報
         """
-        df = self._generate_price_df(basic_path, list_path, filter, filtered_code_list, end_date)
+        df = self._generate_price_df(basic_path, list_path, self.filter, self.filtered_code_list, end_date)
         return self._recalc_adjustment_factors(df)
 
     def _recalc_adjustment_factors(self, df: pd.DataFrame) -> pd.DataFrame:

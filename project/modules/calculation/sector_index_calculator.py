@@ -46,7 +46,6 @@ class SectorIndexCalculator:
         stock_price_with_shares = SectorIndexCalculator._merge_stock_price_and_shares(stock_price, stock_fin)
         # 発行済み株式数の補正係数を算出
         stock_price_cap = SectorIndexCalculator._calc_adjustment_factor(stock_price_with_shares, stock_price)
-        #print(stock_price_cap[(stock_price_cap['Code']=='2175')&((stock_price_cap['Date']==datetime(2013,12,30))|(stock_price_cap['Date']==datetime(2014,1,6)))])
         stock_price_cap = SectorIndexCalculator._adjust_shares(stock_price_cap)
         # 時価総額と指数計算用の補正値を算出
         stock_price_cap = SectorIndexCalculator._calc_marketcap(stock_price_cap)

@@ -325,14 +325,14 @@ if __name__ == '__main__':
                                                         names_setting=None,
                                                         currencies_type='relative',
                                                         adopt_1d_return=True, 
-                                                        mom_duration=[5, 21],
-                                                        vola_duration=[5, 21],
-                                                        adopt_size_factor=True,
-                                                        adopt_eps_factor=True,
-                                                        adopt_sector_categorical=True,
-                                                        add_rank=True,
+                                                        mom_duration=[],
+                                                        vola_duration=[],
+                                                        adopt_size_factor=False,
+                                                        adopt_eps_factor=False,
+                                                        adopt_sector_categorical=False,
+                                                        add_rank=False,
                                                         )
     from datetime import datetime
-    display(features_df[features_df.index.get_level_values(0)>=datetime(2022,1,1)].iloc[:-48])
+    #display(features_df[features_df.index.get_level_values(0)>=datetime(2022,1,1)].iloc[:-48])
 
-    print(features_df.loc[features_df.index.get_level_values(1)=='ITインフラ', 'JPY_1d_return'])
+    print(features_df.loc[features_df.index.get_level_values(1)=='ITインフラ', :])
