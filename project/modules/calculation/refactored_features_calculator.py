@@ -618,31 +618,435 @@ class FinancialFeatureCalculator:
         ).sort_values(by=[self.date_col, self.code_col])
 
         # 欠損補完
-        merged["ForecastEPS"] = merged.groupby(self.code_col)["ForecastEPS"].ffill().bfill()
+        merged["ForecastEPS"] = merged.groupby(self.code_col)["ForecastEPS"].ffill()
+        merged["ForecastEPS"] = merged.groupby(self.code_col)["ForecastEPS"].bfill()
         if "MarketCapClose" in merged.columns:
             merged["MarketCapClose"] = merged.groupby(self.code_col)["MarketCapClose"].ffill()
 
         return merged
 
 
+class FeaturesMerger:
+    """
+    複数の特徴量DataFrameをマージ・結合するクラス。
+
+    責務:
+      - DateやCodeなど、指定されたキー列で単純な結合を行う。
+      - マージ後の欠損値補完と行方向でのドロップを行う。
+      - 最終的に欠損値の残らないDataFrameを返す。
+    """
+
+    def __init__(
+        self,
+        date_col: str = "Date",
+        code_col: str = "Code",
+        how: str = "outer"
+    ):
+        """
+        コンストラクタ
+
+        Args:
+            date_col (str): 日付列の名称。デフォルトは "Date"。
+            code_col (str): 銘柄コード列の名称。デフォルトは "Code"。
+            how (str): データ結合の方法。デフォルトは "outer"。
+                       例: "left", "right", "inner", "outer".
+        """
+        self.date_col = date_col
+        self.code_col = code_col
+        self.how = how
+
+    def merge_on_date(self, df_list: List[pd.DataFrame]) -> pd.DataFrame:
+        """
+        Date列のみをキーとして、複数のDataFrameを順次マージする。
+
+        結合後:
+          1. Dateでソート
+          2. Date列を左端に配置 (Codeがあっても無視)
+          3. ffill & dropna
+
+        Args:
+            df_list (List[pd.DataFrame]): 
+                結合対象となるDataFrameのリスト。
+                すべてに self.date_col が存在する必要がある。
+
+        Returns:
+            pd.DataFrame:
+                Merge後に欠損補完とdropnaを実施した最終DataFrame。
+        """
+        if not df_list:
+            return pd.DataFrame()
+
+        merged_df = df_list[0].copy()
+        for i in range(1, len(df_list)):
+            merged_df = pd.merge(
+                merged_df,
+                df_list[i],
+                on=self.date_col,
+                how=self.how
+            )
+
+        # 1. ソート
+        merged_df = merged_df.sort_values(by=self.date_col).reset_index(drop=True)
+        # 2. ffill → dropna
+        merged_df = self._fill_and_dropna(merged_df)
+        # 3. Date列 (Codeがあればそれも) を左端に
+        merged_df = self._move_keycols_to_left(merged_df)
+
+        return merged_df
+
+    def merge_on_date_code(self, df_list: List[pd.DataFrame]) -> pd.DataFrame:
+        """
+        複数のDataFrameを順次マージし、最終的にDate, Codeをキーとした
+        形での結合を試みる。ただし、片方がCode列を持たない場合はDateのみで結合。
+
+        結合後:
+          1. Date(+Code) でソート
+          2. Date, Codeを左端に移動 (Code列があれば)
+          3. ffill → dropna
+
+        Args:
+            df_list (List[pd.DataFrame]):
+                結合対象のDataFrameリスト。
+                いずれも self.date_col を持つ必要がある。
+                Code列は存在してもしなくても良い。
+
+        Returns:
+            pd.DataFrame:
+                Merge後に欠損補完とdropnaを実施した最終DataFrame。
+        """
+        if not df_list:
+            return pd.DataFrame()
+
+        merged_df = df_list[0].copy()
+
+        for i in range(1, len(df_list)):
+            next_df = df_list[i].copy()
+
+            left_has_code = self.code_col in merged_df.columns
+            right_has_code = self.code_col in next_df.columns
+
+            if left_has_code and right_has_code:
+                # 両方にCode列がある → Date, Code で結合
+                merged_df = pd.merge(
+                    merged_df,
+                    next_df,
+                    on=[self.date_col, self.code_col],
+                    how=self.how
+                )
+            else:
+                # 片方または両方にCode列がない → Dateのみで結合
+                merged_df = pd.merge(
+                    merged_df,
+                    next_df,
+                    on=self.date_col,
+                    how=self.how
+                )
+
+        # ソート
+        if self.code_col in merged_df.columns:
+            merged_df = merged_df.sort_values(by=[self.date_col, self.code_col]).reset_index(drop=True)
+        else:
+            merged_df = merged_df.sort_values(by=self.date_col).reset_index(drop=True)
+
+        # ffill + dropna
+        merged_df = self._fill_and_dropna(merged_df)
+        # Date, Code 列を左端へ
+        merged_df = self._move_keycols_to_left(merged_df)
+
+        return merged_df
+
+    def merge_on_any_keys(self, df_list: List[pd.DataFrame], keys: List[str]) -> pd.DataFrame:
+        """
+        任意のキー（複数列）を指定して順次マージする。
+
+        結合後:
+          1. keysでソート
+          2. keys(特にDate, Code含む場合) を左端に移動
+          3. ffill → dropna
+
+        Args:
+            df_list (List[pd.DataFrame]):
+                結合対象のDataFrameリスト。
+            keys (List[str]): 
+                結合キーとなる列名のリスト。
+
+        Returns:
+            pd.DataFrame:
+                keysでマージ後に欠損補完とdropnaを実施した最終DataFrame。
+        """
+        if not df_list or not keys:
+            return pd.DataFrame()
+
+        merged_df = df_list[0].copy()
+        for i in range(1, len(df_list)):
+            merged_df = pd.merge(
+                merged_df,
+                df_list[i],
+                on=keys,
+                how=self.how
+            )
+
+        # ソート
+        merged_df = merged_df.sort_values(by=keys).reset_index(drop=True)
+        # ffill + dropna
+        merged_df = self._fill_and_dropna(merged_df)
+        # keys(特にDate, Code)を左端へ
+        merged_df = self._move_keycols_to_left(merged_df, keys=keys)
+
+        return merged_df
+
+    # ----------------------------------------------------------------------
+    #  ヘルパー関数: キー列(DATE, CODE)を左端へ並べ替える
+    # ----------------------------------------------------------------------
+    def _move_keycols_to_left(self, df: pd.DataFrame, keys: List[str] = None) -> pd.DataFrame:
+        if keys is None:
+            # Date, Code をキーとして想定
+            keys = []
+            if self.date_col in df.columns:
+                keys.append(self.date_col)
+            if self.code_col in df.columns:
+                keys.append(self.code_col)
+
+        unique_cols = [col for col in keys if col in df.columns]
+        other_cols = [col for col in df.columns if col not in unique_cols]
+        new_col_order = unique_cols + other_cols
+
+        return df[new_col_order]
+
+    # ----------------------------------------------------------------------
+    # ヘルパー関数: ffill + dropna (Code列を保持する)
+    # ----------------------------------------------------------------------
+    def _fill_and_dropna(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        1) ffillで欠損値を埋める (コードがあれば銘柄単位)
+        2) dropna(how="any") で行方向の欠損を削除
+
+        Returns:
+            pd.DataFrame: 'Code' 列を残したまま欠損なしの状態へ
+        """
+        if self.code_col in df.columns:
+            # グループ化してffillし、Code列を保持
+            df = (
+                df.groupby(self.code_col, group_keys=False)
+                  .apply(lambda g: g.ffill(), include_groups=True)
+            )
+        else:
+            # Code列がなければ全体でffill
+            df = df.ffill()
+
+        # dropna
+        df = df.dropna(how="any")
+        return df
+
+
+import pandas as pd
+from typing import List, Optional
+
+class FeatureCalculatorForSectorModel:
+    """
+    セクター情報を用いて、特徴量の集約やランキングを行うクラス。
+
+    使い方:
+      1. コンストラクタ呼び出し時に features_df, sector_df を渡す。
+         - ここで Code列をキーとしてマージし、Sector列を付与した DataFrame を
+           インスタンス変数 self.df として保持。
+      2. add_sector_aggregation() や add_sector_rank() などのメソッドで
+         self.df を直接更新。
+      3. finalize() を呼び出すと、"Date" と "Sector" をインデックスに設定し、
+         最終的な特徴量DataFrameを返す。
+
+    注意点:
+      - features_df は少なくとも "Date" 列と "Code" 列を持つ必要がある。
+      - sector_df は少なくとも "Code" 列と "Sector" 列を持つ必要がある。
+      - セクター集約やランキング時の欠損行等の扱いは運用に合わせて調整してください。
+    """
+
+    def __init__(
+        self,
+        features_df: pd.DataFrame,
+        sector_df: pd.DataFrame,
+        date_col: str = "Date",
+        code_col: str = "Code",
+        sector_col: str = "Sector",
+    ):
+        """
+        コンストラクタ
+
+        セクター情報と特徴量DataFrameをマージし、self.df に保持する。
+
+        Args:
+            features_df (pd.DataFrame):
+                "Date", "Code" 等の特徴量を含むDataFrame。
+            sector_df (pd.DataFrame):
+                "Code", "Sector" 等のセクター情報を持つDataFrame。
+            date_col (str): 日付列名。デフォルト "Date"。
+            code_col (str): 銘柄コード列名。デフォルト "Code"。
+            sector_col (str): セクター列名。デフォルト "Sector"。
+        """
+        self.date_col = date_col
+        self.code_col = code_col
+        self.sector_col = sector_col
+
+        # コンストラクタでSector列を付与
+        self.df = self._add_sector_info(features_df, sector_df)
+
+    def _add_sector_info(
+        self,
+        features_df: pd.DataFrame,
+        sector_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        内部ヘルパー関数: セクター情報をマージし、Sector列を追加する。
+
+        Args:
+            features_df (pd.DataFrame):
+                "Date", "Code" 等の特徴量を含むDataFrame。
+            sector_df (pd.DataFrame):
+                "Code", "Sector" 等のセクター情報を持つDataFrame。
+
+        Returns:
+            pd.DataFrame: 
+                features_dfに sector_df をマージして Sector列を付与したDataFrame。
+        """
+        merged = pd.merge(
+            features_df,
+            sector_df[[self.code_col, self.sector_col]],
+            on=self.code_col,
+            how="left"
+        )
+        return merged
+
+    def add_sector_aggregation(
+        self,
+        agg_cols: List[str],
+        agg_funcs: Optional[List[str]] = None
+    ):
+        """
+        セクターごとの集計列を self.df に追加する。
+
+        例: agg_cols=["ForecastEPS", "MarketCapClose"], agg_funcs=["mean", "std"] 
+            → "ForecastEPS_sector_mean", "ForecastEPS_sector_std", 
+               "MarketCapClose_sector_mean", "MarketCapClose_sector_std" が作られる。
+
+        Args:
+            agg_cols (List[str]): 集約対象の列名リスト
+            agg_funcs (List[str], optional): 集約関数のリスト。デフォルトは ["mean"]。
+        """
+        if agg_funcs is None:
+            agg_funcs = ["mean"]
+
+        for col in agg_cols:
+            if col not in self.df.columns:
+                continue
+            for func in agg_funcs:
+                new_col = f"{col}_sector_{func}"
+                self.df[new_col] = (
+                    self.df.groupby([self.date_col, self.sector_col])[col]
+                           .transform(func)
+                )
+
+    def add_sector_rank(
+        self,
+        rank_cols: List[str],
+        ascending: bool = False
+    ):
+        """
+        セクター内でランキングを付与する。
+
+        Args:
+            rank_cols (List[str]): ランク付け対象列のリスト
+            ascending (bool): Trueの場合、小さい値が1位。デフォルト False (大きい値が1位)。
+        """
+        for col in rank_cols:
+            if col not in self.df.columns:
+                continue
+            rank_col = f"{col}_sector_rank"
+            self.df[rank_col] = (
+                self.df.groupby([self.date_col, self.sector_col])[col]
+                       .rank(method="dense", ascending=ascending)
+            )
+
+    def add_sector_as_category(self, new_col: str = "Sector_cat"):
+        """
+        セクター列をカテゴリ変数化した列を追加する。
+
+        Args:
+            new_col (str): カテゴリ変数として追加する列名。デフォルト "Sector_cat"。
+        """
+        if self.sector_col in self.df.columns:
+            # pandasのCategory型→cat.codesで数値化
+            self.df[new_col] = self.df[self.sector_col].astype("category").cat.codes
+
+    def finalize(self) -> pd.DataFrame:
+        """
+        最終的なDataFrameを返す。
+        self.df を "Date", "Sector" をインデックスに設定し、返却する。
+
+        Returns:
+            pd.DataFrame: "Date", "Sector" をインデックスとした最終DataFrame
+        """
+        # "Date", "Sector" でインデックスを設定
+        final_df = self.df.set_index([self.date_col, self.sector_col]).sort_index()
+        return final_df[[x for x in final_df.columns if x != 'Code']]
+
+
 
 if __name__ == '__main__':
     from utils.paths import Paths
     from datetime import datetime
+    # 
     setting_df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
     ifc = IndexFeatureCalculator()
     for _, row in setting_df.iterrows():
         fmd = FeatureMetadata(row['Name'], row['Group'], f"{Paths.SCRAPED_DATA_FOLDER}/{row['Group']}/{row['Path']}", row['URL'], row['is_adopted'])
         ifc.calculate_return(feature_metadata=fmd, days=1)
-    df = ifc.finalize()
+    index_df = ifc.finalize()
 
     from facades.stock_acquisition_facade import StockAcquisitionFacade
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
     stock_dfs = acq.get_stock_data_dict()
-    #pfc = PriceFeatureCalculator()
-    #return_df = pfc.calculate_price_features(stock_dfs['price'])
+    pfc = PriceFeatureCalculator()
+    return_df = pfc.calculate_price_features(stock_dfs['price'])
     
     ffc = FinancialFeatureCalculator()
     financial_df = ffc.calculate_financial_features(stock_dfs['fin'], stock_dfs['price'])
-    print(financial_df.sort_values(['Code', 'Date']))
-    # TODO MarketCapCloseの出力がイカれてるぜ！！
+    
+    fm = FeaturesMerger()
+    merged_df = fm.merge_on_date_code([index_df, return_df, financial_df])
+
+    sector_df = merged_df[['Code']].reset_index(drop=True).copy()
+    sector_df['Sector'] = sector_df['Code']
+    sector_df = sector_df.drop_duplicates('Code', keep='first')
+    fcsm = FeatureCalculatorForSectorModel(merged_df, sector_df)
+    fcsm.add_sector_as_category()
+    
+    agg_list = [x for x in set(return_df.columns.tolist() + financial_df.columns.tolist()) if x not in ['Date', 'Code']]
+    fcsm.add_sector_rank(agg_list)
+    fcsm.add_sector_aggregation(agg_list)
+    features_df = fcsm.finalize()
+    print(features_df)
+    # ここまで、コードをそのままセクターをにする。
+
+
+    sic = SectorIndexCalculator()
+    setting_df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
+    ifc = IndexFeatureCalculator()
+    for _, row in setting_df.iterrows():
+        fmd = FeatureMetadata(row['Name'], row['Group'], f"{Paths.SCRAPED_DATA_FOLDER}/{row['Group']}/{row['Path']}", row['URL'], row['is_adopted'])
+        ifc.calculate_return(feature_metadata=fmd, days=1)
+    index_df = ifc.finalize()
+
+    sic = SectorIndexCalculator()
+    sector_price_df = sic.calc_new_sector_price(stock_dfs, 
+                                                f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv', 
+                                                f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price_test.parquet')
+    
+    pfc = PriceFeatureCalculator()
+    return_df = pfc.calculate_price_features(sector_price_df)
+    
+    #ffc = FinancialFeatureCalculator()
+    #financial_df = ffc.calculate_financial_features(stock_dfs['fin'], stock_dfs['price'])
+
+    
+
+    print(index_df.loc[index_df.index.get_level_values(1)=='ITインフラ', :])

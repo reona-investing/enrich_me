@@ -25,7 +25,7 @@ class Paths:
     ERROR_LOG_CSV = f'{DEBUG_FILES_FOLDER}/error_log.csv'
 
     CODES_TO_REPLACE_CSV = f'{CONFIG_AND_SETTINGS_FOLDER}/codes_to_replace.csv'
-    DTYPES_STOCK_FIN_CSV = f'{CONFIG_AND_SETTINGS_FOLDER}/dtypes_stock_fin.csv'
+    STOCK_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_fin_columns.yaml'
     FEATURES_TO_SCRAPE_CSV = f'{CONFIG_AND_SETTINGS_FOLDER}/features_to_scrape.csv'
 
     RAW_STOCK_LIST_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_list.parquet'

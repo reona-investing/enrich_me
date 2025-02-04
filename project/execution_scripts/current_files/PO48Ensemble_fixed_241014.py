@@ -77,6 +77,7 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
         ml_dataset.archive_train_test_data(necessary_dfs_dict['target_df'], features_df,
                                            train_start_day, train_end_day, test_start_day, test_end_day,
                                            outlier_threshold = 3,)
+        print(ml_dataset.train_test_materials.target_test_df)
         ml_dataset.archive_raw_target(necessary_dfs_dict['raw_target_df'])
         ml_dataset.archive_order_price(necessary_dfs_dict['order_price_df'])
     lasso_model = LassoModel()
@@ -87,6 +88,7 @@ def update_1st_model(ml_dataset: MLDataset, necessary_dfs_dict: dict,
     pred_result_df = lasso_model.predict(ml_dataset.train_test_materials.target_test_df, ml_dataset.train_test_materials.features_test_df, 
                                      ml_dataset.ml_object_materials.models, ml_dataset.ml_object_materials.scalers)
     ml_dataset.archive_pred_result(pred_result_df)
+    ml_dataset.save()
     return ml_dataset
 
 def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset, 
@@ -128,6 +130,7 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
                                         ml_dataset2.train_test_materials.features_test_df,
                                         ml_dataset2.ml_object_materials.models)
     ml_dataset2.archive_pred_result(pred_result_df)
+    ml_dataset2.save()
     return ml_dataset2
 
 
@@ -177,7 +180,6 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             turn_true.append(Flags.PREDICT)
         # TODO turn_trueの設定をヘルパー関数として切り出す！
         flag_manager.set_flags(turn_true=turn_true)
-        flag_manager.set_flag(flag=Flags.FETCH_RESULT, value=True)
         print(flag_manager.get_flags())
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:

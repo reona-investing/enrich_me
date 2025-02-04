@@ -324,16 +324,11 @@ class SectorIndexCalculator:
 
 #%% デバッグ
 if __name__ == '__main__':
-    from acquisition.jquants_api_operations import run_jquants_api_operations
+    from facades.stock_acquisition_facade import StockAcquisitionFacade
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
     SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price_test.parquet'
-    list_df, fin_df, price_df = run_jquants_api_operations(
-        read = True,
-        filter= "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
-      )
-    stock_dfs_dict = {'list': list_df,
-                      'fin': fin_df,
-                      'price': price_df}
+    saf = StockAcquisitionFacade(filter= "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
+    stock_dfs_dict = saf.get_stock_data_dict()
     new_sector_price, price_for_order = SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     print((new_sector_price[['1d_return']].fillna(0).unstack() + 1).cumprod())
 
