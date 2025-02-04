@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 
-# カラム名の定義
+
 def _column_name_getter(yaml_info: dict[str | dict[str | Any]] | list[dict[str | Any]], raw_name: str) -> str:
     """
     指定したカラム名の変換後の名称を取得。
@@ -23,25 +23,33 @@ def _column_name_getter(yaml_info: dict[str | dict[str | Any]] | list[dict[str |
         return yaml_utils.column_name_getter(yaml_info, {'raw_name': raw_name}, 'processed_name', 'columns')
     raise TypeError('yaml_infoには辞書またはリストを指定してください。')
 
-fin_original_yaml = yaml_utils.including_columns_loader(Paths.STOCK_FIN_COLUMNS_YAML, 'original_columns')
-fin_calculated_yaml = yaml_utils.including_columns_loader(Paths.STOCK_FIN_COLUMNS_YAML, 'calculated_columns')
-price_original_yaml = yaml_utils.including_columns_loader(Paths.STOCK_PRICE_COLUMNS_YAML, 'original_columns')
-sector_calculated_yaml = yaml_utils.including_columns_loader(Paths.SECTOR_INDEX_COLUMNS_YAML, 'calculated_columns')
-
-
-fin_code_col = _column_name_getter(fin_original_yaml, 'LocalCode')
-fin_date_col = _column_name_getter(fin_original_yaml, 'DisclosedDate')
-period_end_date_col = _column_name_getter(fin_original_yaml, 'CurrentPeriodEndDate')
-
-outstanding_shares_col = yaml_utils.column_name_getter(fin_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'col_name')
-
-price_code_col = _column_name_getter(price_original_yaml, 'Code')
-price_date_col = _column_name_getter(price_original_yaml, 'Date')
-
-sector_code_col =  yaml_utils.column_name_getter(sector_calculated_yaml, {'name': 'CODE'}, 'col_name')
-sector_date_col =  yaml_utils.column_name_getter(sector_calculated_yaml, {'name': 'DATE'}, 'col_name')
 
 class SectorIndexCalculator:
+    _col_names = None
+    
+    @staticmethod
+    def _get_column_names():
+        if col is None:
+            _fin_original_yaml = yaml_utils.including_columns_loader(Paths.STOCK_FIN_COLUMNS_YAML, 'original_columns')
+            _fin_calculated_yaml = yaml_utils.including_columns_loader(Paths.STOCK_FIN_COLUMNS_YAML, 'calculated_columns')
+            _price_original_yaml = yaml_utils.including_columns_loader(Paths.STOCK_PRICE_COLUMNS_YAML, 'original_columns')
+            _sector_calculated_yaml = yaml_utils.including_columns_loader(Paths.SECTOR_INDEX_COLUMNS_YAML, 'calculated_columns')
+
+            col = {
+                'fin_code': _column_name_getter(_fin_original_yaml, 'LocalCode'),
+                'fin_date': _column_name_getter(_fin_original_yaml, 'DisclosedDate'),
+                'period_end_date': _column_name_getter(_fin_original_yaml, 'CurrentPeriodEndDate'),
+                'outstanding_shares': yaml_utils.column_name_getter(_fin_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'col_name'),
+                
+                'price_code': _column_name_getter(_price_original_yaml, 'Code'),
+                'price_date': _column_name_getter(_price_original_yaml, 'Date'),
+                
+                'sector_code': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CODE'}, 'col_name'),
+                'sector_date': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'DATE'}, 'col_name')
+                     }
+            return col
+
+
     @staticmethod
     def calc_new_sector_price(stock_dfs_dict:dict, SECTOR_REDEFINITIONS_CSV:str, SECTOR_INDEX_PARQUET:str) -> tuple[pd.DataFrame, pd.DataFrame]:
         '''
@@ -100,7 +108,8 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 価格情報に発行済株式数を付記
         """
-        business_days = stock_price[price_date_col].unique()
+        col = SectorIndexCalculator._get_column_names()
+        business_days = stock_price[col['price_date']].unique()
         shares_df = SectorIndexCalculator._calc_shares_at_end_period(stock_fin)
         shares_df = SectorIndexCalculator._append_next_period_start_date(shares_df, business_days)
         merged_df = SectorIndexCalculator._merge_with_stock_price(stock_price, shares_df)
@@ -115,10 +124,11 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 財務情報に発行済株式数を付記
         """
-        shares_df = stock_fin[[fin_code_col, fin_date_col, outstanding_shares_col, period_end_date_col]].copy()
-        shares_df = shares_df.sort_values(fin_date_col).drop(fin_date_col, axis=1)
-        shares_df = shares_df.drop_duplicates(subset=[period_end_date_col, fin_code_col], keep='last')
-        shares_df['NextPeriodStartDate'] = pd.to_datetime(shares_df[period_end_date_col]) + timedelta(days=1)
+        col = SectorIndexCalculator._get_column_names()
+        shares_df = stock_fin[[col['fin_code'], col['fin_date'], col['outstanding_shares'], col['period_end_date']]].copy()
+        shares_df = shares_df.sort_values(col['fin_date']).drop(col['fin_date'], axis=1)
+        shares_df = shares_df.drop_duplicates(subset=[col['period_end_date'], col['fin_code']], keep='last')
+        shares_df['NextPeriodStartDate'] = pd.to_datetime(shares_df[col['period_end_date']]) + timedelta(days=1)
         shares_df['isSettlementDay'] = True #あとで価格情報から抽出するために決算日フラグを設定しておく。
         return shares_df
 
@@ -163,12 +173,13 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 結合されたデータフレーム
         """
-        stock_price = stock_price.rename(columns={price_code_col: sector_code_col, price_date_col: sector_date_col})
-        shares_df = shares_df.rename(columns={fin_code_col: sector_code_col, 'NextPeriodStartDate': sector_date_col})
+        col = SectorIndexCalculator._get_column_names()
+        stock_price = stock_price.rename(columns={col['price_code']: col['sector_code'], col['price_date']: col['sector_date']})
+        shares_df = shares_df.rename(columns={col['fin_code']: col['sector_code'], 'NextPeriodStartDate': col['sector_date']})
 
-        merged_df = pd.merge(stock_price,
-                            shares_df[[sector_date_col, sector_code_col, outstanding_shares_col, 'isSettlementDay']],
-                            on=[sector_date_col, sector_code_col],
+        merged_df = pd.merge(stock_price, 
+                             shares_df[[col['sector_date'], col['sector_code'], col['outstanding_shares'], 'isSettlementDay']],
+                            on=[col['sector_date'], col['sector_code']],
                             how='left'
                             )
         merged_df['isSettlementDay'] = merged_df['isSettlementDay'].astype(bool).fillna(False)
@@ -200,10 +211,8 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 引数のdfから株式分割・併合対象行のみを抽出
         """
-        condition = (
-            stock_price_with_shares_df[outstanding_shares_col].notnull() |
-            (stock_price_with_shares_df['AdjustmentFactor'] != 1)
-        )
+        col = SectorIndexCalculator._get_column_names()
+        condition = (stock_price_with_shares_df[col['outstanding_shares']].notnull() | (stock_price_with_shares_df['AdjustmentFactor'] != 1))
         return stock_price_with_shares_df.loc[condition].copy()
 
     @staticmethod
@@ -215,8 +224,9 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 発行済み株式数の比率を計算したデータフレーム
         """
-        df[outstanding_shares_col] = df.groupby('Code')[outstanding_shares_col].bfill()
-        df['SharesRate'] = (df.groupby('Code')[outstanding_shares_col].shift(-1) / df[outstanding_shares_col]).round(1)
+        col = SectorIndexCalculator._get_column_names()
+        df[col['outstanding_shares']] = df.groupby(col['sector_code'])[col['outstanding_shares']].bfill()
+        df['SharesRate'] = (df.groupby(col['sector_code'])[col['outstanding_shares']].shift(-1) / df[col['outstanding_shares']]).round(1)
         return df
 
     @staticmethod
@@ -228,11 +238,12 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 調整後のデータフレーム
         """
+        col = SectorIndexCalculator._get_column_names()
         # 補正係数の出るタイミングと実際に補正の必要なタイミングが±2データぶんずれる場合がある。
         shift_days = [1, 2, -1, -2]
         shift_columns = [f'Shift_AdjustmentFactor{i}' for i in shift_days]
         for shift_column, i in zip(shift_columns, shift_days):
-            df[shift_column] = df.groupby('Code')['AdjustmentFactor'].shift(i).fillna(1)
+            df[shift_column] = df.groupby(col['sector_code'])['AdjustmentFactor'].shift(i).fillna(1)
         df.loc[((df[shift_columns] == 1).all(axis=1) | (df['SharesRate'] == 1)), 'SharesRate'] = 1
         return df
 
@@ -246,15 +257,16 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 価格情報に発行済株式数比率を併記
         """
+        col = SectorIndexCalculator._get_column_names()
         df_to_calc_shares_rate = df_to_calc_shares_rate[df_to_calc_shares_rate['isSettlementDay']]
-        df_to_calc_shares_rate['SharesRate'] = df_to_calc_shares_rate.groupby('Code')['SharesRate'].shift(1)
+        df_to_calc_shares_rate['SharesRate'] = df_to_calc_shares_rate.groupby(col['sector_code'])['SharesRate'].shift(1)
         stock_price = pd.merge(
             stock_price,
-            df_to_calc_shares_rate[['Date', 'Code', outstanding_shares_col, 'SharesRate']],
+            df_to_calc_shares_rate[[col['sector_date'], col['sector_code'], col['outstanding_shares'], 'SharesRate']],
             how='left',
-            on=['Date', 'Code']
+            on=[col['sector_date'], col['sector_code']]
         )
-        stock_price['SharesRate'] = stock_price.groupby('Code')['SharesRate'].shift(-1)
+        stock_price['SharesRate'] = stock_price.groupby(col['sector_code'])['SharesRate'].shift(-1)
         stock_price['SharesRate'] = stock_price['SharesRate'].fillna(1)
         return stock_price
 
@@ -267,8 +279,9 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 補正後のデータフレーム
         """
-        stock_price.loc[(stock_price['Code'] == '3064') & (stock_price['Date'] <= datetime(2013, 7, 25)), 'SharesRate'] = 1
-        stock_price.loc[(stock_price['Code'] == '6920') & (stock_price['Date'] <= datetime(2013, 8, 9)), 'SharesRate'] = 1
+        col = SectorIndexCalculator._get_column_names()
+        stock_price.loc[(stock_price[col['sector_code']] == '3064') & (stock_price[col['sector_date']] <= datetime(2013, 7, 25)), 'SharesRate'] = 1
+        stock_price.loc[(stock_price[col['sector_code']] == '6920') & (stock_price[col['sector_date']] <= datetime(2013, 8, 9)), 'SharesRate'] = 1
         return stock_price
 
     @staticmethod
@@ -280,9 +293,10 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 累積積を計算したデータフレーム
         """
-        stock_price = stock_price.sort_values('Date', ascending=False)
-        stock_price['CumulativeSharesRate'] = stock_price.groupby('Code')['SharesRate'].cumprod()
-        stock_price = stock_price.sort_values('Date', ascending=True)
+        col = SectorIndexCalculator._get_column_names()
+        stock_price = stock_price.sort_values(col['sector_date'], ascending=False)
+        stock_price['CumulativeSharesRate'] = stock_price.groupby(col['sector_code'])['SharesRate'].cumprod()
+        stock_price = stock_price.sort_values(col['sector_date'], ascending=True)
         stock_price['CumulativeSharesRate'] = stock_price['CumulativeSharesRate'].fillna(1)
         return stock_price
 
@@ -295,9 +309,12 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 引数のdfの発行済株式数を補正したもの
         '''
-        df[outstanding_shares_col] = df.groupby('Code', as_index=False)[outstanding_shares_col].ffill() #決算発表時以外が欠測値なので、後埋めする。
-        df[outstanding_shares_col] = df.groupby('Code', as_index=False)[outstanding_shares_col].bfill() #初回決算発表以前の分を前埋め。
-        df[outstanding_shares_col] = df[outstanding_shares_col] * df['CumulativeSharesRate'] #株式併合・分割以降、決算発表までの期間の発行済み株式数を調整
+        col = SectorIndexCalculator._get_column_names()
+        #決算発表時以外が欠測値なので、後埋めする。
+        df[col['outstanding_shares']] = df.groupby(col['sector_code'], as_index=False)[col['outstanding_shares']].ffill() 
+        #初回決算発表以前の分を前埋め。
+        df[col['outstanding_shares']] = df.groupby(col['sector_code'], as_index=False)[col['outstanding_shares']].bfill() 
+        df[col['outstanding_shares']] = df[col['outstanding_shares']] * df['CumulativeSharesRate'] #株式併合・分割以降、決算発表までの期間の発行済み株式数を調整
         #不要行の削除
         return df.drop(['SharesRate', 'CumulativeSharesRate'], axis=1)
 
@@ -310,10 +327,11 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 引数のdfに時価総額のOHLCを追加したもの
         '''
-        df['MarketCapOpen'] = df['Open'] * df[outstanding_shares_col]
-        df['MarketCapClose'] = df['Close'] * df[outstanding_shares_col]
-        df['MarketCapHigh'] = df['High'] * df[outstanding_shares_col]
-        df['MarketCapLow'] = df['Low'] * df[outstanding_shares_col]
+        col = SectorIndexCalculator._get_column_names()
+        df['MarketCapOpen'] = df['Open'] * df[col['outstanding_shares']]
+        df['MarketCapClose'] = df['Close'] * df[col['outstanding_shares']]
+        df['MarketCapHigh'] = df['High'] * df[col['outstanding_shares']]
+        df['MarketCapLow'] = df['Low'] * df[col['outstanding_shares']]
         return df
 
     @staticmethod
@@ -325,7 +343,9 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: 引数のdfに指数算出補正値を併記したもの
         '''
-        df['OutstandingShares_forCorrection'] = df.groupby('Code')[outstanding_shares_col].shift(1)
+        col = SectorIndexCalculator._get_column_names()
+        df['OutstandingShares_forCorrection'] = \
+            df.groupby(col['sector_code'])[col['outstanding_shares']].shift(1)
         df['OutstandingShares_forCorrection'] = df['OutstandingShares_forCorrection'].fillna(0)
         df['MarketCapClose_forCorrection'] = df['Close'] * df['OutstandingShares_forCorrection']
         df['CorrectionValue'] = df['MarketCapClose'] - df['MarketCapClose_forCorrection']
@@ -341,13 +361,14 @@ class SectorIndexCalculator:
         Returns:
             pd.DataFrame: セクターインデックス
         '''
+        col = SectorIndexCalculator._get_column_names()
         new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV).dropna(how='any', axis=1)
-        new_sector_list['Code'] = new_sector_list['Code'].astype(str)
-        new_sector_price = pd.merge(new_sector_list, stock_price, how='right', on='Code')
+        new_sector_list[col['sector_code']] = new_sector_list[col['sector_code']].astype(str)
+        new_sector_price = pd.merge(new_sector_list, stock_price, how='right', on=col['sector_code'])
 
         #必要列を抜き出したデータフレームを作る。
-        new_sector_price = new_sector_price.groupby(['Date', 'Sector'])\
-        [['MarketCapOpen', 'MarketCapClose','MarketCapHigh', 'MarketCapLow', outstanding_shares_col, 'CorrectionValue']].sum()
+        new_sector_price = new_sector_price.groupby([col['sector_date'], 'Sector'])\
+        [['MarketCapOpen', 'MarketCapClose','MarketCapHigh', 'MarketCapLow', col['outstanding_shares'], 'CorrectionValue']].sum()
         new_sector_price['1d_return'] = new_sector_price['MarketCapClose'] \
                                         / (new_sector_price.groupby('Sector')['MarketCapClose'].shift(1) \
                                         + new_sector_price['CorrectionValue']) - 1
