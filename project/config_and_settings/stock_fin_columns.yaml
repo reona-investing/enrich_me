@@ -1,4 +1,4 @@
-columns:
+original_columns:
   - raw_name: DisclosedDate
     raw_dtype: str
     processed_name: Date
@@ -84,7 +84,6 @@ columns:
     processed_name: NextFiscalYearStartDate
     processed_dtype: datetime
     include: False
-    plus_for_merger: False
     plus_for_merger: False
     description: 翌事業年度開始日
 
@@ -352,9 +351,9 @@ columns:
     plus_for_merger: False
     description: 一株あたり配当予想_翌事業年度第2四半期末
 
-  - raw_name: NextYearForecastDividendPerShare3ndQuarter
+  - raw_name: NextYearForecastDividendPerShare3rdQuarter
     raw_dtype: str
-    processed_name: NextYearForecastDividendPerShare3ndQuarter
+    processed_name: NextYearForecastDividendPerShare3rdQuarter
     processed_dtype: float
     include: False
     plus_for_merger: False
@@ -463,14 +462,6 @@ columns:
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_翌事業年度第2四半期末
-
-  - raw_name: NextYearForecastEarningsPerShare2ndQuarter
-    raw_dtype: str
-    processed_name: NextYearForecastEarningsPerShare2ndQuarter
-    processed_dtype: float
-    include: False
-    plus_for_merger: False
-    description: 一株あたり当期純利益_予想_翌事業年度第2四半期末
 
   - raw_name: NextYearForecastEarningsPerShare2ndQuarter
     raw_dtype: str
@@ -863,3 +854,24 @@ columns:
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_翌事業年度期末_非連結
+
+---
+
+calculated_columns:
+  - name: OUTSTANDING_SHARES
+    col_name: OutstandingShares
+    dtype: float
+    include: true
+    description: 発行済み株式数
+  
+  - name: CURRENT_FISCAL_YEAR
+    col_name: CurrentFiscalYear
+    dtype: int
+    include: true
+    description: 年度
+  
+  - name: FORECAST_FISCAL_YEAR_END_DATE
+    col_name: ForecastFiscalYearEndDate
+    dtype: datetime
+    include: true
+    description: 予測対象の年度の終了日

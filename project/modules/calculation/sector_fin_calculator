@@ -1,129 +1,19 @@
 from utils.paths import Paths
+from utils import yaml_utils
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from dataclasses import dataclass
-from typing import Union
+from typing import Any
 
-
-@dataclass
-class FinCols:
-    DisclosedDate: str # 開示日
-    DisclosedTime: str # 開示時刻
-    LocalCode: str # 銘柄コード（5桁）
-    DisclosureNumber: str # 開示番号
-    TypeOfDocument: str # 開示書類種別
-    TypeOfCurrentPeriod: str # 当会計期間の種類 [1Q, 2Q, 3Q, 4Q, 5Q, FY]
-    CurrentPeriodStartDate: str # 当会計期間開始日
-    CurrentPeriodEndDate: str # 当会計期間終了日
-    CurrentFiscalYearStartDate: str # 当事業年度開始日
-    CurrentFiscalYearEndDate: str # 当事業年度終了日
-    NextFiscalYearStartDate: str # 翌事業年度開始日
-    NextFiscalYearEndDate: str # 翌事業年度終了日
-    NetSales: str # 売上高
-    OperatingProfit: str # 営業利益
-    OrdinaryProfit: str # 経常利益
-    Profit: str # 当期純利益
-    EarningsPerShare: str # 一株あたり当期純利益
-    DilutedEarningsPerShare: str # 潜在株式調整後一株あたり当期純利益
-    TotalAssets: str # 総資産
-    Equity: str # 純資産
-    EquityToAssetRatio: str # 自己資本比率
-    BookValuePerShare: str # 一株あたり純資産
-    CashFlowsFromOperatingActivities: str # 営業活動によるキャッシュ・フロー
-    CashFlowsFromInvestingActivities: str # 投資活動によるキャッシュ・フロー
-    CashFlowsFromFinancingActivities: str # 財務活動によるキャッシュ・フロー
-    CashAndEquivalents: str # 現金及び現金同等物期末残高
-    ResultDividendPerShare1stQuarter: str # 一株あたり配当実績_第1四半期末
-    ResultDividendPerShare2ndQuarter: str # 一株あたり配当実績_第2四半期末
-    ResultDividendPerShare3rdQuarter: str # 一株あたり配当実績_第3四半期末
-    ResultDividendPerShareFiscalYearEnd: str # 一株あたり配当実績_期末
-    ResultDividendPerShareAnnual: str # 一株あたり配当実績_合計
-    DistributionsPerUnit_REIT_: str # 1口当たり分配金
-    ResultTotalDividendPaidAnnual: str # 配当金総額
-    ResultPayoutRatioAnnual: str # 配当性向
-    ForecastDividendPerShare1stQuarter: str # 一株あたり配当予想_第1四半期末
-    ForecastDividendPerShare2ndQuarter: str # 一株あたり配当予想_第2四半期末
-    ForecastDividendPerShare3rdQuarter: str # 一株あたり配当予想_第3四半期末
-    ForecastDividendPerShareFiscalYearEnd: str # 一株あたり配当予想_期末
-    ForecastDividendPerShareAnnual: str # 一株あたり配当予想_合計
-    ForecastDistributionsPerUnit_REIT_: str # 1口当たり予想分配金
-    ForecastTotalDividendPaidAnnual: str # 予想配当金総額
-    ForecastPayoutRatioAnnual: str # 予想配当性向
-    NextYearForecastDividendPerShare1stQuarter: str # 一株あたり配当予想_翌事業年度第1四半期末
-    NextYearForecastDividendPerShare2ndQuarter: str # 一株あたり配当予想_翌事業年度第2四半期末
-    NextYearForecastDividendPerShare3rdQuarter: str # 一株あたり配当予想_翌事業年度第3四半期末
-    NextYearForecastDividendPerShareFiscalYearEnd: str # 一株あたり配当予想_翌事業年度期末
-    NextYearForecastDividendPerShareAnnual: str # 一株あたり配当予想_翌事業年度合計
-    NextYearForecastDistributionsPerUnit_REIT_: str # 1口当たり翌事業年度予想分配金
-    NextYearForecastPayoutRatioAnnual: str # 翌事業年度予想配当性向
-    ForecastNetSales2ndQuarter: str # 売上高_予想_第2四半期末
-    ForecastOperatingProfit2ndQuarter: str # 営業利益_予想_第2四半期末
-    ForecastOrdinaryProfit2ndQuarter: str # 経常利益_予想_第2四半期末
-    ForecastProfit2ndQuarter: str # 当期純利益_予想_第2四半期末
-    ForecastEarningsPerShare2ndQuarter: str # 一株あたり当期純利益_予想_第2四半期末
-    NextYearForecastNetSales2ndQuarter: str # 売上高_予想_翌事業年度第2四半期末
-    NextYearForecastOperatingProfit2ndQuarter: str # 営業利益_予想_翌事業年度第2四半期末
-    NextYearForecastOrdinaryProfit2ndQuarter: str # 経常利益_予想_翌事業年度第2四半期末
-    NextYearForecastProfit2ndQuarter: str # 当期純利益_予想_翌事業年度第2四半期末
-    NextYearForecastEarningsPerShare2ndQuarter: str # 一株あたり当期純利益_予想_翌事業年度第2四半期末
-    ForecastNetSales: str # 売上高_予想_期末
-    ForecastOperatingProfit: str # 営業利益_予想_期末
-    ForecastOrdinaryProfit: str # 経常利益_予想_期末
-    ForecastProfit: str # 当期純利益_予想_期末
-    ForecastEarningsPerShare: str # 一株あたり当期純利益_予想_期末
-    NextYearForecastNetSales: str # 売上高_予想_翌事業年度期末
-    NextYearForecastOperatingProfit: str # 営業利益_予想_翌事業年度期末
-    NextYearForecastOrdinaryProfit: str # 経常利益_予想_翌事業年度期末
-    NextYearForecastProfit: str # 当期純利益_予想_翌事業年度期末
-    NextYearForecastEarningsPerShare: str # 一株あたり当期純利益_予想_翌事業年度期末
-    MaterialChangesInSubsidiaries: str # 期中における重要な子会社の異動
-    SignificantChangesInTheScopeOfConsolidation: str # 期中における連結範囲の重要な変更
-    ChangesBasedOnRevisionsOfAccountingStandard: str # 会計基準等の改正に伴う会計方針の変更
-    ChangesOtherThanOnesBasedOnRevisionsOfAccountingStandard: str # 会計基準等の改正に伴う変更以外の会計方針の変更
-    ChangesInAccountingEstimates: str # 会計上の見積りの変更
-    RetrospectiveRestatement: str # 修正再表示
-    NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock: str # 期末発行済株式数
-    NumberOfTreasuryStockAtTheEndOfFiscalYear: str # 期末自己株式数
-    AverageNumberOfShares: str # 期中平均株式数
-    NonConsolidatedNetSales: str # 売上高_非連結
-    NonConsolidatedOperatingProfit: str # 営業利益_非連結
-    NonConsolidatedOrdinaryProfit: str # 経常利益_非連結
-    NonConsolidatedProfit: str # 当期純利益_非連結
-    NonConsolidatedEarningsPerShare: str # 一株あたり当期純利益_非連結
-    NonConsolidatedTotalAssets: str # 総資産_非連結
-    NonConsolidatedEquity: str # 純資産_非連結
-    NonConsolidatedEquityToAssetRatio: str # 自己資本比率_非連結
-    NonConsolidatedBookValuePerShare: str # 一株あたり純資産_非連結
-    ForecastNonConsolidatedNetSales2ndQuarter: str # 売上高_予想_第2四半期末_非連結
-    ForecastNonConsolidatedOperatingProfit2ndQuarter: str # 営業利益_予想_第2四半期末_非連結
-    ForecastNonConsolidatedOrdinaryProfit2ndQuarter: str # 経常利益_予想_第2四半期末_非連結
-    ForecastNonConsolidatedProfit2ndQuarter: str # 当期純利益_予想_第2四半期末_非連結
-    ForecastNonConsolidatedEarningsPerShare2ndQuarter: str # 一株あたり当期純利益_予想_第四半期末_非連結
-    NextYearForecastNonConsolidatedNetSales2ndQuarter: str # 売上高_予想_翌事業年度第2四半期末_非連結
-    NextYearForecastNonConsolidatedOperatingProfit2ndQuarter: str # 営業利益_予想_翌事業年度第2四半期末_非連結
-    NextYearForecastNonConsolidatedOrdinaryProfit2ndQuarter: str # 経常利益_予想_翌事業年度第2四半期末_非連結
-    NextYearForecastNonConsolidatedProfit2ndQuarter: str # 当期純利益_予想_翌事業年度第2四半期末_非連結
-    NextYearForecastNonConsolidatedEarningsPerShare2ndQuarter: str # 一株あたり当期純利益_予想_翌事業年度第2四半期末_非連結
-    ForecastNonConsolidatedNetSales: str # 売上高_予想_期末_非連結
-    ForecastNonConsolidatedOperatingProfit: str # 営業利益_予想_期末_非連結
-    ForecastNonConsolidatedOrdinaryProfit: str # 経常利益_予想_期末_非連結
-    ForecastNonConsolidatedProfit: str # 当期純利益_予想_期末_非連結
-    ForecastNonConsolidatedEarningsPerShare: str #一株あたり当期純利益_予想_第四半期末_非連結
-    NextYearForecastNonConsolidatedNetSales: str # 売上高_予想_翌事業年度期末_非連結
-    NextYearForecastNonConsolidatedOperatingProfit: str # 営業利益_予想_翌事業年度期末_非連結
-    NextYearForecastNonConsolidatedOrdinaryProfit: str # 経常利益_予想_翌事業年度期末_非連結
-    NextYearForecastNonConsolidatedProfit: str # 当期純利益_予想_翌事業年度期末_非連結
-    NextYearForecastNonConsolidatedEarningsPerShare: str # 一株あたり当期純利益_予想_翌事業年度期末_非連結
 
 
 class SectorFinCalculator:
-    def __init__(self):
-        pass
+    def __init__(self, fin_yaml_path: str = Paths.STOCK_FIN_COLUMNS_YAML):
+        self.fin_yaml = yaml_utils.yaml_loader(fin_yaml_path)
 
     def calculate(self, fin_df: pd.DataFrame, price_df: pd.DataFrame, sector_dif_info: pd.DataFrame, 
-                  fin_df_code_col: str = 'Code', price_df_code_col: str = 'Code',
-                  fin_df_date_col: str = 'Date', price_df_date_col: str = 'Date',
+                  price_df_date_col: str = 'Date', price_df_code_col: str = 'Code',
                   sector_dif_info_code_col: str = 'Code', sector_col: str = 'Sector',
                   cols_to_calculate: list | None = None):
         '''
@@ -132,6 +22,9 @@ class SectorFinCalculator:
             price_df (pd.DataFrame): 価格情報
             sector_dif_info (pd.DataFrame): セクター
         '''
+        fin_df_date_col = self._column_name_getter(self.fin_yaml, 'DisclosedDate')
+        fin_df_code_col = self._column_name_getter(self.fin_yaml, 'LocalCode')
+
         fin_df[fin_df_code_col] = fin_df[fin_df_code_col].astype(str)
         fin_df[fin_df_date_col] = pd.to_datetime(fin_df[fin_df_date_col])
         price_df[price_df_code_col] = price_df[price_df_code_col].astype(str)
@@ -141,19 +34,35 @@ class SectorFinCalculator:
         price_df = price_df.rename(columns = {price_df_code_col: fin_df_code_col, price_df_date_col: fin_df_date_col})
         sector_dif_info = sector_dif_info.rename(columns = {sector_dif_info_code_col: fin_df_code_col})
         
-        fin_df = pd.merge(fin_df, sector_dif_info, how = 'left', on = fin_df_code_col)
-        fin_df = pd.merge(price_df, fin_df, how = 'outer', on = [fin_df_date_col, fin_df_code_col]) 
-        fin_df
+        merged_df = pd.merge(price_df, fin_df, how = 'outer', on = [fin_df_date_col, fin_df_code_col]) 
+        merged_df = pd.merge(merged_df, sector_dif_info, how = 'left', on = fin_df_code_col)
         
-        price_cols = price_df.columns
-        cols_to_ffill = [x for x in fin_df.columns if x not in price_cols]
+        cols_to_ffill = [x for x in merged_df.columns if x not in price_df.columns]
 
-        fin_df[cols_to_ffill] = fin_df.groupby(fin_df_code_col)[cols_to_ffill].ffill()
+        merged_df[cols_to_ffill] = merged_df.groupby(fin_df_code_col)[cols_to_ffill].ffill()
         
         if cols_to_calculate is None:
             cols_to_calculate = []
         
-        print(fin_df)
+        print(merged_df)
+
+    # --------------------------------------------------------------------------
+    #  以下、ヘルパーメソッド
+    # --------------------------------------------------------------------------
+
+    def _column_name_getter(self, yaml_info: dict[str | dict[str | Any]], raw_name: str) -> str:
+        """
+        指定したカラム名の変換後の名称を取得。
+
+        Args:
+            yaml_info (dict[str | dict[str | Any]])
+            raw_name (str): 変換前のカラム名
+
+        Returns:
+            str: 変換後のカラム名
+        """ 
+        return yaml_utils.column_name_getter(yaml_info, {'raw_name': raw_name}, 'processed_name')
+    
 
 
 if __name__ == '__main__':

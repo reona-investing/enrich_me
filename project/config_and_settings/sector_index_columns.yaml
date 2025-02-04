@@ -1,0 +1,12 @@
+calculated_columns:
+  - name: DATE
+    col_name: Date
+    dtype: datetime
+    include: true
+    description: 日付
+
+  - name: CODE
+    col_name: Code
+    dtype: str
+    include: true
+    description: 銘柄コード

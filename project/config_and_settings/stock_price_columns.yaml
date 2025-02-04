@@ -1,0 +1,308 @@
+original_columns:
+  - raw_name: Date
+    raw_dtype: str
+    processed_name: Date
+    processed_dtype: datetime
+    include: true
+    description: 日付
+
+  - raw_name: Code
+    raw_dtype: str
+    processed_name: Code
+    processed_dtype: str
+    include: true
+    description: 銘柄コード
+
+  - raw_name: Open
+    raw_dtype: float
+    processed_name: Open
+    processed_dtype: float
+    include: true
+    description: 始値（調整前）
+
+  - raw_name: High
+    raw_dtype: float
+    processed_name: High
+    processed_dtype: float
+    include: true
+    description: 高値（調整前）
+
+  - raw_name: Low
+    raw_dtype: float
+    processed_name: Low
+    processed_dtype: float
+    include: true
+    description: 安値（調整前）
+
+  - raw_name: Close
+    raw_dtype: float
+    processed_name: Close
+    processed_dtype: float
+    include: true
+    description: 終値（調整前）
+
+  - raw_name: UpperLimit
+    raw_dtype: int
+    processed_name: UpperLimit
+    processed_dtype: bool
+    include: false
+    description: 日通ストップ高を記録したか、否かを表すフラグ
+
+  - raw_name: LowerLimit
+    raw_dtype: int
+    processed_name: LowerLimit
+    processed_dtype: bool
+    include: false
+    description: 日通ストップ安を記録したか、否かを表すフラグ
+
+  - raw_name: Volume
+    raw_dtype: float
+    processed_name: Volume
+    processed_dtype: float
+    include: true
+    description: 取引高（調整前）
+
+  - raw_name: TurnoverValue
+    raw_dtype: float
+    processed_name: TurnoverValue
+    processed_dtype: float
+    include: true
+    description: 取引代金
+
+  - raw_name: AdjustmentFactor
+    raw_dtype: float
+    processed_name: AdjustmentFactor
+    processed_dtype: float
+    include: true
+    description: 調整係数（株式分割1:2の場合、権利落ち日のレコードが0.5となる）
+
+  - raw_name: AdjustmentOpen
+    raw_dtype: float
+    processed_name: AdjustmentOpen
+    processed_dtype: float
+    include: false
+    description: 調整済み始値
+
+  - raw_name: AdjustmentHigh
+    raw_dtype: float
+    processed_name: AdjustmentHigh
+    processed_dtype: float
+    include: false
+    description: 調整済み高値
+
+  - raw_name: AdjustmentLow
+    raw_dtype: float
+    processed_name: AdjustmentLow
+    processed_dtype: float
+    include: false
+    description: 調整済み安値
+
+  - raw_name: AdjustmentClose
+    raw_dtype: float
+    processed_name: AdjustmentClose
+    processed_dtype: float
+    include: false
+    description: 調整済み終値
+
+  - raw_name: AdjustmentVolume
+    raw_dtype: float
+    processed_name: AdjustmentVolume
+    processed_dtype: float
+    include: false
+    description: 調整済み取引高
+
+  - raw_name: MorningOpen
+    raw_dtype: float
+    processed_name: MorningOpen
+    processed_dtype: float
+    include: false
+    description: 前場始値
+
+  - raw_name: MorningHigh
+    raw_dtype: float
+    processed_name: MorningHigh
+    processed_dtype: float
+    include: false
+    description: 前場高値
+
+  - raw_name: MorningLow
+    raw_dtype: float
+    processed_name: MorningLow
+    processed_dtype: float
+    include: false
+    description: 前場安値
+
+  - raw_name: MorningClose
+    raw_dtype: float
+    processed_name: MorningClose
+    processed_dtype: float
+    include: false
+    description: 前場終値
+
+  - raw_name: MorningUpperLimit
+    raw_dtype: int
+    processed_name: MorningUpperLimit
+    processed_dtype: bool
+    include: false
+    description: 前場ストップ高を記録したか、否かを表すフラグ
+
+  - raw_name: MorningLowerLimit
+    raw_dtype: int
+    processed_name: MorningLowerLimit
+    processed_dtype: bool
+    include: false
+    description: 前場ストップ安を記録したか、否かを表すフラグ
+
+  - raw_name: MorningVolume
+    raw_dtype: float
+    processed_name: MorningVolume
+    processed_dtype: float
+    include: false
+    description: 前場売買高
+
+  - raw_name: MorningTurnoverValue
+    raw_dtype: float
+    processed_name: MorningTurnoverValue
+    processed_dtype: float
+    include: false
+    description: 前場取引代金
+
+  - raw_name: MorningAdjustmentOpen
+    raw_dtype: float
+    processed_name: MorningAdjustmentOpen
+    processed_dtype: float
+    include: false
+    description: 調整済み前場始値
+
+  - raw_name: MorningAdjustmentHigh
+    raw_dtype: float
+    processed_name: MorningAdjustmentHigh
+    processed_dtype: float
+    include: false
+    description: 調整済み前場高値
+
+  - raw_name: MorningAdjustmentLow
+    raw_dtype: float
+    processed_name: MorningAdjustmentLow
+    processed_dtype: float
+    include: false
+    description: 調整済み前場安値
+
+  - raw_name: MorningAdjustmentClose
+    raw_dtype: float
+    processed_name: MorningAdjustmentClose
+    processed_dtype: float
+    include: false
+    description: 調整済み前場終値
+
+  - raw_name: MorningAdjustmentVolume
+    raw_dtype: float
+    processed_name: MorningAdjustmentVolume
+    processed_dtype: float
+    include: false
+    description: 調整済み前場売買高
+
+  - raw_name: MorningAdjustmentVolume
+    raw_dtype: float
+    processed_name: MorningAdjustmentVolume
+    processed_dtype: float
+    include: false
+    description: 調整済み前場売買高
+
+  - raw_name: AfternoonOpen
+    raw_dtype: float
+    processed_name: AfternoonOpen
+    processed_dtype: float
+    include: false
+    description: 後場始値
+
+  - raw_name: AfternoonHigh
+    raw_dtype: float
+    processed_name: AfternoonHigh
+    processed_dtype: float
+    include: false
+    description: 後場高値
+
+  - raw_name: AfternoonLow
+    raw_dtype: float
+    processed_name: AfternoonLow
+    processed_dtype: float
+    include: false
+    description: 後場安値
+
+  - raw_name: AfternoonClose
+    raw_dtype: float
+    processed_name: AfternoonClose
+    processed_dtype: float
+    include: false
+    description: 後場終値
+
+  - raw_name: AfternoonUpperLimit
+    raw_dtype: int
+    processed_name: AfternoonUpperLimit
+    processed_dtype: bool
+    include: false
+    description: 後場ストップ高を記録したか、否かを表すフラグ
+
+  - raw_name: AfternoonLowerLimit
+    raw_dtype: int
+    processed_name: AfternoonLowerLimit
+    processed_dtype: bool
+    include: false
+    description: 後場ストップ安を記録したか、否かを表すフラグ
+
+  - raw_name: AfternoonVolume
+    raw_dtype: float
+    processed_name: AfternoonVolume
+    processed_dtype: float
+    include: false
+    description: 後場売買高
+
+  - raw_name: AfternoonTurnoverValue
+    raw_dtype: float
+    processed_name: AfternoonTurnoverValue
+    processed_dtype: float
+    include: false
+    description: 後場取引代金
+
+  - raw_name: AfternoonAdjustmentOpen
+    raw_dtype: float
+    processed_name: AfternoonAdjustmentOpen
+    processed_dtype: float
+    include: false
+    description: 調整済み後場始値
+
+  - raw_name: AfternoonAdjustmentHigh
+    raw_dtype: float
+    processed_name: AfternoonAdjustmentHigh
+    processed_dtype: float
+    include: false
+    description: 調整済み後場高値
+
+  - raw_name: AfternoonAdjustmentLow
+    raw_dtype: float
+    processed_name: AfternoonAdjustmentLow
+    processed_dtype: float
+    include: false
+    description: 調整済み後場安値
+
+  - raw_name: AfternoonAdjustmentClose
+    raw_dtype: float
+    processed_name: AfternoonAdjustmentClose
+    processed_dtype: float
+    include: false
+    description: 調整済み後場終値
+
+  - raw_name: AfternoonAdjustmentVolume
+    raw_dtype: float
+    processed_name: AfternoonAdjustmentVolume
+    processed_dtype: float
+    include: false
+    description: 調整済み後場売買高
+
+  - raw_name: AfternoonAdjustmentVolume
+    raw_dtype: float
+    processed_name: AfternoonAdjustmentVolume
+    processed_dtype: float
+    include: false
+    description: 調整済み後場売買高
