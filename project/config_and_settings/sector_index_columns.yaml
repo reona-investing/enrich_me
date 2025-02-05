@@ -10,6 +10,12 @@ calculated_columns:
     dtype: str
     include: true
     description: 銘柄コード
+  
+  - name: SECTOR
+    col_name: Sector
+    dtype: str
+    include: true
+    description: セクター
 
   - name: MARKET_CAP_OPEN
     col_name: MarketCapOpen
@@ -34,3 +40,51 @@ calculated_columns:
     dtype: float
     include: true
     description: 安値ベースの時価総額
+    
+  - name: OUTSTANDING_SHARES
+    col_name: OutstandingShares
+    dtype: float
+    include: true
+    description: 発行済み株式数
+
+  - name: CORRECTION_VALUE
+    col_name: CorrectionValue
+    dtype: float
+    include: true
+    description: 指数算出用の補正値
+
+  - name: 1D_RETURN
+    col_name: 1d_return
+    dtype: float
+    include: true
+    description: 終値の前日比
+
+  - name: 1D_RATE
+    col_name: 1d_rate
+    dtype: float
+    include: true
+    description: 終値の前日比率（1D_RETURN + 1）
+
+  - name: OPEN
+    col_name: Open
+    dtype: float
+    include: true
+    description: インデックス始値
+  
+  - name: CLOSE
+    col_name: Close
+    dtype: float
+    include: true
+    description: インデックス終値
+  
+  - name: HIGH
+    col_name: High
+    dtype: float
+    include: true
+    description: インデックス高値
+  
+  - name: LOW
+    col_name: Low
+    dtype: float
+    include: true
+    description: インデックス安値

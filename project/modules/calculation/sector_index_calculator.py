@@ -29,7 +29,7 @@ class SectorIndexCalculator:
     
     @staticmethod
     def _get_column_names():
-        if col is None:
+        if SectorIndexCalculator._col_names is None:
             _fin_original_yaml = yaml_utils.including_columns_loader(Paths.STOCK_FIN_COLUMNS_YAML, 'original_columns')
             _fin_calculated_yaml = yaml_utils.including_columns_loader(Paths.STOCK_FIN_COLUMNS_YAML, 'calculated_columns')
             _price_original_yaml = yaml_utils.including_columns_loader(Paths.STOCK_PRICE_COLUMNS_YAML, 'original_columns')
@@ -39,13 +39,32 @@ class SectorIndexCalculator:
                 'fin_code': _column_name_getter(_fin_original_yaml, 'LocalCode'),
                 'fin_date': _column_name_getter(_fin_original_yaml, 'DisclosedDate'),
                 'period_end_date': _column_name_getter(_fin_original_yaml, 'CurrentPeriodEndDate'),
-                'outstanding_shares': yaml_utils.column_name_getter(_fin_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'col_name'),
+                'fin_outstanding_shares': yaml_utils.column_name_getter(_fin_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'col_name'),
                 
                 'price_code': _column_name_getter(_price_original_yaml, 'Code'),
                 'price_date': _column_name_getter(_price_original_yaml, 'Date'),
+                'adjustment_factor': _column_name_getter(_price_original_yaml, 'AdjustmentFactor'),
+                'price_open': _column_name_getter(_price_original_yaml, 'Open'),
+                'price_close': _column_name_getter(_price_original_yaml, 'Close'),
+                'price_high': _column_name_getter(_price_original_yaml, 'High'),
+                'price_low': _column_name_getter(_price_original_yaml, 'Low'),
+                'volume': _column_name_getter(_price_original_yaml, 'Volume'),
                 
+                'sector': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'SECTOR'}, 'col_name'),
                 'sector_code': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CODE'}, 'col_name'),
-                'sector_date': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'DATE'}, 'col_name')
+                'sector_date': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'DATE'}, 'col_name'),
+                'market_cap_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_OPEN'}, 'col_name'),
+                'market_cap_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_CLOSE'}, 'col_name'),
+                'market_cap_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_HIGH'}, 'col_name'),
+                'market_cap_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_LOW'}, 'col_name'),
+                'sector_outstanding_shares': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'col_name'),
+                'correction_value': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CORRECTION_VALUE'}, 'col_name'),
+                '1d_return': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RETURN'}, 'col_name'),
+                '1d_rate': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RATE'}, 'col_name'),
+                'sector_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OPEN'}, 'col_name'),
+                'sector_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CLOSE'}, 'col_name'),
+                'sector_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'HIGH'}, 'col_name'),
+                'sector_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'LOW'}, 'col_name'),
                      }
             return col
 
@@ -62,6 +81,7 @@ class SectorIndexCalculator:
             pd.DataFrame: セクターインデックスを格納
             pd.DataFrame: 発注用に、個別銘柄の終値と時価総額を格納
         '''
+        col = SectorIndexCalculator._get_column_names()
         stock_price = stock_dfs_dict['price']
         stock_fin = stock_dfs_dict['fin']
         #価格情報に発行済み株式数の情報を結合
@@ -71,7 +91,10 @@ class SectorIndexCalculator:
         #データフレームを保存して、インデックスを設定
         new_sector_price = new_sector_price.reset_index()
         new_sector_price.to_parquet(SECTOR_INDEX_PARQUET)
-        new_sector_price = new_sector_price.set_index(['Date', 'Sector'])
+        new_sector_price = new_sector_price.set_index([col['sector_date'], col['sector']])
+
+        stock_price_for_order = \
+            stock_price_for_order[[col['sector_date'], col['sector_code'], col['market_cap_close'], col['sector_close'], col['volume']]]
         print('セクターのインデックス値の算出が完了しました。')
         #TODO 2つのデータフレームを返す関数は分けたほうがよさそう。
 
@@ -125,7 +148,7 @@ class SectorIndexCalculator:
             pd.DataFrame: 財務情報に発行済株式数を付記
         """
         col = SectorIndexCalculator._get_column_names()
-        shares_df = stock_fin[[col['fin_code'], col['fin_date'], col['outstanding_shares'], col['period_end_date']]].copy()
+        shares_df = stock_fin[[col['fin_code'], col['fin_date'], col['fin_outstanding_shares'], col['period_end_date']]].copy()
         shares_df = shares_df.sort_values(col['fin_date']).drop(col['fin_date'], axis=1)
         shares_df = shares_df.drop_duplicates(subset=[col['period_end_date'], col['fin_code']], keep='last')
         shares_df['NextPeriodStartDate'] = pd.to_datetime(shares_df[col['period_end_date']]) + timedelta(days=1)
@@ -178,12 +201,16 @@ class SectorIndexCalculator:
         shares_df = shares_df.rename(columns={col['fin_code']: col['sector_code'], 'NextPeriodStartDate': col['sector_date']})
 
         merged_df = pd.merge(stock_price, 
-                             shares_df[[col['sector_date'], col['sector_code'], col['outstanding_shares'], 'isSettlementDay']],
+                             shares_df[[col['sector_date'], col['sector_code'], col['fin_outstanding_shares'], 'isSettlementDay']],
                             on=[col['sector_date'], col['sector_code']],
                             how='left'
                             )
+        merged_df.rename(columns={col['fin_outstanding_shares']: col['sector_outstanding_shares'],
+                                  col['price_open']: col['sector_open'],
+                                  col['price_close']: col['sector_close'],
+                                  col['price_high']: col['sector_high'],
+                                  col['price_low']: col['sector_low']})
         merged_df['isSettlementDay'] = merged_df['isSettlementDay'].astype(bool).fillna(False)
-        print(merged_df)
         return merged_df
 
     @staticmethod
@@ -212,7 +239,7 @@ class SectorIndexCalculator:
             pd.DataFrame: 引数のdfから株式分割・併合対象行のみを抽出
         """
         col = SectorIndexCalculator._get_column_names()
-        condition = (stock_price_with_shares_df[col['outstanding_shares']].notnull() | (stock_price_with_shares_df['AdjustmentFactor'] != 1))
+        condition = (stock_price_with_shares_df[col['sector_outstanding_shares']].notnull() | (stock_price_with_shares_df[col['adjustment_factor']] != 1))
         return stock_price_with_shares_df.loc[condition].copy()
 
     @staticmethod
@@ -225,8 +252,8 @@ class SectorIndexCalculator:
             pd.DataFrame: 発行済み株式数の比率を計算したデータフレーム
         """
         col = SectorIndexCalculator._get_column_names()
-        df[col['outstanding_shares']] = df.groupby(col['sector_code'])[col['outstanding_shares']].bfill()
-        df['SharesRate'] = (df.groupby(col['sector_code'])[col['outstanding_shares']].shift(-1) / df[col['outstanding_shares']]).round(1)
+        df[col['sector_outstanding_shares']] = df.groupby(col['sector_code'])[col['sector_outstanding_shares']].bfill()
+        df['SharesRate'] = (df.groupby(col['sector_code'])[col['sector_outstanding_shares']].shift(-1) / df[col['sector_outstanding_shares']]).round(1)
         return df
 
     @staticmethod
@@ -243,7 +270,7 @@ class SectorIndexCalculator:
         shift_days = [1, 2, -1, -2]
         shift_columns = [f'Shift_AdjustmentFactor{i}' for i in shift_days]
         for shift_column, i in zip(shift_columns, shift_days):
-            df[shift_column] = df.groupby(col['sector_code'])['AdjustmentFactor'].shift(i).fillna(1)
+            df[shift_column] = df.groupby(col['sector_code'])[col['adjustment_factor']].shift(i).fillna(1)
         df.loc[((df[shift_columns] == 1).all(axis=1) | (df['SharesRate'] == 1)), 'SharesRate'] = 1
         return df
 
@@ -262,7 +289,7 @@ class SectorIndexCalculator:
         df_to_calc_shares_rate['SharesRate'] = df_to_calc_shares_rate.groupby(col['sector_code'])['SharesRate'].shift(1)
         stock_price = pd.merge(
             stock_price,
-            df_to_calc_shares_rate[[col['sector_date'], col['sector_code'], col['outstanding_shares'], 'SharesRate']],
+            df_to_calc_shares_rate[[col['sector_date'], col['sector_code'], col['sector_outstanding_shares'], 'SharesRate']],
             how='left',
             on=[col['sector_date'], col['sector_code']]
         )
@@ -311,10 +338,10 @@ class SectorIndexCalculator:
         '''
         col = SectorIndexCalculator._get_column_names()
         #決算発表時以外が欠測値なので、後埋めする。
-        df[col['outstanding_shares']] = df.groupby(col['sector_code'], as_index=False)[col['outstanding_shares']].ffill() 
+        df[col['sector_outstanding_shares']] = df.groupby(col['sector_code'], as_index=False)[col['sector_outstanding_shares']].ffill() 
         #初回決算発表以前の分を前埋め。
-        df[col['outstanding_shares']] = df.groupby(col['sector_code'], as_index=False)[col['outstanding_shares']].bfill() 
-        df[col['outstanding_shares']] = df[col['outstanding_shares']] * df['CumulativeSharesRate'] #株式併合・分割以降、決算発表までの期間の発行済み株式数を調整
+        df[col['sector_outstanding_shares']] = df.groupby(col['sector_code'], as_index=False)[col['sector_outstanding_shares']].bfill() 
+        df[col['sector_outstanding_shares']] = df[col['sector_outstanding_shares']] * df['CumulativeSharesRate'] #株式併合・分割以降、決算発表までの期間の発行済み株式数を調整
         #不要行の削除
         return df.drop(['SharesRate', 'CumulativeSharesRate'], axis=1)
 
@@ -328,10 +355,10 @@ class SectorIndexCalculator:
             pd.DataFrame: 引数のdfに時価総額のOHLCを追加したもの
         '''
         col = SectorIndexCalculator._get_column_names()
-        df['MarketCapOpen'] = df['Open'] * df[col['outstanding_shares']]
-        df['MarketCapClose'] = df['Close'] * df[col['outstanding_shares']]
-        df['MarketCapHigh'] = df['High'] * df[col['outstanding_shares']]
-        df['MarketCapLow'] = df['Low'] * df[col['outstanding_shares']]
+        df[col['market_cap_open']] = df[col['sector_open']] * df[col['sector_outstanding_shares']]
+        df[col['market_cap_close']] = df[col['sector_close']] * df[col['sector_outstanding_shares']]
+        df[col['market_cap_high']] = df[col['sector_high']] * df[col['sector_outstanding_shares']]
+        df[col['market_cap_low']] = df[col['sector_low']] * df[col['sector_outstanding_shares']]
         return df
 
     @staticmethod
@@ -345,10 +372,10 @@ class SectorIndexCalculator:
         '''
         col = SectorIndexCalculator._get_column_names()
         df['OutstandingShares_forCorrection'] = \
-            df.groupby(col['sector_code'])[col['outstanding_shares']].shift(1)
+            df.groupby(col['sector_code'])[col['sector_outstanding_shares']].shift(1)
         df['OutstandingShares_forCorrection'] = df['OutstandingShares_forCorrection'].fillna(0)
-        df['MarketCapClose_forCorrection'] = df['Close'] * df['OutstandingShares_forCorrection']
-        df['CorrectionValue'] = df['MarketCapClose'] - df['MarketCapClose_forCorrection']
+        df['MarketCapClose_forCorrection'] = df[col['sector_close']] * df['OutstandingShares_forCorrection']
+        df[col['correction_value']] = df[col['market_cap_close']] - df['MarketCapClose_forCorrection']
         return df
 
     @staticmethod
@@ -365,20 +392,24 @@ class SectorIndexCalculator:
         new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV).dropna(how='any', axis=1)
         new_sector_list[col['sector_code']] = new_sector_list[col['sector_code']].astype(str)
         new_sector_price = pd.merge(new_sector_list, stock_price, how='right', on=col['sector_code'])
+        # TODO SECTOR_REDEFINITIONS_CSVのyamlデータも作らないといけない。
 
         #必要列を抜き出したデータフレームを作る。
-        new_sector_price = new_sector_price.groupby([col['sector_date'], 'Sector'])\
-        [['MarketCapOpen', 'MarketCapClose','MarketCapHigh', 'MarketCapLow', col['outstanding_shares'], 'CorrectionValue']].sum()
-        new_sector_price['1d_return'] = new_sector_price['MarketCapClose'] \
-                                        / (new_sector_price.groupby('Sector')['MarketCapClose'].shift(1) \
-                                        + new_sector_price['CorrectionValue']) - 1
-        new_sector_price['1d_rate'] = 1 + new_sector_price['1d_return']
+        new_sector_price = new_sector_price.groupby([col['sector_date'], col['sector']])\
+        [[col['market_cap_open'], col['market_cap_close'],col['market_cap_high'], col['market_cap_low'], col['sector_outstanding_shares'], col['correction_value']]].sum()
+        new_sector_price[col['1d_return']] = new_sector_price[col['market_cap_close']] \
+                                        / (new_sector_price.groupby(col['sector'])[col['market_cap_close']].shift(1) \
+                                        + new_sector_price[col['correction_value']]) - 1
+        new_sector_price[col['1d_rate']] = 1 + new_sector_price[col['1d_return']]
 
         #初日の終値を1とすると、各日の終値は1d_rateのcumprodで求められる。→OHLは、Cとの比率で求められる。
-        new_sector_price['Close'] = new_sector_price.groupby('Sector')['1d_rate'].cumprod()
-        new_sector_price['Open'] = new_sector_price['Close']  * new_sector_price['MarketCapOpen'] / new_sector_price['MarketCapClose']
-        new_sector_price['High'] = new_sector_price['Close']  * new_sector_price['MarketCapHigh'] / new_sector_price['MarketCapClose']
-        new_sector_price['Low'] = new_sector_price['Close']  * new_sector_price['MarketCapLow'] / new_sector_price['MarketCapClose']
+        new_sector_price[col['sector_close']] = new_sector_price.groupby(col['sector'])[col['1d_rate']].cumprod()
+        new_sector_price[col['sector_open']] = \
+            new_sector_price[col['sector_close']]  * new_sector_price[col['market_cap_open']] / new_sector_price[col['market_cap_close']]
+        new_sector_price[col['sector_high']] = \
+            new_sector_price[col['sector_close']]  * new_sector_price[col['market_cap_high']] / new_sector_price[col['market_cap_close']]
+        new_sector_price[col['sector_low']] = \
+            new_sector_price[col['sector_close']]  * new_sector_price[col['market_cap_low']] / new_sector_price[col['market_cap_close']]
 
         return new_sector_price
         
@@ -392,4 +423,4 @@ if __name__ == '__main__':
     sector_price_df, order_price_df = sic.calc_new_sector_price(stock_dfs, 
                                             f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv', 
                                             f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price_test.parquet')
-    print(sector_price_df)
+    print(order_price_df)

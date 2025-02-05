@@ -413,13 +413,14 @@ if __name__  == '__main__':
     async def main():
         from trading.sbi.session import LoginHandler
         from models import MLDataset
-        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/New48sectors')
-        materials = ml.get_materials_for_stock_selection()
+        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
         lh = LoginHandler()
         tpm = TradePossibilityManager(lh)
         mm = MarginManager(lh)
         sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
-        ss = StockSelector(materials.order_price_df, materials.pred_result_df, tpm, mm, sd)
+        ss = StockSelector(ml.stock_selection_materials.order_price_df, 
+                           ml.stock_selection_materials.pred_result_df, 
+                           tpm, mm, sd)
         long, short, today = await ss.select()
         print(short)
     
