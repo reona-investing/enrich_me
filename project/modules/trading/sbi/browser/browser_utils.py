@@ -116,7 +116,23 @@ class BrowserUtils:
         """
         element = await self.wait_for(selector, is_css, timeout)
         await element.click()
-    
+
+    async def query_selector(self, css_selector: str, is_all: bool = False) -> list:
+        """
+        指定したcssセレクタを持つ要素を、1つまたは複数検索します。
+        Args:
+            css_selector (str): 探し出すcssセレクタ
+            is_all (bool): Trueならquery_selector_all()、Falseならquey_selector()を実行
+        Returns:
+            list: 検索結果を1つ又は複数格納したリスト
+        """
+        await self._set_tab()
+        if is_all:
+            find_list = await self.tab.query_selector_all(css_selector)
+        else:
+            find_list = await self.tab.query_selector(css_selector)
+        return find_list
+
     async def get_html_content(self):
         '''
         現在のタブからhtmlを取得します。

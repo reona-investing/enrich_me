@@ -369,28 +369,26 @@ class OrderManager:
         print(f'保有建玉：{len(margin_tickers)}件')
         print(f'発注済み：{len(ordered_tickers)}件')
         retry_count = 0
-        i = n = 0
+        await self.browser_utils.wait_and_click('img[title=取引]', is_css = True)
+        await self.browser_utils.wait_and_click('信用返済')
+        # '返買', '返売' が存在するCSSセレクタの位置から、要素の番号を特定
+        table_body_css = '#MAINAREA02_780 > form > table:nth-child(18) > tbody > tr > td > \
+            table > tbody > tr > td > table > tbody'
+        
+        css_element_nums = self._get_css_element_nums(table_body_css)
 
-        while i < len(margin_tickers):
-            if margin_tickers[i] in ordered_tickers:
-                print(f'{margin_tickers[i]}はすでに決済発注済です。')
-                i += 1
+        for ticker, element_num in zip(margin_tickers, css_element_nums):
+            if ticker in ordered_tickers:
+                print(f'{ticker}はすでに決済発注済です。')
                 continue
             else:
                 await self.browser_utils.wait_and_click('img[title=取引]', is_css = True)
                 await self.browser_utils.wait_and_click('信用返済')
-                for _ in range(10):
-                    try:
-                        await self.browser_utils.wait_and_click(
-                            f'#MAINAREA02_780 > form > table:nth-child(18) > tbody > tr > td > \
-                            table > tbody > tr > td > table > tbody > tr:nth-child({i +  n + 1}) > \
-                            td:nth-child(10) > a:nth-child(1) > u > font', 
-                            is_css = True,
-                            timeout = 5
+                await self.browser_utils.wait_and_click(
+                    f'{table_body_css} > tr:nth-child({element_num}) > td:nth-child(10) > a:nth-child(1) > u > font', 
+                    is_css = True,
+                    timeout = 5
                         )
-                        break
-                    except:
-                        n += 1
                 await self.browser_utils.wait_and_click('input[value="全株指定"]', is_css = True)
                 await self.browser_utils.wait_and_click('input[value="注文入力へ"]', is_css = True)
                 await self.browser_utils.wait(1)
@@ -404,17 +402,16 @@ class OrderManager:
                 await self.browser_utils.wait(1.2)
                 try:
                     await self.browser_utils.wait_for('ご注文を受け付けました。')                
-                    print(f"{margin_tickers[i]}：正常に決済注文完了しました。")
+                    print(f"{ticker}：正常に決済注文完了しました。")
                     
                 except:
                     if retry_count < 3:
-                        print(f"{margin_tickers[i]}：発注失敗。再度発注を試みます。")
+                        print(f"{ticker}：発注失敗。再度発注を試みます。")
                         retry_count += 1
                     else:
-                        print(f"{margin_tickers[i]}：発注失敗。リトライ回数の上限に達しました。")
-                        self.error_tickers.append(margin_tickers[i])
+                        print(f"{ticker}：発注失敗。リトライ回数の上限に達しました。")
+                        self.error_tickers.append(ticker)
                         retry_count = 0
-                        i += 1
                 symbol_code = str(await self._get_element('銘柄コード'))
                 extracted_unit = await self._get_element('株数')
                 extracted_unit = int(extracted_unit[:-1].replace(',', ''))
@@ -438,6 +435,16 @@ class OrderManager:
         await self.page_navigator.credit_position()
         html_content = await self.browser_utils.get_html_content()
         self.margin_list_df = self._parse_margin_table(html_content)
+    
+    async def _get_css_element_nums(self, table_body_css: str) -> list[int]:
+        await self.browser_utils.wait(2)
+        mylist = await self.browser_utils.query_selector(f'{table_body_css} > tr', is_all=True)
+        css_element_nums = []
+        for num, element in enumerate(mylist):
+            element_text = element.text_all
+            if '返買' in element_text or '返売' in element_text:
+                css_element_nums.append(num + 1)
+        return css_element_nums
 
     async def _navigate_to_margin_page(self):
         await self.page_navigator.credit_position()

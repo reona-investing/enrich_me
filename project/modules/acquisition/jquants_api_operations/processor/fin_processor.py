@@ -62,9 +62,9 @@ class FinProcessor:
             self._column_name_getter('NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock')
         self.fiscal_year_end_date_col = self._column_name_getter('CurrentFiscalYearEndDate')
         self.type_of_current_period_col = self._column_name_getter('TypeOfCurrentPeriod')
-        self.outstanding_shares_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'OUTSTANDING_SHARES'}, 'col_name')
-        self.fiscal_year_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'CURRENT_FISCAL_YEAR'}, 'col_name')
-        self.forecast_fy_end_date_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'FORECAST_FISCAL_YEAR_END_DATE'}, 'col_name')
+        self.outstanding_shares_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'OUTSTANDING_SHARES'}, 'fixed_name')
+        self.fiscal_year_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'CURRENT_FISCAL_YEAR'}, 'fixed_name')
+        self.forecast_fy_end_date_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'FORECAST_FISCAL_YEAR_END_DATE'}, 'fixed_name')
 
 
     def _load_fin_data(self, raw_path: str) -> pd.DataFrame:
@@ -102,8 +102,8 @@ class FinProcessor:
         Returns:
             pd.DataFrame: カラム名変換後の財務データ
         """
-        rename_dict = {col['raw_name']: col['processed_name'] \
-                       for col in self.original_columns_info if col['raw_name'] != col['processed_name']}
+        rename_dict = {col['raw_name']: col['fixed_name'] \
+                       for col in self.original_columns_info if col['raw_name'] != col['fixed_name']}
         return fin_df.rename(columns=rename_dict)
 
     def _format_dtypes(self, fin_df: pd.DataFrame) -> pd.DataFrame:
@@ -173,7 +173,7 @@ class FinProcessor:
             pd.DataFrame: 追加計算後の財務データ
         """
         #合併前の各社のデータを足し合わせる項目
-        plus_when_merging = [col['processed_name'] for col in self.original_columns_info if col['plus_for_merger'] == True]
+        plus_when_merging = [col['fixed_name'] for col in self.original_columns_info if col['plus_for_merger'] == True]
         #合併リストの中身の分だけ処理を繰り返し
         for key, value in codes_to_merge_dict.items():
             merger1 = stock_fin.loc[stock_fin[self.code_col]==value['Code1']].sort_values(self.date_col) #合併前1（存続）
@@ -227,7 +227,7 @@ class FinProcessor:
         Returns:
             str: 変換後のカラム名
         """ 
-        return yaml_utils.column_name_getter(self.original_columns_info, {'raw_name': raw_name}, 'processed_name')
+        return yaml_utils.column_name_getter(self.original_columns_info, {'raw_name': raw_name}, 'fixed_name')
 
 
 if __name__ == '__main__':

@@ -1,856 +1,856 @@
 original_columns:
   - raw_name: DisclosedDate
     raw_dtype: str
-    processed_name: Date
-    processed_dtype: datetime
+    fixed_name: Date
+    fixed_dtype: datetime
     include: true
     plus_for_merger: False
     description: 開示日
 
   - raw_name: DisclosedTime
     raw_dtype: str
-    processed_name: DisclosedTime
-    processed_dtype: str
+    fixed_name: DisclosedTime
+    fixed_dtype: str
     include: True
     plus_for_merger: False
     description: 開示時刻
 
   - raw_name: LocalCode
     raw_dtype: str
-    processed_name: Code
-    processed_dtype: str
+    fixed_name: Code
+    fixed_dtype: str
     include: True
     plus_for_merger: False
     description: 銘柄コード（5桁）
 
   - raw_name: DisclosureNumber
     raw_dtype: str
-    processed_name: DisclosureNumber
-    processed_dtype: str
+    fixed_name: DisclosureNumber
+    fixed_dtype: str
     include: False
     plus_for_merger: False
     description: 開示番号
 
   - raw_name: TypeOfDocument
     raw_dtype: str
-    processed_name: TypeOfDocument
-    processed_dtype: str
+    fixed_name: TypeOfDocument
+    fixed_dtype: str
     include: True
     plus_for_merger: False
     description: 開示書類種別
 
   - raw_name: TypeOfCurrentPeriod
     raw_dtype: str
-    processed_name: TypeOfCurrentPeriod
-    processed_dtype: str
+    fixed_name: TypeOfCurrentPeriod
+    fixed_dtype: str
     include: True
     plus_for_merger: False
     description: 当会計期間の種類 [1Q, 2Q, 3Q, 4Q, 5Q, FY]
 
   - raw_name: CurrentPeriodStartDate
     raw_dtype: str
-    processed_name: CurrentPeriodStartDate
-    processed_dtype: datetime
+    fixed_name: CurrentPeriodStartDate
+    fixed_dtype: datetime
     include: False
     plus_for_merger: False
     description: 当会計期間開始日
 
   - raw_name: CurrentPeriodEndDate
     raw_dtype: str
-    processed_name: CurrentPeriodEndDate
-    processed_dtype: datetime
+    fixed_name: CurrentPeriodEndDate
+    fixed_dtype: datetime
     include: True
     plus_for_merger: False
     description: 当会計期間終了日
 
   - raw_name: CurrentFiscalYearStartDate
     raw_dtype: str
-    processed_name: CurrentFiscalYearStartDate
-    processed_dtype: datetime
+    fixed_name: CurrentFiscalYearStartDate
+    fixed_dtype: datetime
     include: True
     plus_for_merger: False
     description: 当事業年度開始日
 
   - raw_name: CurrentFiscalYearEndDate
     raw_dtype: str
-    processed_name: CurrentFiscalYearEndDate
-    processed_dtype: datetime
+    fixed_name: CurrentFiscalYearEndDate
+    fixed_dtype: datetime
     include: True
     plus_for_merger: False
     description: 当事業年度終了日
 
   - raw_name: NextFiscalYearStartDate
     raw_dtype: str
-    processed_name: NextFiscalYearStartDate
-    processed_dtype: datetime
+    fixed_name: NextFiscalYearStartDate
+    fixed_dtype: datetime
     include: False
     plus_for_merger: False
     description: 翌事業年度開始日
 
   - raw_name: NextFiscalYearEndDate
     raw_dtype: str
-    processed_name: NextFiscalYearEndDate
-    processed_dtype: datetime
+    fixed_name: NextFiscalYearEndDate
+    fixed_dtype: datetime
     include: False
     plus_for_merger: False
     description: 翌事業年度終了日
 
   - raw_name: NetSales
     raw_dtype: str
-    processed_name: NetSales
-    processed_dtype: float
+    fixed_name: NetSales
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 売上高
 
   - raw_name: OperatingProfit
     raw_dtype: str
-    processed_name: OperatingProfit
-    processed_dtype: float
+    fixed_name: OperatingProfit
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 営業利益
 
   - raw_name: OrdinaryProfit
     raw_dtype: str
-    processed_name: OrdinaryProfit
-    processed_dtype: float
+    fixed_name: OrdinaryProfit
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 経常利益
 
   - raw_name: Profit
     raw_dtype: str
-    processed_name: Profit
-    processed_dtype: float
+    fixed_name: Profit
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 当期純利益
 
   - raw_name: EarningsPerShare
     raw_dtype: str
-    processed_name: EarningsPerShare
-    processed_dtype: float
+    fixed_name: EarningsPerShare
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 一株あたり当期純利益
 
   - raw_name: DilutedEarningsPerShare
     raw_dtype: str
-    processed_name: DilutedEarningsPerShare
-    processed_dtype: float
+    fixed_name: DilutedEarningsPerShare
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 潜在株式調整後一株あたり当期純利益
 
   - raw_name: TotalAssets
     raw_dtype: str
-    processed_name: TotalAssets
-    processed_dtype: float
+    fixed_name: TotalAssets
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 総資産
 
   - raw_name: Equity
     raw_dtype: str
-    processed_name: Equity
-    processed_dtype: float
+    fixed_name: Equity
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 純資産
 
   - raw_name: EquityToAssetRatio
     raw_dtype: str
-    processed_name: EquityToAssetRatio
-    processed_dtype: float
+    fixed_name: EquityToAssetRatio
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 自己資本比率
 
   - raw_name: BookValuePerShare
     raw_dtype: str
-    processed_name: BookValuePerShare
-    processed_dtype: float
+    fixed_name: BookValuePerShare
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 一株あたり純資産
 
   - raw_name: CashFlowsFromOperatingActivities
     raw_dtype: str
-    processed_name: CashFlowsFromOperatingActivities
-    processed_dtype: float
+    fixed_name: CashFlowsFromOperatingActivities
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 営業活動によるキャッシュ・フロー
 
   - raw_name: CashFlowsFromInvestingActivities
     raw_dtype: str
-    processed_name: CashFlowsFromInvestingActivities
-    processed_dtype: float
+    fixed_name: CashFlowsFromInvestingActivities
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 投資活動によるキャッシュ・フロー
 
   - raw_name: CashFlowsFromFinancingActivities
     raw_dtype: str
-    processed_name: CashFlowsFromFinancingActivities
-    processed_dtype: float
+    fixed_name: CashFlowsFromFinancingActivities
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 財務活動によるキャッシュ・フロー
 
   - raw_name: CashAndEquivalents
     raw_dtype: str
-    processed_name: CashAndEquivalents
-    processed_dtype: float
+    fixed_name: CashAndEquivalents
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 現金及び現金同等物期末残高
 
   - raw_name: ResultDividendPerShare1stQuarter
     raw_dtype: str
-    processed_name: ResultDividendPerShare1stQuarter
-    processed_dtype: float
+    fixed_name: ResultDividendPerShare1stQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当実績_第1四半期末
 
   - raw_name: ResultDividendPerShare2ndQuarter
     raw_dtype: str
-    processed_name: ResultDividendPerShare2ndQuarter
-    processed_dtype: float
+    fixed_name: ResultDividendPerShare2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当実績_第2四半期末
 
   - raw_name: ResultDividendPerShare3rdQuarter
     raw_dtype: str
-    processed_name: ResultDividendPerShare3rdQuarter
-    processed_dtype: float
+    fixed_name: ResultDividendPerShare3rdQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当実績_第3四半期末
 
   - raw_name: ResultDividendPerShareFiscalYearEnd
     raw_dtype: str
-    processed_name: ResultDividendPerShareFiscalYearEnd
-    processed_dtype: float
+    fixed_name: ResultDividendPerShareFiscalYearEnd
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当実績_期末
 
   - raw_name: ResultDividendPerShareAnnual
     raw_dtype: str
-    processed_name: ResultDividendPerShareAnnual
-    processed_dtype: float
+    fixed_name: ResultDividendPerShareAnnual
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 一株あたり配当実績_合計
 
   - raw_name: DistributionsPerUnit(REIT)
     raw_dtype: str
-    processed_name: DistributionsPerUnit(REIT)
-    processed_dtype: float
+    fixed_name: DistributionsPerUnit(REIT)
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 1口当たり分配金
 
   - raw_name: ResultTotalDividendPaidAnnual
     raw_dtype: str
-    processed_name: ResultTotalDividendPaidAnnual
-    processed_dtype: float
+    fixed_name: ResultTotalDividendPaidAnnual
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 配当金総額
 
   - raw_name: ResultPayoutRatioAnnual
     raw_dtype: str
-    processed_name: ResultPayoutRatioAnnual
-    processed_dtype: float
+    fixed_name: ResultPayoutRatioAnnual
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 配当性向
 
   - raw_name: ForecastDividendPerShare1stQuarter
     raw_dtype: str
-    processed_name: ForecastDividendPerShare1stQuarter
-    processed_dtype: float
+    fixed_name: ForecastDividendPerShare1stQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_第1四半期末
 
   - raw_name: ForecastDividendPerShare2ndQuarter
     raw_dtype: str
-    processed_name: ForecastDividendPerShare2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastDividendPerShare2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_第2四半期末
 
   - raw_name: ForecastDividendPerShare3rdQuarter
     raw_dtype: str
-    processed_name: ForecastDividendPerShare3rdQuarter
-    processed_dtype: float
+    fixed_name: ForecastDividendPerShare3rdQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_第3四半期末
 
   - raw_name: ForecastDividendPerShareFiscalYearEnd
     raw_dtype: str
-    processed_name: ForecastDividendPerShareFiscalYearEnd
-    processed_dtype: float
+    fixed_name: ForecastDividendPerShareFiscalYearEnd
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_期末
 
   - raw_name: ForecastDividendPerShareAnnual
     raw_dtype: str
-    processed_name: ForecastDividendPerShareAnnual
-    processed_dtype: float
+    fixed_name: ForecastDividendPerShareAnnual
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 一株あたり配当予想_合計
 
   - raw_name: ForecastDistributionsPerUnit(REIT)
     raw_dtype: str
-    processed_name: ForecastDistributionsPerUnit(REIT)
-    processed_dtype: float
+    fixed_name: ForecastDistributionsPerUnit(REIT)
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 1口当たり予想分配金
 
   - raw_name: ForecastTotalDividendPaidAnnual
     raw_dtype: str
-    processed_name: ForecastTotalDividendPaidAnnual
-    processed_dtype: float
+    fixed_name: ForecastTotalDividendPaidAnnual
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 予想配当金総額
 
   - raw_name: ForecastPayoutRatioAnnual
     raw_dtype: str
-    processed_name: ForecastPayoutRatioAnnual
-    processed_dtype: float
+    fixed_name: ForecastPayoutRatioAnnual
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 予想配当性向
 
   - raw_name: NextYearForecastDividendPerShare1stQuarter
     raw_dtype: str
-    processed_name: NextYearForecastDividendPerShare1stQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastDividendPerShare1stQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_翌事業年度第1四半期末
 
   - raw_name: NextYearForecastDividendPerShare2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastDividendPerShare2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastDividendPerShare2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_翌事業年度第2四半期末
 
   - raw_name: NextYearForecastDividendPerShare3rdQuarter
     raw_dtype: str
-    processed_name: NextYearForecastDividendPerShare3rdQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastDividendPerShare3rdQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_翌事業年度第3四半期末
 
   - raw_name: NextYearForecastDividendPerShareFiscalYearEnd
     raw_dtype: str
-    processed_name: NextYearForecastDividendPerShareFiscalYearEnd
-    processed_dtype: float
+    fixed_name: NextYearForecastDividendPerShareFiscalYearEnd
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり配当予想_翌事業年度期末
 
   - raw_name: NextYearForecastDividendPerShareAnnual
     raw_dtype: str
-    processed_name: NextYearForecastDividendPerShareAnnual
-    processed_dtype: float
+    fixed_name: NextYearForecastDividendPerShareAnnual
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 一株あたり配当予想_翌事業年度合計
 
   - raw_name: NextYearForecastDistributionsPerUnit(REIT)
     raw_dtype: str
-    processed_name: NextYearForecastDistributionsPerUnit(REIT)
-    processed_dtype: float
+    fixed_name: NextYearForecastDistributionsPerUnit(REIT)
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 1口当たり翌事業年度予想分配金
 
   - raw_name: NextYearForecastPayoutRatioAnnual
     raw_dtype: str
-    processed_name: NextYearForecastPayoutRatioAnnual
-    processed_dtype: float
+    fixed_name: NextYearForecastPayoutRatioAnnual
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 翌事業年度予想配当性向
 
   - raw_name: ForecastNetSales2ndQuarter
     raw_dtype: str
-    processed_name: ForecastNetSales2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastNetSales2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_第2四半期末
 
   - raw_name: ForecastOperatingProfit2ndQuarter
     raw_dtype: str
-    processed_name: ForecastOperatingProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastOperatingProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_第2四半期末
 
   - raw_name: ForecastOrdinaryProfit2ndQuarter
     raw_dtype: str
-    processed_name: ForecastOrdinaryProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastOrdinaryProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_予想_第2四半期末
 
   - raw_name: ForecastProfit2ndQuarter
     raw_dtype: str
-    processed_name: ForecastProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_第2四半期末
 
   - raw_name: ForecastEarningsPerShare2ndQuarter
     raw_dtype: str
-    processed_name: ForecastEarningsPerShare2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastEarningsPerShare2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_第2四半期末
 
   - raw_name: NextYearForecastNetSales2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastNetSales2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastNetSales2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_翌事業年度第2四半期末
 
   - raw_name: NextYearForecastOperatingProfit2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastOperatingProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastOperatingProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 営業利益_予想_翌事業年度第2四半期末
 
   - raw_name: NextYearForecastOrdinaryProfit2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastOrdinaryProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastOrdinaryProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_予想_翌事業年度第2四半期末
 
   - raw_name: NextYearForecastProfit2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_翌事業年度第2四半期末
 
   - raw_name: NextYearForecastEarningsPerShare2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastEarningsPerShare2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastEarningsPerShare2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_翌事業年度第2四半期末
 
   - raw_name: ForecastNetSales
     raw_dtype: str
-    processed_name: ForecastNetSales
-    processed_dtype: float
+    fixed_name: ForecastNetSales
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 売上高_予想_期末
 
   - raw_name: ForecastOperatingProfit
     raw_dtype: str
-    processed_name: ForecastOperatingProfit
-    processed_dtype: float
+    fixed_name: ForecastOperatingProfit
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 営業利益_予想_期末
 
   - raw_name: ForecastOrdinaryProfit
     raw_dtype: str
-    processed_name: ForecastOrdinaryProfit
-    processed_dtype: float
+    fixed_name: ForecastOrdinaryProfit
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 経常利益_予想_期末
 
   - raw_name: ForecastProfit
     raw_dtype: str
-    processed_name: ForecastProfit
-    processed_dtype: float
+    fixed_name: ForecastProfit
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 当期純利益_予想_期末
 
   - raw_name: ForecastEarningsPerShare
     raw_dtype: str
-    processed_name: ForecastEarningsPerShare
-    processed_dtype: float
+    fixed_name: ForecastEarningsPerShare
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_期末
   
   - raw_name: NextYearForecastNetSales
     raw_dtype: str
-    processed_name: NextYearForecastNetSales
-    processed_dtype: float
+    fixed_name: NextYearForecastNetSales
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_翌事業年度期末
 
   - raw_name: NextYearForecastOperatingProfit
     raw_dtype: str
-    processed_name: NextYearForecastOperatingProfit
-    processed_dtype: float
+    fixed_name: NextYearForecastOperatingProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 営業利益_予想_翌事業年度期末
 
   - raw_name: NextYearForecastOrdinaryProfit
     raw_dtype: str
-    processed_name: NextYearForecastOrdinaryProfit
-    processed_dtype: float
+    fixed_name: NextYearForecastOrdinaryProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_予想_翌事業年度期末
 
   - raw_name: NextYearForecastProfit
     raw_dtype: str
-    processed_name: NextYearForecastProfit
-    processed_dtype: float
+    fixed_name: NextYearForecastProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_翌事業年度期末
 
   - raw_name: NextYearForecastEarningsPerShare
     raw_dtype: str
-    processed_name: NextYearForecastEarningsPerShare
-    processed_dtype: float
+    fixed_name: NextYearForecastEarningsPerShare
+    fixed_dtype: float
     include: True
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_翌事業年度期末
 
   - raw_name: MaterialChangesInSubsidiaries
     raw_dtype: str
-    processed_name: MaterialChangesInSubsidiaries
-    processed_dtype: str
+    fixed_name: MaterialChangesInSubsidiaries
+    fixed_dtype: str
     include: False
     plus_for_merger: False
     description: 期中における重要な子会社の異動
 
   - raw_name: SignificantChangesInTheScopeOfConsolidation
     raw_dtype: str
-    processed_name: SignificantChangesInTheScopeOfConsolidation
-    processed_dtype: str
+    fixed_name: SignificantChangesInTheScopeOfConsolidation
+    fixed_dtype: str
     include: False
     plus_for_merger: False
     description: 期中における連結範囲の重要な変更
 
   - raw_name: ChangesBasedOnRevisionsOfAccountingStandard
     raw_dtype: str
-    processed_name: ChangesBasedOnRevisionsOfAccountingStandard
-    processed_dtype: str
+    fixed_name: ChangesBasedOnRevisionsOfAccountingStandard
+    fixed_dtype: str
     include: False
     plus_for_merger: False
     description: 会計基準等の改正に伴う会計方針の変更
 
   - raw_name: ChangesOtherThanOnesBasedOnRevisionsOfAccountingStandard
     raw_dtype: str
-    processed_name: ChangesOtherThanOnesBasedOnRevisionsOfAccountingStandard
-    processed_dtype: str
+    fixed_name: ChangesOtherThanOnesBasedOnRevisionsOfAccountingStandard
+    fixed_dtype: str
     include: False
     plus_for_merger: False
     description: 会計基準等の改正に伴う変更以外の会計方針の変更
 
   - raw_name: ChangesInAccountingEstimates
     raw_dtype: str
-    processed_name: ChangesInAccountingEstimates
-    processed_dtype: str
+    fixed_name: ChangesInAccountingEstimates
+    fixed_dtype: str
     include: False
     plus_for_merger: False
     description: 会計上の見積りの変更
 
   - raw_name: RetrospectiveRestatement
     raw_dtype: str
-    processed_name: RetrospectiveRestatement
-    processed_dtype: str
+    fixed_name: RetrospectiveRestatement
+    fixed_dtype: str
     include: True
     plus_for_merger: False
     description: 修正再表示
 
   - raw_name: NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock
     raw_dtype: str
-    processed_name: NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock
-    processed_dtype: float
+    fixed_name: NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 期末発行済株式数
 
   - raw_name: NumberOfTreasuryStockAtTheEndOfFiscalYear
     raw_dtype: str
-    processed_name: NumberOfTreasuryStockAtTheEndOfFiscalYear
-    processed_dtype: float
+    fixed_name: NumberOfTreasuryStockAtTheEndOfFiscalYear
+    fixed_dtype: float
     include: True
     plus_for_merger: True
     description: 期末自己株式数
 
   - raw_name: AverageNumberOfShares
     raw_dtype: str
-    processed_name: AverageNumberOfShares
-    processed_dtype: float
+    fixed_name: AverageNumberOfShares
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 期中平均株式数
 
   - raw_name: NonConsolidatedNetSales
     raw_dtype: str
-    processed_name: NonConsolidatedNetSales
-    processed_dtype: float
+    fixed_name: NonConsolidatedNetSales
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_非連結
 
   - raw_name: NonConsolidatedOperatingProfit
     raw_dtype: str
-    processed_name: NonConsolidatedOperatingProfit
-    processed_dtype: float
+    fixed_name: NonConsolidatedOperatingProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 営業利益_非連結
     
   - raw_name: NonConsolidatedOrdinaryProfit
     raw_dtype: str
-    processed_name: NonConsolidatedOrdinaryProfit
-    processed_dtype: float
+    fixed_name: NonConsolidatedOrdinaryProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_非連結
  
   - raw_name: NonConsolidatedProfit
     raw_dtype: str
-    processed_name: NonConsolidatedProfit
-    processed_dtype: float
+    fixed_name: NonConsolidatedProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_非連結 
 
   - raw_name: NonConsolidatedEarningsPerShareNonConsolidatedProfit
     raw_dtype: str
-    processed_name: NonConsolidatedEarningsPerShare
-    processed_dtype: float
+    fixed_name: NonConsolidatedEarningsPerShare
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_非連結
 
   - raw_name: NonConsolidatedTotalAssets
     raw_dtype: str
-    processed_name: NonConsolidatedTotalAssets
-    processed_dtype: float
+    fixed_name: NonConsolidatedTotalAssets
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 総資産_非連結
 
   - raw_name: NonConsolidatedEquity
     raw_dtype: str
-    processed_name: NonConsolidatedEquity
-    processed_dtype: float
+    fixed_name: NonConsolidatedEquity
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 純資産_非連結
 
   - raw_name: NonConsolidatedEquityToAssetRatio
     raw_dtype: str
-    processed_name: NonConsolidatedEquityToAssetRatio
-    processed_dtype: float
+    fixed_name: NonConsolidatedEquityToAssetRatio
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 自己資本比率_非連結
 
   - raw_name: NonConsolidatedBookValuePerShare
     raw_dtype: str
-    processed_name: NonConsolidatedBookValuePerShare
-    processed_dtype: float
+    fixed_name: NonConsolidatedBookValuePerShare
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり純資産_非連結
 
   - raw_name: ForecastNonConsolidatedNetSales2ndQuarter
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedNetSales2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedNetSales2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_第2四半期末_非連結
 
   - raw_name: ForecastNonConsolidatedOperatingProfit2ndQuarter
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedOperatingProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedOperatingProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 営業利益_予想_第2四半期末_非連結
 
   - raw_name: ForecastNonConsolidatedOrdinaryProfit2ndQuarter
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedOrdinaryProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedOrdinaryProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_予想_第2四半期末_非連結
 
   - raw_name: ForecastNonConsolidatedProfit2ndQuarter
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_第2四半期末_非連結
 
   - raw_name: ForecastNonConsolidatedEarningsPerShare2ndQuarter
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedEarningsPerShare2ndQuarter
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedEarningsPerShare2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_第四半期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedNetSales2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedNetSales2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedNetSales2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_翌事業年度第2四半期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedOperatingProfit2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedOperatingProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedOperatingProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 営業利益_予想_翌事業年度第2四半期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedOrdinaryProfit2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedOrdinaryProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedOrdinaryProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_予想_翌事業年度第2四半期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedProfit2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedProfit2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedProfit2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_翌事業年度第2四半期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedEarningsPerShare2ndQuarter
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedEarningsPerShare2ndQuarter
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedEarningsPerShare2ndQuarter
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_翌事業年度第2四半期末_非連結
 
   - raw_name: ForecastNonConsolidatedNetSales
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedNetSales
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedNetSales
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_期末_非連結
 
   - raw_name: ForecastNonConsolidatedOperatingProfit
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedOperatingProfit
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedOperatingProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 営業利益_予想_期末_非連結
 
   - raw_name: ForecastNonConsolidatedOrdinaryProfit
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedOrdinaryProfit
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedOrdinaryProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_予想_期末_非連結
 
   - raw_name: ForecastNonConsolidatedProfit
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedProfit
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_期末_非連結
 
   - raw_name: ForecastNonConsolidatedEarningsPerShare
     raw_dtype: str
-    processed_name: ForecastNonConsolidatedEarningsPerShare
-    processed_dtype: float
+    fixed_name: ForecastNonConsolidatedEarningsPerShare
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_第四半期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedNetSales
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedNetSales
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedNetSales
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 売上高_予想_翌事業年度期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedOperatingProfit
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedOperatingProfit
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedOperatingProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 営業利益_予想_翌事業年度期末_非連結
     
   - raw_name: NextYearForecastNonConsolidatedOrdinaryProfit
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedOrdinaryProfit
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedOrdinaryProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 経常利益_予想_翌事業年度期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedProfit
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedProfit
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedProfit
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 当期純利益_予想_翌事業年度期末_非連結
 
   - raw_name: NextYearForecastNonConsolidatedEarningsPerShare
     raw_dtype: str
-    processed_name: NextYearForecastNonConsolidatedEarningsPerShare
-    processed_dtype: float
+    fixed_name: NextYearForecastNonConsolidatedEarningsPerShare
+    fixed_dtype: float
     include: False
     plus_for_merger: False
     description: 一株あたり当期純利益_予想_翌事業年度期末_非連結
@@ -859,19 +859,19 @@ original_columns:
 
 calculated_columns:
   - name: OUTSTANDING_SHARES
-    col_name: OutstandingShares
+    fixed_name: OutstandingShares
     dtype: float
     include: true
     description: 発行済み株式数
   
   - name: CURRENT_FISCAL_YEAR
-    col_name: CurrentFiscalYear
+    fixed_name: CurrentFiscalYear
     dtype: int
     include: true
     description: 年度
   
   - name: FORECAST_FISCAL_YEAR_END_DATE
-    col_name: ForecastFiscalYearEndDate
+    fixed_name: ForecastFiscalYearEndDate
     dtype: datetime
     include: true
     description: 予測対象の年度の終了日

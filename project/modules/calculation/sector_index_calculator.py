@@ -20,7 +20,7 @@ def _column_name_getter(yaml_info: dict[str | dict[str | Any]] | list[dict[str |
         str: 変換後のカラム名
     """ 
     if isinstance(yaml_info, dict) or isinstance(yaml_info, list):
-        return yaml_utils.column_name_getter(yaml_info, {'raw_name': raw_name}, 'processed_name', 'columns')
+        return yaml_utils.column_name_getter(yaml_info, {'raw_name': raw_name}, 'fixed_name', 'columns')
     raise TypeError('yaml_infoには辞書またはリストを指定してください。')
 
 
@@ -39,7 +39,7 @@ class SectorIndexCalculator:
                 'fin_code': _column_name_getter(_fin_original_yaml, 'LocalCode'),
                 'fin_date': _column_name_getter(_fin_original_yaml, 'DisclosedDate'),
                 'period_end_date': _column_name_getter(_fin_original_yaml, 'CurrentPeriodEndDate'),
-                'fin_outstanding_shares': yaml_utils.column_name_getter(_fin_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'col_name'),
+                'fin_outstanding_shares': yaml_utils.column_name_getter(_fin_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'fixed_name'),
                 
                 'price_code': _column_name_getter(_price_original_yaml, 'Code'),
                 'price_date': _column_name_getter(_price_original_yaml, 'Date'),
@@ -50,21 +50,21 @@ class SectorIndexCalculator:
                 'price_low': _column_name_getter(_price_original_yaml, 'Low'),
                 'volume': _column_name_getter(_price_original_yaml, 'Volume'),
                 
-                'sector': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'SECTOR'}, 'col_name'),
-                'sector_code': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CODE'}, 'col_name'),
-                'sector_date': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'DATE'}, 'col_name'),
-                'market_cap_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_OPEN'}, 'col_name'),
-                'market_cap_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_CLOSE'}, 'col_name'),
-                'market_cap_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_HIGH'}, 'col_name'),
-                'market_cap_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_LOW'}, 'col_name'),
-                'sector_outstanding_shares': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'col_name'),
-                'correction_value': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CORRECTION_VALUE'}, 'col_name'),
-                '1d_return': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RETURN'}, 'col_name'),
-                '1d_rate': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RATE'}, 'col_name'),
-                'sector_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OPEN'}, 'col_name'),
-                'sector_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CLOSE'}, 'col_name'),
-                'sector_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'HIGH'}, 'col_name'),
-                'sector_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'LOW'}, 'col_name'),
+                'sector': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'SECTOR'}, 'fixed_name'),
+                'sector_code': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CODE'}, 'fixed_name'),
+                'sector_date': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'DATE'}, 'fixed_name'),
+                'market_cap_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_OPEN'}, 'fixed_name'),
+                'market_cap_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_CLOSE'}, 'fixed_name'),
+                'market_cap_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_HIGH'}, 'fixed_name'),
+                'market_cap_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_LOW'}, 'fixed_name'),
+                'sector_outstanding_shares': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'fixed_name'),
+                'correction_value': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CORRECTION_VALUE'}, 'fixed_name'),
+                '1d_return': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RETURN'}, 'fixed_name'),
+                '1d_rate': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RATE'}, 'fixed_name'),
+                'sector_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OPEN'}, 'fixed_name'),
+                'sector_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CLOSE'}, 'fixed_name'),
+                'sector_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'HIGH'}, 'fixed_name'),
+                'sector_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'LOW'}, 'fixed_name'),
                      }
             return col
 

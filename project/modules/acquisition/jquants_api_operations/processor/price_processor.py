@@ -193,7 +193,7 @@ class PriceProcessor:
         Returns:
             str: 変換後のカラム名
         """ 
-        return yaml_utils.column_name_getter(self.columns_info, {'raw_name': raw_name}, 'processed_name')
+        return yaml_utils.column_name_getter(self.columns_info, {'raw_name': raw_name}, 'fixed_name')
 
 
     def _column_names_getter(self, raw_names: list[str]) -> list[str]:
@@ -206,7 +206,7 @@ class PriceProcessor:
         Returns:
             list[str]: 変換後のカラム名を格納したリスト
         """
-        return [yaml_utils.column_name_getter(self.columns_info, {'raw_name': raw_name}, 'processed_name') for raw_name in raw_names]
+        return [yaml_utils.column_name_getter(self.columns_info, {'raw_name': raw_name}, 'fixed_name') for raw_name in raw_names]
 
 
 if __name__ == '__main__':
