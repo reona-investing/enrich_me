@@ -28,9 +28,11 @@ class StockSelector:
         self.buy_sectors = []
         self.sell_sectors = []
 
-    async def select(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    async def select(self, margin_power: int | None = None) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         '''
         当日の売買銘柄を選択する。
+        Args:
+            margin_power (int | None): 信用建余力を外部から注入するための変数。Noneの場合SBI証券のWebページから自動取得。
         Returns:
             pd.DataFrame: Longの選択銘柄
             pd.DataFrame: Shortの選択銘柄
@@ -46,7 +48,7 @@ class StockSelector:
         self.buy_sectors = buy_sectors_df['Sector'].unique().tolist()
         self.sell_sectors = sell_sectors_df['Sector'].unique().tolist()
         long_orders, short_orders = await self._get_ls_orders_df(weight_df, buy_sectors_df, buyable_symbol_codes_df,
-                                                           sell_sectors_df, sellable_symbol_codes_df, self.top_slope)
+                                                           sell_sectors_df, sellable_symbol_codes_df, self.top_slope, margin_power)
         long_orders, short_orders = self._calc_cumcost_by_ls(long_orders, short_orders)
         # Long, Shortの選択銘柄をCSVとして出力しておく
         long_orders.to_csv(Paths.LONG_ORDERS_CSV, index=False)
@@ -172,7 +174,7 @@ class StockSelector:
     async def _get_ls_orders_df(self, weight_df: pd.DataFrame,
                                 buy_sectors_df: pd.DataFrame, buyable_symbol_codes_df: pd.DataFrame,
                                 sell_sectors_df: pd.DataFrame, sellable_symbol_codes_df: pd.DataFrame,
-                                top_slope: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                                top_slope: float, margin_power: int | None) -> Tuple[pd.DataFrame, pd.DataFrame]:
         # 売買対象銘柄をdfとして抽出
         long_df = self._get_symbol_codes_to_trade_df(self.new_sectors_df, buy_sectors_df, buyable_symbol_codes_df, weight_df)
         short_df = self._get_symbol_codes_to_trade_df(self.new_sectors_df, sell_sectors_df, sellable_symbol_codes_df, weight_df)
@@ -183,7 +185,7 @@ class StockSelector:
         long_df['LorS'] = 'Long'
         short_df['LorS'] = 'Short'
         # 注文する銘柄と注文単位数を算出
-        return await self._determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, self.margin_manager)
+        return await self._determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, self.margin_manager, margin_power)
 
     def _get_symbol_codes_to_trade_df(self,
                                       sector_definisions_df:pd.DataFrame,
@@ -256,11 +258,13 @@ class StockSelector:
 
     async def _determine_orders(self, long_df:pd.DataFrame, short_df:pd.DataFrame, 
                                 sectors_to_trade_num:int, top_slope: float, 
-                                margin_manager: MarginManager) -> Tuple[pd.DataFrame, pd.DataFrame]:
+                                margin_manager: MarginManager, margin_power: int | None = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
         '''発注銘柄と発注単位の算出'''
         #業種ごとの発注限度額の算出
-        await margin_manager.fetch()
-        maxcost_per_sector = margin_manager.margin_power / (sectors_to_trade_num * 2)
+        if margin_power is None:
+            await margin_manager.fetch()
+            margin_power = margin_manager.margin_power
+        maxcost_per_sector = margin_power / (sectors_to_trade_num * 2)
         #トップ業種に傾斜をつけない場合
         if top_slope == 1:
             print(f'業種ごとの発注限度額：{maxcost_per_sector}円')

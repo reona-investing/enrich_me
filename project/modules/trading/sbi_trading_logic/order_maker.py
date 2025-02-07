@@ -115,10 +115,11 @@ class OrderMakerBase:
 
 
 class NewOrderMaker(OrderMakerBase):
-    def __init__(self, stock_selector: StockSelector, order_manager: OrderManager):
+    def __init__(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame, order_manager: OrderManager):
         '''新規発注用のクラス'''
         super().__init__(order_manager)
-        self.stock_selector = stock_selector
+        self.long_orders = long_orders
+        self.short_orders = short_orders
         self.order_manager = order_manager
 
     async def run_new_orders(self) -> list[dict]:
@@ -127,7 +128,6 @@ class NewOrderMaker(OrderMakerBase):
         returns:
             list[dict]: 発注失敗銘柄のリスト
         '''
-        long_orders, short_orders, _ = await self.stock_selector.select()
         #現時点での注文リストをsbi証券から取得
         await self.order_manager.extract_order_list()
         #発注処理の条件に当てはまるときのみ処理実行
@@ -136,7 +136,7 @@ class NewOrderMaker(OrderMakerBase):
             #信用新規がある場合のみ注文キャンセル
             if '信新' in position_list:
                 return None
-        orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
+        orders_df = pd.concat([self.long_orders, self.short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
         await self._make_orders(orders_df = orders_df, order_type = '成行', order_type_value = '寄成')
 
         return self.failed_orders

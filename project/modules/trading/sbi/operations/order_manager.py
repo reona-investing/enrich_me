@@ -375,7 +375,7 @@ class OrderManager:
         table_body_css = '#MAINAREA02_780 > form > table:nth-child(18) > tbody > tr > td > \
             table > tbody > tr > td > table > tbody'
         
-        css_element_nums = self._get_css_element_nums(table_body_css)
+        css_element_nums = await self._get_css_element_nums(table_body_css)
 
         for ticker, element_num in zip(margin_tickers, css_element_nums):
             if ticker in ordered_tickers:
@@ -421,13 +421,11 @@ class OrderManager:
                 if '信用返済売' in trade_type:
                     trade_type = '信用新規買'
                 order_id = await self._get_element('注文番号')
-                params_to_compare = TradeParameters(symbol_code=symbol_code, unit=extracted_unit, trade_type=trade_type)
-                order_id = self.position_manager.find_unordered_position_by_params(params_to_compare)
-                self.position_manager.update_order_id(i, order_id)
+                self.position_manager.update_by_symbol(ticker, 'settlement_id', order_id)
+                self.position_manager.update_by_symbol(ticker, 'settlement_status', self.position_manager.STATUS_ORDERED)
                 self.position_manager.update_status(order_id, status_type = 'settlement_order', new_status = self.position_manager.STATUS_ORDERED)
 
                 retry_count = 0
-                i += 1
         print(f'全銘柄の決済処理が完了しました。')
 
 

@@ -38,7 +38,8 @@ class TradingFacade:
         stock_selector = StockSelector(materials.order_price_df, materials.pred_result_df,
                                        self.trade_possibility_manager, self.margin_manager,
                                        SECTOR_REDEFINITIONS_CSV, num_sectors_to_trade, num_candidate_sectors, top_slope)
-        order_maker = NewOrderMaker(stock_selector, self.order_manager)
+        long_orders, short_orders, _ = stock_selector.select(self.margin_manager.buying_power)
+        order_maker = NewOrderMaker(long_orders, short_orders, self.order_manager)
         failed_order_list = await order_maker.run_new_orders()
         self.slack.send_message(f'発注が完了しました。\n買：{stock_selector.buy_sectors}\n売：{stock_selector.sell_sectors}')
         if failed_order_list:

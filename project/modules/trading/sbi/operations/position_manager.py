@@ -84,6 +84,32 @@ class PositionManager:
             return True
         return False
 
+    def update_by_symbol(self, symbol_code: str, update_key: str, update_value: str | int | float) -> bool:
+        """
+        指定された銘柄コードに一致するレコードのorder_idを更新します。
+        複数のレコードが一致した場合は、そのすべてに対して更新を行います。
+
+        Args:
+            symbol_code (str): 更新対象レコードを選択するためのシンボルコード
+            update_key (str): 更新対象とするデータのキー
+            update_value (str | int | float): 更新対象とするデータの更新後の値
+
+        Returns:
+            bool: 1件以上のレコードが更新された場合はTrue、更新対象がない場合はFalse
+        """
+        updated = False
+
+        for position in self.positions:
+            # "order_params"が存在するかどうかのチェックを行い、"symbol_code"の値を比較
+            if position.get("order_params", {}).get("symbol_code") == symbol_code:
+                position[update_key] = update_value
+                updated = True
+
+        if updated:
+            self._save_data()
+
+        return updated
+
     def get_all_positions(self) -> List[Dict]:
         """全ポジション情報を取得"""
         return self.positions
