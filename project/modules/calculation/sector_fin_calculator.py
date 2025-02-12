@@ -12,25 +12,33 @@ class SectorFinCalculator:
     def __init__(self, 
                  fin_yaml_path: str = Paths.STOCK_FIN_COLUMNS_YAML,
                  price_yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML,
-                 sector_yaml_path: str = Paths.SECTOR_INDEX_COLUMNS_YAML):
+                 sector_index_yaml_path: str = Paths.SECTOR_INDEX_COLUMNS_YAML,
+                 sector_fin_yaml_path: str = Paths.SECTOR_FIN_COLUMNS_YAML):
 
         self.fin_yaml = yaml_utils.including_columns_loader(fin_yaml_path, 'original_columns') \
             + yaml_utils.including_columns_loader(fin_yaml_path, 'calculated_columns')
         self.price_yaml =  yaml_utils.including_columns_loader(price_yaml_path, 'original_columns')
-        self.sector_yaml = yaml_utils.including_columns_loader(sector_yaml_path, 'calculated_columns')
+        self.sector_index_yaml = yaml_utils.including_columns_loader(sector_index_yaml_path, 'calculated_columns')
+        self.sector_fin_yaml = yaml_utils.including_columns_loader(sector_fin_yaml_path, 'calculated_columns')
     
     def _get_column_names(self):
         col = {'fin_date': self._column_name_getter(self.fin_yaml, 'DisclosedDate'),
                'fin_code': self._column_name_getter(self.fin_yaml, 'LocalCode'),
-               'sector': yaml_utils.column_name_getter(self.sector_yaml, {'name': 'SECTOR'}, 'fixed_name'),
+               'fin_forecast_eps': self._column_name_getter(self.fin_yaml, 'FORECAST_EPS'),
+               'fin_outstanding_shares': self._column_name_getter(self.fin_yaml, 'OUTSTANDING_SHARES'),
+               'price_date': self._column_name_getter(self.price_yaml, 'Date'),
+               'price_code': self._column_name_getter(self.price_yaml, 'Code'),
+               'price_close': self._column_name_getter(self.price_yaml, 'Close'),
+               'sector': self._column_name_getter(self.sector_index_yaml, 'SECTOR'),
+               'sector_fin_date': self._column_name_getter(self.sector_fin_yaml, 'DATE'),
+               'sector_fin_sector': self._column_name_getter(self.sector_fin_yaml, 'SECTOR'),
+               'sector_fin_market_cap': self._column_name_getter(self.sector_fin_yaml, 'MARKET_CAP'),
+               'sector_fin_eps': self._column_name_getter(self.sector_fin_yaml, 'EPS'),
                }
-        
         return col
 
-    def calculate(self, fin_df: pd.DataFrame, price_df: pd.DataFrame, sector_dif_info: pd.DataFrame, 
-                  price_df_date_col: str = 'Date', price_df_code_col: str = 'Code',
-                  sector_dif_info_code_col: str = 'Code',
-                  cols_to_calculate: list | None = None):
+    def calculate(self, SECTOR_FIN_PARQUET:str, fin_df: pd.DataFrame, price_df: pd.DataFrame, sector_dif_info: pd.DataFrame, 
+                  sector_dif_info_code_col: str = 'Code'):
         '''
         Args:
             fin_df (pd.DataFrame): 財務情報
@@ -41,11 +49,11 @@ class SectorFinCalculator:
 
         fin_df[col['fin_code']] = fin_df[col['fin_code']].astype(str)
         fin_df[col['fin_date']] = pd.to_datetime(fin_df[col['fin_date']])
-        price_df[price_df_code_col] = price_df[price_df_code_col].astype(str)
-        price_df[price_df_date_col] = pd.to_datetime(price_df[price_df_date_col])
+        price_df[col['price_code']] = price_df[col['price_code']].astype(str)
+        price_df[col['price_date']] = pd.to_datetime(price_df[col['price_date']])
         sector_dif_info[sector_dif_info_code_col] = sector_dif_info[sector_dif_info_code_col].astype(str)
         
-        price_df = price_df.rename(columns = {price_df_code_col: col['fin_code'], price_df_date_col: col['fin_date']})
+        price_df = price_df.rename(columns = {col['price_code']: col['fin_code'], col['price_date']: col['fin_date']})
         sector_dif_info = sector_dif_info.rename(columns = {sector_dif_info_code_col: col['fin_code']})
         
         merged_df = pd.merge(price_df, fin_df, how = 'outer', on = [col['fin_date'], col['fin_code']]) 
@@ -54,12 +62,24 @@ class SectorFinCalculator:
         cols_to_ffill = [x for x in merged_df.columns if x not in price_df.columns]
 
         merged_df[cols_to_ffill] = merged_df.groupby(col['fin_code'])[cols_to_ffill].ffill()
-        
-        if cols_to_calculate is None:
-            cols_to_calculate = []
-        
-        print(merged_df)
 
+        merged_df[col['sector_fin_market_cap']] = merged_df[col['price_close']] * merged_df[col['fin_outstanding_shares']]   
+        sector_fin_df = merged_df.groupby([col['price_date'], col['sector']])[[col['sector_fin_market_cap']]].mean()
+        sector_fin_df[col['sector_fin_eps']] = merged_df.groupby([col['fin_date'], col['sector']]).apply(self._weighted_average, col['fin_forecast_eps'])
+
+        sector_fin_df = sector_fin_df.rename(columns={col['fin_date']: col['sector_fin_date'], 
+                                              col['sector']: col['sector_fin_sector']})
+        sector_fin_df.to_parquet(SECTOR_FIN_PARQUET)
+
+        return sector_fin_df
+
+    def _weighted_average(self, group, group_name: str):
+        col = self._get_column_names()
+        d = group[col['sector_fin_market_cap']].sum()
+        if d != 0:
+            return (group[group_name] * group[col['sector_fin_market_cap']]).sum() / d
+        else:
+            return 0    
     # --------------------------------------------------------------------------
     #  以下、ヘルパーメソッド
     # --------------------------------------------------------------------------
@@ -75,8 +95,7 @@ class SectorFinCalculator:
         Returns:
             str: 変換後のカラム名
         """ 
-        return yaml_utils.column_name_getter(yaml_info, {'raw_name': raw_name}, 'fixed_name')
-    
+        return yaml_utils.column_name_getter(yaml_info, {'name': raw_name}, 'fixed_name')
 
 
 if __name__ == '__main__':
@@ -88,4 +107,4 @@ if __name__ == '__main__':
     stock_dfs = saf.get_stock_data_dict()
     
     sfc = SectorFinCalculator()
-    sfc.calculate(stock_dfs['fin'], stock_dfs['price'], sector_dif_info)
+    sector_fin_df = sfc.calculate(f'{Paths.SECTOR_FIN_FOLDER}/New48sectors_fin.parquet', stock_dfs['fin'], stock_dfs['price'], sector_dif_info)

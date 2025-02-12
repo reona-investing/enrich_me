@@ -33,7 +33,7 @@ class TradePossibilityManager:
         # ダウンロード処理
         await self.browser_utils.set_download_path(Path(self.download_path))
         await self.browser_utils.wait_and_click('#csvDownload', is_css = True)
-        await self.browser_utils.wait(5)
+        await self.browser_utils.wait(10)
 
         # CSVファイルの読み込み
         csv_file = self._get_latest_csv()

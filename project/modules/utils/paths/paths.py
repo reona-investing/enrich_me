@@ -14,6 +14,7 @@ class Paths:
     EXECUTION_SCRIPTS_FOLDER = f'{PROJECT_FOLDER}/execution_scripts'
     SECTOR_REDEFINITIONS_FOLDER = f'{PROJECT_FOLDER}/sector_redefinitions'
     SECTOR_PRICE_FOLDER = f'{SECTOR_REDEFINITIONS_FOLDER}/sector_price'
+    SECTOR_FIN_FOLDER = f'{SECTOR_REDEFINITIONS_FOLDER}/sector_fin'
     ML_DATASETS_FOLDER = f'{PROJECT_FOLDER}/ml_datasets'
     TRADE_HISTORY_FOLDER = f'{PROJECT_FOLDER}/trade_history'
     SUMMARY_REPORTS_FOLDER = f'{PROJECT_FOLDER}/summary_reports'
@@ -29,6 +30,7 @@ class Paths:
     STOCK_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_fin_columns.yaml'
     STOCK_PRICE_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_price_columns.yaml'
     SECTOR_INDEX_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/sector_index_columns.yaml'
+    SECTOR_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/sector_fin_columns.yaml'
 
     RAW_STOCK_LIST_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_list.parquet'
     RAW_STOCK_PRICE_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_price_0000.parquet'

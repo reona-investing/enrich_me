@@ -16,23 +16,12 @@ from utils.paths import Paths
 from acquisition import features_scraper as scraper
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
+from models.loader import load_datasets
 from models.machine_learning import LassoModel, LgbmModel
 import models.ensemble as ensemble
 from facades import TradingFacade, StockAcquisitionFacade
 from utils.error_handler import error_handler
 import asyncio
-
-def load_datasets(ML_DATASET_PATH1: str, ML_DATASET_PATH2: str, ML_DATASET_ENSEMBLED_PATH: str) \
-    -> Tuple[MLDataset, MLDataset, MLDataset]:
-    if flag_manager.flags[Flags.LEARN]:
-        ml_dataset1 = MLDataset(ML_DATASET_PATH1, init_load=False)
-        ml_dataset2 = MLDataset(ML_DATASET_PATH2, init_load=False)
-        ml_dataset_ensembled = MLDataset(ML_DATASET_ENSEMBLED_PATH, init_load=False)
-    else:
-        ml_dataset1 = MLDataset(ML_DATASET_PATH1)
-        ml_dataset2 = MLDataset(ML_DATASET_PATH2)
-        ml_dataset_ensembled = MLDataset(ML_DATASET_ENSEMBLED_PATH)
-    return ml_dataset1, ml_dataset2, ml_dataset_ensembled
 
 async def read_and_update_data(filter: str) -> dict:
     stock_dfs_dict = None
@@ -183,7 +172,9 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         print(flag_manager.get_flags())
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:
-            ml_dataset1, ml_dataset2, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
+            datasets, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
+            ml_dataset1 = datasets[0]
+            ml_dataset2 = datasets[1]
             '''データの更新・読み込み'''
             stock_dfs_dict = await read_and_update_data(universe_filter)
             '''学習・予測'''

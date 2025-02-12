@@ -20,7 +20,7 @@ def _column_name_getter(yaml_info: dict[str | dict[str | Any]] | list[dict[str |
         str: 変換後のカラム名
     """ 
     if isinstance(yaml_info, dict) or isinstance(yaml_info, list):
-        return yaml_utils.column_name_getter(yaml_info, {'raw_name': raw_name}, 'fixed_name', 'columns')
+        return yaml_utils.column_name_getter(yaml_info, {'name': raw_name}, 'fixed_name')
     raise TypeError('yaml_infoには辞書またはリストを指定してください。')
 
 
@@ -39,7 +39,7 @@ class SectorIndexCalculator:
                 'fin_code': _column_name_getter(_fin_original_yaml, 'LocalCode'),
                 'fin_date': _column_name_getter(_fin_original_yaml, 'DisclosedDate'),
                 'period_end_date': _column_name_getter(_fin_original_yaml, 'CurrentPeriodEndDate'),
-                'fin_outstanding_shares': yaml_utils.column_name_getter(_fin_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'fixed_name'),
+                'fin_outstanding_shares': _column_name_getter(_fin_calculated_yaml, 'OUTSTANDING_SHARES'),
                 
                 'price_code': _column_name_getter(_price_original_yaml, 'Code'),
                 'price_date': _column_name_getter(_price_original_yaml, 'Date'),
@@ -50,21 +50,21 @@ class SectorIndexCalculator:
                 'price_low': _column_name_getter(_price_original_yaml, 'Low'),
                 'volume': _column_name_getter(_price_original_yaml, 'Volume'),
                 
-                'sector': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'SECTOR'}, 'fixed_name'),
-                'sector_code': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CODE'}, 'fixed_name'),
-                'sector_date': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'DATE'}, 'fixed_name'),
-                'market_cap_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_OPEN'}, 'fixed_name'),
-                'market_cap_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_CLOSE'}, 'fixed_name'),
-                'market_cap_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_HIGH'}, 'fixed_name'),
-                'market_cap_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'MARKET_CAP_LOW'}, 'fixed_name'),
-                'sector_outstanding_shares': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OUTSTANDING_SHARES'}, 'fixed_name'),
-                'correction_value': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CORRECTION_VALUE'}, 'fixed_name'),
-                '1d_return': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RETURN'}, 'fixed_name'),
-                '1d_rate': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': '1D_RATE'}, 'fixed_name'),
-                'sector_open': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'OPEN'}, 'fixed_name'),
-                'sector_close': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'CLOSE'}, 'fixed_name'),
-                'sector_high': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'HIGH'}, 'fixed_name'),
-                'sector_low': yaml_utils.column_name_getter(_sector_calculated_yaml, {'name': 'LOW'}, 'fixed_name'),
+                'sector': _column_name_getter(_sector_calculated_yaml, 'SECTOR'),
+                'sector_code': _column_name_getter(_sector_calculated_yaml, 'CODE'),
+                'sector_date': _column_name_getter(_sector_calculated_yaml, 'DATE'),
+                'market_cap_open': _column_name_getter(_sector_calculated_yaml, 'MARKET_CAP_OPEN'),
+                'market_cap_close': _column_name_getter(_sector_calculated_yaml, 'MARKET_CAP_CLOSE'),
+                'market_cap_high': _column_name_getter(_sector_calculated_yaml, 'MARKET_CAP_HIGH'),
+                'market_cap_low': _column_name_getter(_sector_calculated_yaml, 'MARKET_CAP_LOW'),
+                'sector_outstanding_shares': _column_name_getter(_sector_calculated_yaml, 'OUTSTANDING_SHARES'),
+                'correction_value': _column_name_getter(_sector_calculated_yaml, 'CORRECTION_VALUE'),
+                '1d_return': _column_name_getter(_sector_calculated_yaml, '1D_RETURN'),
+                '1d_rate': _column_name_getter(_sector_calculated_yaml, '1D_RATE'),
+                'sector_open': _column_name_getter(_sector_calculated_yaml, 'OPEN'),
+                'sector_close': _column_name_getter(_sector_calculated_yaml, 'CLOSE'),
+                'sector_high': _column_name_getter(_sector_calculated_yaml, 'HIGH'),
+                'sector_low': _column_name_getter(_sector_calculated_yaml, 'LOW'),
                      }
             return col
 
@@ -423,4 +423,4 @@ if __name__ == '__main__':
     sector_price_df, order_price_df = sic.calc_new_sector_price(stock_dfs, 
                                             f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv', 
                                             f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price_test.parquet')
-    print(order_price_df)
+    print(sector_price_df)

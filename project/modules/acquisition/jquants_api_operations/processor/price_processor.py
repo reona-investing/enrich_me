@@ -50,10 +50,10 @@ class PriceProcessor:
         self.adjustment_factor_col = self._column_name_getter('AdjustmentFactor')
 
     # サブプロセス
-    def _load_yearly_raw_data(self, raw_basic_path: str, year: int, raw_name_key: str = 'raw_name') -> pd.DataFrame:
+    def _load_yearly_raw_data(self, raw_basic_path: str, year: int, name_key: str = 'name') -> pd.DataFrame:
         '''取得したままの年次株価データを読み込みます。'''
         raw_path = raw_basic_path.replace('0000', str(year))
-        usecols = [col[raw_name_key] for col in self.columns_info]
+        usecols = [col[name_key] for col in self.columns_info]
         dict_for_rename = self._get_dict_for_rename(usecols)
         df = FileHandler.read_parquet(raw_path, usecols=usecols)
         return df.rename(columns=dict_for_rename)
@@ -183,30 +183,30 @@ class PriceProcessor:
     #  以下、ヘルパーメソッド
     # --------------------------------------------------------------------------
 
-    def _column_name_getter(self, raw_name: str) -> str:
+    def _column_name_getter(self, name: str) -> str:
         """
         指定したカラム名の変換後の名称を取得。
 
         Args:
-            raw_name (str): 変換前のカラム名
+            name (str): 変換前のカラム名
 
         Returns:
             str: 変換後のカラム名
         """ 
-        return yaml_utils.column_name_getter(self.columns_info, {'raw_name': raw_name}, 'fixed_name')
+        return yaml_utils.column_name_getter(self.columns_info, {'name': name}, 'fixed_name')
 
 
-    def _column_names_getter(self, raw_names: list[str]) -> list[str]:
+    def _column_names_getter(self, names: list[str]) -> list[str]:
         """
         指定したカラム名（複数）の変換後の名称を一括で取得。
 
         Args:
-            raw_names (list[str]): 変換前のカラム名一覧を一括で取得
+            names (list[str]): 変換前のカラム名一覧を一括で取得
 
         Returns:
             list[str]: 変換後のカラム名を格納したリスト
         """
-        return [yaml_utils.column_name_getter(self.columns_info, {'raw_name': raw_name}, 'fixed_name') for raw_name in raw_names]
+        return [yaml_utils.column_name_getter(self.columns_info, {'name': name}, 'fixed_name') for name in names]
 
 
 if __name__ == '__main__':

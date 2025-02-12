@@ -37,6 +37,7 @@ class FinProcessor:
         stock_fin = self._calculate_additional_fins(stock_fin)
         stock_fin = self._process_merger(stock_fin)
         stock_fin = self._finalize_df(stock_fin)
+        print(stock_fin)
         FileHandler.write_parquet(stock_fin, processing_path)
 
     def _load_yaml_original_columns(self, yaml_path: str, key: str):
@@ -53,18 +54,22 @@ class FinProcessor:
         return yaml_utils.including_columns_loader(yaml_path, key)
     
     def _get_col_names(self):
-        self.code_col = self._column_name_getter('LocalCode')
-        self.date_col = self._column_name_getter('DisclosedDate')
-        self.type_of_document_col = self._column_name_getter('TypeOfDocument')
-        self.disclosed_time_col = self._column_name_getter('DisclosedTime')
-        self.treasury_stock_fiscal_year_end_col = self._column_name_getter('NumberOfTreasuryStockAtTheEndOfFiscalYear')
+        self.code_col = self._column_name_getter(self.original_columns_info, 'LocalCode')
+        self.date_col = self._column_name_getter(self.original_columns_info, 'DisclosedDate')
+        self.type_of_document_col = self._column_name_getter(self.original_columns_info, 'TypeOfDocument')
+        self.disclosed_time_col = self._column_name_getter(self.original_columns_info, 'DisclosedTime')
+        self.treasury_stock_fiscal_year_end_col = self._column_name_getter(self.original_columns_info, 'NumberOfTreasuryStockAtTheEndOfFiscalYear')
         self.shares_fiscal_year_end_col = \
-            self._column_name_getter('NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock')
-        self.fiscal_year_end_date_col = self._column_name_getter('CurrentFiscalYearEndDate')
-        self.type_of_current_period_col = self._column_name_getter('TypeOfCurrentPeriod')
-        self.outstanding_shares_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'OUTSTANDING_SHARES'}, 'fixed_name')
-        self.fiscal_year_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'CURRENT_FISCAL_YEAR'}, 'fixed_name')
-        self.forecast_fy_end_date_col = yaml_utils.column_name_getter(self.calculated_columns_info, {'name': 'FORECAST_FISCAL_YEAR_END_DATE'}, 'fixed_name')
+            self._column_name_getter(self.original_columns_info, 'NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock')
+        self.fiscal_year_end_date_col = self._column_name_getter(self.original_columns_info, 'CurrentFiscalYearEndDate')
+        self.type_of_current_period_col = self._column_name_getter(self.original_columns_info, 'TypeOfCurrentPeriod')
+        self.raw_forecast_eps_col = self._column_name_getter(self.original_columns_info, 'ForecastEarningsPerShare')
+        self.next_year_forecast_eps_col = self._column_name_getter(self.original_columns_info, 'NextYearForecastEarningsPerShare')
+
+        self.forecast_eps_col = self._column_name_getter(self.calculated_columns_info, 'FORECAST_EPS')
+        self.outstanding_shares_col = self._column_name_getter(self.calculated_columns_info, 'OUTSTANDING_SHARES')
+        self.fiscal_year_col = self._column_name_getter(self.calculated_columns_info, 'CURRENT_FISCAL_YEAR')
+        self.forecast_fy_end_date_col = self._column_name_getter(self.calculated_columns_info, 'FORECAST_FISCAL_YEAR_END_DATE')
 
 
     def _load_fin_data(self, raw_path: str) -> pd.DataFrame:
@@ -90,7 +95,7 @@ class FinProcessor:
         Returns:
             pd.DataFrame: フィルタリング後の財務データ
         """
-        return fin_df[[col['raw_name'] for col in self.original_columns_info]]
+        return fin_df[[col['name'] for col in self.original_columns_info]]
 
     def _rename_columns(self, fin_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -102,8 +107,8 @@ class FinProcessor:
         Returns:
             pd.DataFrame: カラム名変換後の財務データ
         """
-        rename_dict = {col['raw_name']: col['fixed_name'] \
-                       for col in self.original_columns_info if col['raw_name'] != col['fixed_name']}
+        rename_dict = {col['name']: col['fixed_name'] \
+                       for col in self.original_columns_info if col['name'] != col['fixed_name']}
         return fin_df.rename(columns=rename_dict)
 
     def _format_dtypes(self, fin_df: pd.DataFrame) -> pd.DataFrame:
@@ -147,13 +152,50 @@ class FinProcessor:
         Returns:
             pd.DataFrame: 追加計算後の財務データ
         """
-        #期末発行済株式数の算出
+        fin_df = self._merge_forecast_eps(fin_df)
+        fin_df = self._calculate_outstanding_shares(fin_df)
+        fin_df = self._append_fiscal_year_related_columns(fin_df)
+        return fin_df
+
+
+    def _merge_forecast_eps(self, fin_df: pd.DataFrame) -> pd.DataFrame:
+        fin_df.loc[
+            (fin_df[self.raw_forecast_eps_col].notnull()) & (fin_df[self.next_year_forecast_eps_col].notnull()), 
+            self.next_year_forecast_eps_col] = 0
+        fin_df[[self.raw_forecast_eps_col, self.next_year_forecast_eps_col]] = \
+            fin_df[[self.raw_forecast_eps_col, self.next_year_forecast_eps_col]].fillna(0)
+        fin_df[self.forecast_eps_col] = fin_df[self.raw_forecast_eps_col].values + fin_df[self.next_year_forecast_eps_col].values
+        return fin_df
+
+
+    def _calculate_outstanding_shares(self, fin_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        期末発行済株式数の算出。
+
+        Args:
+            fin_df (pd.DataFrame): 重複データ削除後の財務データ
+
+        Returns:
+            pd.DataFrame: 追加計算後の財務データ
+        """
         fin_df[self.outstanding_shares_col] = np.nan
         fin_df.loc[fin_df[self.treasury_stock_fiscal_year_end_col].notnull(), self.outstanding_shares_col] = \
             fin_df[self.shares_fiscal_year_end_col] - fin_df[self.treasury_stock_fiscal_year_end_col]
         fin_df.loc[fin_df[self.treasury_stock_fiscal_year_end_col].isnull(), self.outstanding_shares_col] = \
             fin_df[self.shares_fiscal_year_end_col]
-        #その他、追加で必要な列を算出
+        return fin_df
+ 
+
+    def _append_fiscal_year_related_columns(self, fin_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        年度に関する追加カラムを追加します。
+
+        Args:
+            fin_df (pd.DataFrame): 重複データ削除後の財務データ
+
+        Returns:
+            pd.DataFrame: 追加計算後の財務データ
+        """
         fin_df[self.fiscal_year_col] = fin_df[self.fiscal_year_end_date_col].dt.strftime("%Y")
         fin_df[self.forecast_fy_end_date_col] = fin_df[self.fiscal_year_end_date_col].dt.strftime("%Y/%m")
         fin_df.loc[fin_df[self.type_of_current_period_col] == "FY", self.forecast_fy_end_date_col] = (
@@ -161,6 +203,7 @@ class FinProcessor:
             + pd.offsets.DateOffset(years=1)
                 ).dt.strftime("%Y/%m")
         return fin_df
+       
 
     def _process_merger(self, stock_fin:pd.DataFrame) -> pd.DataFrame:
         """
@@ -217,17 +260,17 @@ class FinProcessor:
     #  以下、ヘルパーメソッド
     # --------------------------------------------------------------------------
 
-    def _column_name_getter(self, raw_name: str) -> str:
+    def _column_name_getter(self, yaml_info: list, name: str) -> str:
         """
         指定したカラム名の変換後の名称を取得。
 
         Args:
-            raw_name (str): 変換前のカラム名
+            name (str): 変換前のカラム名
 
         Returns:
             str: 変換後のカラム名
         """ 
-        return yaml_utils.column_name_getter(self.original_columns_info, {'raw_name': raw_name}, 'fixed_name')
+        return yaml_utils.column_name_getter(yaml_info, {'name': name}, 'fixed_name')
 
 
 if __name__ == '__main__':
