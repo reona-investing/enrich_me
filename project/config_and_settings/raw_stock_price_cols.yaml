@@ -1,0 +1,178 @@
+column_configs:
+  - key: 日付
+    name: Date
+    dtype: str
+
+  - key: 銘柄コード
+    name: Code
+    dtype: str
+    
+  - key: 始値
+    name: Open
+    dtype: float
+
+  - key: 高値
+    name: High
+    dtype: float
+    
+  - key: 安値
+    name: Low
+    dtype: float
+    
+  - key: 終値
+    name: Close
+    dtype: float
+    
+  - key: ストップ高フラグ
+    name: UpperLimit
+    dtype: int    
+
+  - key: ストップ安フラグ
+    name: LowerLimit
+    dtype: int
+
+  - key: 取引高
+    name: Volume
+    dtype: float
+    
+  - key: 取引代金
+    name: TurnoverValue
+    dtype: float
+    
+  - key: 調整係数
+    name: AdjustmentFactor
+    dtype: float
+
+  - key: 調整済み始値
+    name: AdjustmentOpen
+    dtype: float
+    
+
+  - key: 調整済み高値
+    name: AdjustmentHigh
+    dtype: float
+    
+  - key: 調整済み安値
+    name: AdjustmentLow
+    dtype: float
+    
+  - key: 調整済み終値
+    name: AdjustmentClose
+    dtype: float
+    
+  - key: 調整済み取引高
+    name: AdjustmentVolume
+    dtype: float
+    
+  - key: 前場始値
+    name: MorningOpen
+    dtype: float
+    
+  - key: 前場高値
+    name: MorningHigh
+    dtype: float
+    
+  - key: 前場安値
+    name: MorningLow
+    dtype: float
+    
+  - key: 前場終値
+    name: MorningClose
+    dtype: float
+    
+  - key: 前場ストップ高フラグ
+    name: MorningUpperLimit
+    dtype: int
+    
+  - key: 前場ストップ安フラグ
+    name: MorningLowerLimit
+    dtype: int
+
+  - key: 前場売買高
+    name: MorningVolume
+    dtype: float
+    
+  - key: 前場取引代金
+    name: MorningTurnoverValue
+    dtype: float
+    
+  - key: 調整済み前場始値
+    name: MorningAdjustmentOpen
+    dtype: float
+    
+  - key: 調整済み前場高値
+    name: MorningAdjustmentHigh
+    dtype: float
+    
+  - key: 調整済み前場安値
+    name: MorningAdjustmentLow
+    dtype: float
+    
+  - key: 調整済み前場終値
+    name: MorningAdjustmentClose
+    dtype: float
+    
+  - key: 調整済み前場売買高
+    name: MorningAdjustmentVolume
+    dtype: float
+    
+  - key: 調整済み前場売買高
+    name: MorningAdjustmentVolume
+    dtype: float
+    
+  - key: 後場始値
+    name: AfternoonOpen
+    dtype: float
+    
+  - key: 後場高値
+    name: AfternoonHigh
+    dtype: float
+    
+  - key: 後場安値
+    name: AfternoonLow
+    dtype: float
+    
+  - key: 後場終値
+    name: AfternoonClose
+    dtype: float
+    
+  - key: 後場ストップ高フラグ
+    name: AfternoonUpperLimit
+    dtype: int
+
+  - key: 後場ストップ安フラグ
+    name: AfternoonLowerLimit
+    dtype: int    
+
+  - key: 後場売買高
+    name: AfternoonVolume
+    dtype: float
+    
+  - key: 後場取引代金
+    name: AfternoonTurnoverValue
+    dtype: float
+    
+  - key: 調整済み後場始値
+    name: AfternoonAdjustmentOpen
+    dtype: float
+    
+
+  - key: 調整済み後場高値
+    name: AfternoonAdjustmentHigh
+    dtype: float
+
+  - key: 調整済み後場安値
+    name: AfternoonAdjustmentLow
+    dtype: float
+    
+  - key: 調整済み後場終値
+    name: AfternoonAdjustmentClose
+    dtype: float
+    
+  - key: 調整済み後場売買高
+    name: AfternoonAdjustmentVolume
+    dtype: float
+    
+  - key: 調整済み後場売買高
+    name: AfternoonAdjustmentVolume
+    dtype: float

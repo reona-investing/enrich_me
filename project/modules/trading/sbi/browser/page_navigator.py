@@ -29,6 +29,7 @@ class PageNavigator:
             selector (str): 探す要素を文字列またはcssセレクタで指定
             is_css (bool): Trueならcssセレクタ、Falseなら文字列
         '''
+        await self._set_tab()
         if is_css:
             button = await self.tab.select(selector)
         else:

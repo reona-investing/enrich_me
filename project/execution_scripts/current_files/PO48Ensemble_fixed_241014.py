@@ -172,7 +172,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         print(flag_manager.get_flags())
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:
-            datasets, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH)
+            datasets, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2,ensembled_dataset_path=ML_DATASET_ENSEMBLED_PATH)
             ml_dataset1 = datasets[0]
             ml_dataset2 = datasets[1]
             '''データの更新・読み込み'''
@@ -216,6 +216,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
     except:
         '''エラーログの出力'''
         error_handler.handle_exception(Paths.ERROR_LOG_CSV)
+        error_handler.handle_exception(Paths.ERROR_LOG_BACKUP)
         Slack.send_error_log(f'エラーが発生しました。\n詳細は{Paths.ERROR_LOG_CSV}を確認してください。')
 
 #%% パラメータ類

@@ -1,0 +1,429 @@
+column_configs:
+  - key: 日付
+    name: DisclosedDate
+    dtype: str
+    
+  - key: 時刻
+    name: DisclosedTime
+    dtype: str
+    
+  - key: 銘柄コード
+    name: LocalCode
+    dtype: str
+    
+  - key: 開示番号
+    name: DisclosureNumber
+    dtype: str
+    
+  - key: 開示書類種別
+    name: TypeOfDocument
+    dtype: str
+    
+  - key: 当会計期間の種類 
+    name: TypeOfCurrentPeriod
+    dtype: str
+    description: [1Q, 2Q, 3Q, 4Q, 5Q, FY]
+    
+  - key: 当会計期間開始日
+    name: CurrentPeriodStartDate
+    dtype: str
+    
+  - key: 当会計期間終了日
+    name: CurrentPeriodEndDate
+    dtype: str
+    
+  - key: 当事業年度開始日
+    name: CurrentFiscalYearStartDate
+    dtype: str
+    
+  - key: 当事業年度終了日
+    name: CurrentFiscalYearEndDate
+    dtype: str
+    
+  - key: 翌事業年度開始日
+    name: NextFiscalYearStartDate
+    dtype: str
+    
+  - key: 翌事業年度終了日
+    name: NextFiscalYearEndDate
+    dtype: str
+    
+  - key: 売上高
+    name: NetSales
+    dtype: str
+
+  - key: 営業利益
+    name: OperatingProfit
+    dtype: str
+    
+  - key: 経常利益
+    name: OrdinaryProfit
+    dtype: str
+    
+  - key: 当期純利益
+    name: Profit
+    dtype: str
+    
+  - key: EPS
+    name: EarningsPerShare
+    dtype: str
+    
+  - key: 潜在株式調整後EPS
+    name: DilutedEarningsPerShare
+    dtype: str
+    
+  - key: 総資産
+    name: TotalAssets
+    dtype: str
+    
+  - key: 純資産
+    name: Equity
+    dtype: str
+    
+  - key: 自己資本比率
+    name: EquityToAssetRatio
+    dtype: str
+
+  - key: BPS
+    name: BookValuePerShare
+    dtype: str
+    
+  - key: 営業CF
+    name: CashFlowsFromOperatingActivities
+    dtype: str
+    
+  - key: 投資CF
+    name: CashFlowsFromInvestingActivities
+    dtype: str
+    
+  - key: 財務活動によるキャッシュ・フロー
+    name: CashFlowsFromFinancingActivities
+    dtype: str
+    
+  - key: 現金及び現金同等物期末残高
+    name: CashAndEquivalents
+    dtype: str
+    
+  - key: 一株あたり配当実績_第1四半期末
+    name: ResultDividendPerShare1stQuarter
+    dtype: str
+    
+  - key: 一株あたり配当実績_第2四半期末
+    name: ResultDividendPerShare2ndQuarter
+    dtype: str
+    
+  - key: 一株あたり配当実績_第3四半期末
+    name: ResultDividendPerShare3rdQuarter
+    dtype: str
+    
+  - key: 一株あたり配当実績_期末
+    name: ResultDividendPerShareFiscalYearEnd
+    dtype: str
+    
+  - key: 一株あたり配当実績_合計
+    name: ResultDividendPerShareAnnual
+    dtype: str
+    
+  - key: 1口当たり分配金
+    name: DistributionsPerUnit(REIT)
+    dtype: str
+    
+  - key: 配当金総額
+    name: ResultTotalDividendPaidAnnual
+    dtype: str
+
+  - key: 配当性向
+    name: ResultPayoutRatioAnnual
+    dtype: str
+    
+  - key: 一株あたり配当予想_第1四半期末
+    name: ForecastDividendPerShare1stQuarter
+    dtype: str
+    
+  - key: 一株あたり配当予想_第2四半期末
+    name: ForecastDividendPerShare2ndQuarter
+    dtype: str
+    
+  - key: 一株あたり配当予想_第3四半期末
+    name: ForecastDividendPerShare3rdQuarter
+    dtype: str
+    
+  - key: 一株あたり配当予想_期末
+    name: ForecastDividendPerShareFiscalYearEnd
+    dtype: str
+    
+  - key: 一株あたり配当予想_合計
+    name: ForecastDividendPerShareAnnual
+    dtype: str
+    
+  - key: 1口当たり予想分配金
+    name: ForecastDistributionsPerUnit(REIT)
+    dtype: str
+    
+  - key: 予想配当金総額
+    name: ForecastTotalDividendPaidAnnual
+    dtype: str
+    
+  - key: 予想配当性向
+    name: ForecastPayoutRatioAnnual
+    dtype: str
+    
+  - key: 一株あたり配当予想_翌事業年度第1四半期末
+    name: NextYearForecastDividendPerShare1stQuarter
+    dtype: str
+    
+  - key: 一株あたり配当予想_翌事業年度第2四半期末
+    name: NextYearForecastDividendPerShare2ndQuarter
+    dtype: str
+    
+  - key: 一株あたり配当予想_翌事業年度第3四半期末
+    name: NextYearForecastDividendPerShare3rdQuarter
+    dtype: str
+    
+  - key: 一株あたり配当予想_翌事業年度期末
+    name: NextYearForecastDividendPerShareFiscalYearEnd
+    dtype: str
+    
+  - key: 一株あたり配当予想_翌事業年度合計
+    name: NextYearForecastDividendPerShareAnnual
+    dtype: str
+    
+  - key: 1口当たり翌事業年度予想分配金
+    name: NextYearForecastDistributionsPerUnit(REIT)
+    dtype: str
+    
+  - key: 翌事業年度予想配当性向
+    name: NextYearForecastPayoutRatioAnnual
+    dtype: str
+    
+  - key: 売上高_予想_第2四半期末
+    name: ForecastNetSales2ndQuarter
+    dtype: str
+    
+  - key: 売上高_予想_第2四半期末
+    name: ForecastOperatingProfit2ndQuarter
+    dtype: str
+    
+  - key: 経常利益_予想_第2四半期末
+    name: ForecastOrdinaryProfit2ndQuarter
+    dtype: str
+    
+  - key: 当期純利益_予想_第2四半期末
+    name: ForecastProfit2ndQuarter
+    dtype: str
+    
+  - key: EPS_予想_第2四半期末
+    name: ForecastEarningsPerShare2ndQuarter
+    dtype: str
+    
+  - key: 売上高_予想_翌事業年度第2四半期末
+    name: NextYearForecastNetSales2ndQuarter
+    dtype: str
+    
+  - key: 営業利益_予想_翌事業年度第2四半期末
+    name: NextYearForecastOperatingProfit2ndQuarter
+    dtype: str
+    
+  - key: 経常利益_予想_翌事業年度第2四半期末
+    name: NextYearForecastOrdinaryProfit2ndQuarter
+    dtype: str
+    
+  - key: 当期純利益_予想_翌事業年度第2四半期末
+    name: NextYearForecastProfit2ndQuarter
+    dtype: str
+    
+  - key: EPS_予想_翌事業年度第2四半期末
+    name: NextYearForecastEarningsPerShare2ndQuarter
+    dtype: str
+    
+  - key: 売上高_予想_期末
+    name: ForecastNetSales
+    dtype: str
+    
+  - key: 営業利益_予想_期末
+    name: ForecastOperatingProfit
+    dtype: str
+    
+  - key: 経常利益_予想_期末
+    name: ForecastOrdinaryProfit
+    dtype: str
+    
+  - key: 当期純利益_予想_期末
+    name: ForecastProfit
+    dtype: str
+    
+  - key: EPS_予想_期末
+    name: ForecastEarningsPerShare
+    dtype: str
+    
+  - key: 売上高_予想_翌事業年度期末
+    name: NextYearForecastNetSales
+    dtype: str
+    
+  - key: 営業利益_予想_翌事業年度期末
+    name: NextYearForecastOperatingProfit
+    dtype: str
+    
+  - key: 経常利益_予想_翌事業年度期末
+    name: NextYearForecastOrdinaryProfit
+    dtype: str
+    
+  - key: 当期純利益_予想_翌事業年度期末
+    name: NextYearForecastProfit
+    dtype: str
+    
+  - key: EPS_予想_翌事業年度期末
+    name: NextYearForecastEarningsPerShare
+    dtype: str
+    
+  - key: 期中における重要な子会社の異動
+    name: MaterialChangesInSubsidiaries
+    dtype: str
+    
+  - key: 期中における連結範囲の重要な変更
+    name: SignificantChangesInTheScopeOfConsolidation
+    dtype: str
+    
+  - key: 会計基準等の改正に伴う会計方針の変更
+    name: ChangesBasedOnRevisionsOfAccountingStandard
+    dtype: str
+    
+  - key: 会計基準等の改正に伴う変更以外の会計方針の変更
+    name: ChangesOtherThanOnesBasedOnRevisionsOfAccountingStandard
+    dtype: str
+    
+  - key: 会計上の見積りの変更
+    name: ChangesInAccountingEstimates
+    dtype: str
+    
+  - key: 修正再表示
+    name: RetrospectiveRestatement
+    dtype: str
+    
+  - key: 期末発行済株式数
+    name: NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock
+    dtype: str
+    
+  - key: 期末自己株式数
+    name: NumberOfTreasuryStockAtTheEndOfFiscalYear
+    dtype: str
+    
+  - key: 期中平均株式数
+    name: AverageNumberOfShares
+    dtype: str
+    
+  - key: 売上高_非連結
+    name: NonConsolidatedNetSales
+    dtype: str
+    
+  - key: 営業利益_非連結
+    name: NonConsolidatedOperatingProfit
+    dtype: str
+    
+  - key: 経常利益_非連結
+    name: NonConsolidatedOrdinaryProfit
+    dtype: str
+    
+  - key: 当期純利益_非連結 
+    name: NonConsolidatedProfit
+    dtype: str
+    
+  - key: EPS_非連結
+    name: NonConsolidatedEarningsPerShareNonConsolidatedProfit
+    dtype: str
+    
+  - key: 総資産_非連結
+    name: NonConsolidatedTotalAssets
+    dtype: str
+    
+  - key: 純資産_非連結
+    name: NonConsolidatedEquity
+    dtype: str
+    
+  - key: 自己資本比率_非連結
+    name: NonConsolidatedEquityToAssetRatio
+    dtype: str
+    
+  - key: 一株あたり純資産_非連結
+    name: NonConsolidatedBookValuePerShare
+    dtype: str
+    
+  - key: 売上高_予想_第2四半期末_非連結
+    name: ForecastNonConsolidatedNetSales2ndQuarter
+    dtype: str
+    
+  - key: 営業利益_予想_第2四半期末_非連結
+    name: ForecastNonConsolidatedOperatingProfit2ndQuarter
+    dtype: str
+    
+  - key: 経常利益_予想_第2四半期末_非連結
+    name: ForecastNonConsolidatedOrdinaryProfit2ndQuarter
+    dtype: str
+    
+  - key: 当期純利益_予想_第2四半期末_非連結
+    name: ForecastNonConsolidatedProfit2ndQuarter
+    dtype: str
+    
+  - key: EPS_予想_第四半期末_非連結
+    name: ForecastNonConsolidatedEarningsPerShare2ndQuarter
+    dtype: str
+    
+  - key: 売上高_予想_翌事業年度第2四半期末_非連結
+    name: NextYearForecastNonConsolidatedNetSales2ndQuarter
+    dtype: str
+    
+  - key: 営業利益_予想_翌事業年度第2四半期末_非連結
+    name: NextYearForecastNonConsolidatedOperatingProfit2ndQuarter
+    dtype: str
+    
+  - key: 経常利益_予想_翌事業年度第2四半期末_非連結
+    name: NextYearForecastNonConsolidatedOrdinaryProfit2ndQuarter
+    dtype: str
+    
+  - key: 当期純利益_予想_翌事業年度第2四半期末_非連結
+    name: NextYearForecastNonConsolidatedProfit2ndQuarter
+    dtype: str
+    
+  - key: EPS_予想_翌事業年度第2四半期末_非連結
+    name: NextYearForecastNonConsolidatedEarningsPerShare2ndQuarter
+    dtype: str
+    
+  - key: 売上高_予想_期末_非連結
+    name: ForecastNonConsolidatedNetSales
+    dtype: str
+    
+  - key: 営業利益_予想_期末_非連結
+    name: ForecastNonConsolidatedOperatingProfit
+    dtype: str
+    
+  - key: 経常利益_予想_期末_非連結
+    name: ForecastNonConsolidatedOrdinaryProfit
+    dtype: str
+    
+  - key: 当期純利益_予想_期末_非連結
+    name: ForecastNonConsolidatedProfit
+    dtype: str
+    
+  - key: EPS_予想_第四半期末_非連結
+    name: ForecastNonConsolidatedEarningsPerShare
+    dtype: str
+    
+  - key: 売上高_予想_翌事業年度期末_非連結
+    name: NextYearForecastNonConsolidatedNetSales
+    dtype: str
+    
+  - key: 営業利益_予想_翌事業年度期末_非連結
+    name: NextYearForecastNonConsolidatedOperatingProfit
+    dtype: str
+    
+  - key: 経常利益_予想_翌事業年度期末_非連結
+    name: NextYearForecastNonConsolidatedOrdinaryProfit
+    dtype: str
+    
+  - key: 当期純利益_予想_翌事業年度期末_非連結
+    name: NextYearForecastNonConsolidatedProfit
+    dtype: str
+    
+  - key: EPS_予想_翌事業年度期末_非連結
+    name: NextYearForecastNonConsolidatedEarningsPerShare
+    dtype: str

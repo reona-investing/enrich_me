@@ -1,0 +1,16 @@
+calculated_columns:
+  - description: 日付
+    fixed_name: Date
+    dtype: datetime
+    
+  - description: セクター
+    fixed_name: Sector
+    dtype: str
+    
+  - description: 時価総額
+    fixed_name: MarketCap
+    dtype: float
+    
+  - description: EPS
+    name: EPS
+    dtype: float

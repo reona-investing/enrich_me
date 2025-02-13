@@ -27,6 +27,10 @@ class Paths:
 
     CODES_TO_REPLACE_CSV = f'{CONFIG_AND_SETTINGS_FOLDER}/codes_to_replace.csv'
     FEATURES_TO_SCRAPE_CSV = f'{CONFIG_AND_SETTINGS_FOLDER}/features_to_scrape.csv'
+    
+    RAW_STOCK_PRICE_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/raw_stock_price_cols.yaml'
+
+
     STOCK_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_fin_columns.yaml'
     STOCK_PRICE_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_price_columns.yaml'
     SECTOR_INDEX_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/sector_index_columns.yaml'
@@ -56,6 +60,8 @@ class Paths:
     TRADE_HISTORY_BACKUP = f'{ONLINE_BACKUP_FOLDER}/trade_history.csv'
     BUYING_POWER_HISTORY_BACKUP = f'{ONLINE_BACKUP_FOLDER}/buying_power_history.csv'
     DEPOSIT_HISTORY_BACKUP = f'{ONLINE_BACKUP_FOLDER}/deposit_history.csv'
+    ERROR_LOG_BACKUP = f'{ONLINE_BACKUP_FOLDER}/error_log_backup.csv'
+
 
 #%%
 if __name__ == '__main__':

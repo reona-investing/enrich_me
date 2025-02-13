@@ -1,0 +1,62 @@
+calculated_columns:
+  - key: 日付
+    name: Date
+    dtype: datetime
+
+  - key: 銘柄コード
+    name: Code
+    dtype: str    
+  
+  - key: セクター
+    name: Sector
+    dtype: str
+    
+  - key: 始値時価総額
+    name: MarketCapOpen
+    dtype: float
+    
+  - key: 終値時価総額
+    name: MarketCapClose
+    dtype: float
+    
+  - key: 高値時価総額
+    name: MarketCapHigh
+    dtype: float
+    
+  - key: 安値ベースの時価総額
+    name: MarketCapLow
+    dtype: float
+    
+  - key: 発行済み株式数
+    name: OutstandingShares
+    dtype: float
+    
+  - key: 指数算出用の補正値
+    name: CorrectionValue
+    dtype: float
+    
+  - key: 終値の前日比
+    name: 1d_return
+    dtype: float
+    
+  - key: 終値の前日比率
+    name: 1d_rate
+    dtype: float
+    description: （1D_RETURN + 1）
+    
+  - key: 始値
+    name: Open
+    dtype: float
+    
+  - key: 終値
+    name: Close
+    dtype: float
+    
+  - key: 高値
+    name: High
+    dtype: float
+    
+  - key: 安値
+    name: Low
+    dtype: float
+    

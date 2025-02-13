@@ -1,0 +1,198 @@
+column_configs:
+  - key: 日付
+    name: Date
+    dtype: datetime
+    plus_for_merger: False
+    
+  - key: 時刻
+    name: DisclosedTime
+    dtype: str
+    plus_for_merger: False
+    
+  - key: 銘柄コード
+    name: Code
+    dtype: str
+    plus_for_merger: False
+    
+  - key: 開示書類種別
+    name: TypeOfDocument
+    dtype: str
+    plus_for_merger: False
+    
+  - key: 当会計期間の種類 
+    name: TypeOfCurrentPeriod
+    dtype: str
+    plus_for_merger: False
+    description: [1Q, 2Q, 3Q, 4Q, 5Q, FY]
+    
+  - key: 当会計期間終了日
+    name: CurrentPeriodEndDate
+    dtype: datetime
+    plus_for_merger: False
+    
+  - key: 当事業年度開始日
+    name: CurrentFiscalYearStartDate
+    dtype: datetime
+    plus_for_merger: False
+    
+  - key: 当事業年度終了日
+    name: CurrentFiscalYearEndDate
+    dtype: datetime
+    plus_for_merger: False
+    
+  - key: 売上高
+    name: NetSales
+    dtype: float
+    plus_for_merger: True
+
+  - key: 営業利益
+    name: OperatingProfit
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 経常利益
+    name: OrdinaryProfit
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 当期純利益
+    name: Profit
+    dtype: float
+    plus_for_merger: True
+    
+  - key: EPS
+    name: EarningsPerShare
+    dtype: float
+    plus_for_merger: False
+    
+  - key: 潜在株式調整後EPS
+    name: DilutedEarningsPerShare
+    dtype: float
+    plus_for_merger: False
+    
+  - key: 総資産
+    name: TotalAssets
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 純資産
+    name: Equity
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 自己資本比率
+    name: EquityToAssetRatio
+    dtype: float
+    plus_for_merger: False
+
+  - key: BPS
+    name: BookValuePerShare
+    dtype: float
+    plus_for_merger: False
+    
+  - key: 営業CF
+    name: CashFlowsFromOperatingActivities
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 投資CF
+    name: CashFlowsFromInvestingActivities
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 財務活動によるキャッシュ・フロー
+    name: CashFlowsFromFinancingActivities
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 現金及び現金同等物期末残高
+    name: CashAndEquivalents
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 一株あたり配当実績_合計
+    name: ResultDividendPerShareAnnual
+    dtype: float
+    plus_for_merger: False
+
+  - key: 配当性向
+    name: ResultPayoutRatioAnnual
+    dtype: float
+    plus_for_merger: False
+    
+  - key: 一株あたり配当予想_合計
+    name: ForecastDividendPerShareAnnual
+    dtype: float
+    plus_for_merger: False
+    
+  - key: 予想配当性向
+    name: ForecastPayoutRatioAnnual
+    dtype: float
+    plus_for_merger: False
+    
+  - key: 一株あたり配当予想_翌事業年度合計
+    name: NextYearForecastDividendPerShareAnnual
+    dtype: float
+    plus_for_merger: False
+    
+  - key: 売上高_予想_期末
+    name: ForecastNetSales
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 営業利益_予想_期末
+    name: ForecastOperatingProfit
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 経常利益_予想_期末
+    name: ForecastOrdinaryProfit
+    dtype: float
+    plus_for_merger: True
+    
+  - key: 当期純利益_予想_期末
+    name: ForecastProfit
+    dtype: float
+    plus_for_merger: True
+    
+  - key: EPS_予想_期末
+    name: ForecastEarningsPerShare
+    dtype: float
+    plus_for_merger: False
+    
+  - key: EPS_予想_翌事業年度期末
+    name: NextYearForecastEarningsPerShare
+    dtype: float
+    plus_for_merger: true
+
+  - key: 修正再表示
+    name: RetrospectiveRestatement
+    dtype: str
+    plus_for_merger: False
+    
+  - key: 期末発行済株式数
+    name: NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock
+    dtype: float
+    plus_for_merger: true
+    
+  - key: 期末自己株式数
+    name: NumberOfTreasuryStockAtTheEndOfFiscalYear
+    dtype: float
+    plus_for_merger: true
+  
+  - description: 予想EPS
+    name: ForecastEPS
+    dtype: float
+    
+  - description: 発行済み株式数
+    name: OutstandingShares
+    dtype: float
+    
+  - description: 年度
+    name: CurrentFiscalYear
+    dtype: int
+    
+  - description: 予測対象の年度の終了日
+    name: ForecastFiscalYearEndDate
+    dtype: datetime
+    
