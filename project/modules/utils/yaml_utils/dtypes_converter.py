@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 def dtypes_converter(yaml_info: dict[str, dict[str|str]] | list[dict[str, str]], df: pd.DataFrame,
                      name_key: str = 'fixed_name', dtype_key: str = 'fixed_dtype',
                      yaml_listname: str = 'columns') -> pd.DataFrame:

@@ -29,11 +29,11 @@ class Paths:
     FEATURES_TO_SCRAPE_CSV = f'{CONFIG_AND_SETTINGS_FOLDER}/features_to_scrape.csv'
     
     RAW_STOCK_PRICE_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/raw_stock_price_cols.yaml'
+    RAW_STOCK_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/raw_stock_fin_cols.yaml'
+    STOCK_PRICE_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_price_cols.yaml'
+    STOCK_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_fin_cols.yaml'
+    SECTOR_INDEX_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/sector_index_cols.yaml'
 
-
-    STOCK_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_fin_columns.yaml'
-    STOCK_PRICE_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/stock_price_columns.yaml'
-    SECTOR_INDEX_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/sector_index_columns.yaml'
     SECTOR_FIN_COLUMNS_YAML = f'{CONFIG_AND_SETTINGS_FOLDER}/sector_fin_columns.yaml'
 
     RAW_STOCK_LIST_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_list.parquet'

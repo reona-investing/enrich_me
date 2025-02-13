@@ -180,19 +180,23 @@ column_configs:
     dtype: float
     plus_for_merger: true
   
-  - description: 予想EPS
+  - key: 予想EPS
     name: ForecastEPS
     dtype: float
+    plus_for_merger: False
     
-  - description: 発行済み株式数
+  - key: 発行済み株式数
     name: OutstandingShares
     dtype: float
+    plus_for_merger: False
     
-  - description: 年度
+  - key: 年度
     name: CurrentFiscalYear
     dtype: int
+    plus_for_merger: False
     
-  - description: 予測対象の年度の終了日
+  - key: 予測対象の年度の終了日
     name: ForecastFiscalYearEndDate
     dtype: datetime
+    plus_for_merger: False
     

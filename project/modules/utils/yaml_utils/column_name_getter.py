@@ -1,4 +1,40 @@
 from typing import Any, Dict, List
+from utils.yaml_utils.yaml_loader import yaml_loader
+
+class ColumnConfigsGetter:
+    def __init__(self, cols_yaml_path: str):
+        """
+        初期化処理として、YAML ファイルを読み込む。
+
+        Args:
+            cols_yaml_path (str): YAML ファイルのパス
+        """
+        self.column_config_info = yaml_loader(cols_yaml_path)
+
+    def get_any_column_info(self, key: str, info_name: str) -> str | None:
+        """
+        YAML ファイルから読み込んだリストを検索し、特定のキーに対応する値を取得する。
+
+        Args:
+            key (str): 検索対象とするキーの値
+            info_name (str): 取得する要素名
+
+        Returns:
+            str | None: 検索条件に一致する要素の `target_key` の値 (見つからなかった場合は `None`)
+        """
+        return next((item[info_name] for item in self.column_config_info if item.get('key') == key), None)
+
+    def get_column_name(self, key: str) -> str | None:
+        return self.get_any_column_info(key, 'name')
+
+    def get_column_names(self, keys: list[str]) -> list[str] | None:
+        return [self.get_any_column_info(key, 'name') for key in keys]
+    
+    def get_column_dtype(self, key: str) -> str | None:
+        return self.get_any_column_info(key, 'dtype')
+
+    def get_column_dtypes(self, keys: list[str]) -> list[str] | None:
+        return [self.get_any_column_info(key, 'dtype') for key in keys]
 
 def column_name_getter(yaml_info: Dict[str, List[Dict[str, Any]]] | List[Dict[str, Any]], 
                     search_condition: Dict[str, Any], target_key: str, yaml_listname: str = 'columns') -> str | None:
@@ -36,3 +72,9 @@ def column_name_getter(yaml_info: Dict[str, List[Dict[str, Any]]] | List[Dict[st
     search_value = list(search_condition.values())[0]
 
     return next((item[target_key] for item in yaml_data if item.get(search_key) == search_value), None)
+
+
+if __name__ =='__main__':
+    from utils.paths import Paths
+    ccg = ColumnConfigsGetter(Paths.RAW_STOCK_PRICE_COLUMNS_YAML)
+    print(ccg.get_column_name('日付'))

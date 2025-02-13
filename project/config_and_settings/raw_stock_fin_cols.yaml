@@ -19,7 +19,7 @@ column_configs:
     name: TypeOfDocument
     dtype: str
     
-  - key: 当会計期間の種類 
+  - key: 当会計期間の種類
     name: TypeOfCurrentPeriod
     dtype: str
     description: [1Q, 2Q, 3Q, 4Q, 5Q, FY]
@@ -64,7 +64,7 @@ column_configs:
     name: Profit
     dtype: str
     
-  - key: EPS
+  - key: 実績EPS
     name: EarningsPerShare
     dtype: str
     
@@ -96,7 +96,7 @@ column_configs:
     name: CashFlowsFromInvestingActivities
     dtype: str
     
-  - key: 財務活動によるキャッシュ・フロー
+  - key: 財務CF
     name: CashFlowsFromFinancingActivities
     dtype: str
     

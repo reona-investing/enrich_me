@@ -47,7 +47,6 @@ column_configs:
     name: AdjustmentOpen
     dtype: float
     
-
   - key: 調整済み高値
     name: AdjustmentHigh
     dtype: float

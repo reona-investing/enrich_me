@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime
 from utils.paths import Paths
+from utils.yaml_utils import ColumnConfigsGetter
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.reader.reader_utils import filter_stocks
 
@@ -27,11 +28,12 @@ class Reader:
             pd.DataFrame: 銘柄一覧
         """
         df = FileHandler.read_parquet(path)
-        return filter_stocks(df, df, self.filter, self.filtered_code_list)
+        return filter_stocks(df, df, self.filter, self.filtered_code_list, 'Code')
 
     def read_fin(self,
                  path: str = Paths.STOCK_FIN_PARQUET, 
-                 list_path: str = Paths.STOCK_LIST_PARQUET, 
+                 list_path: str = Paths.STOCK_LIST_PARQUET,
+                 cols_yaml_path: str = Paths.STOCK_FIN_COLUMNS_YAML,
                  end_date: datetime = datetime.today()) -> pd.DataFrame:
         """
         財務情報データを読み込みます。filterとfiltered_code_listを両方設定した場合、filterの条件が優先されます。
@@ -42,14 +44,20 @@ class Reader:
         Returns:
             pd.DataFrame: 財務情報
         """
+        ccg = ColumnConfigsGetter(cols_yaml_path = cols_yaml_path)
+        date_col = ccg.get_column_name('日付')
+        code_col = ccg.get_column_name('銘柄コード')
+
         df = FileHandler.read_parquet(path)
         list_df = FileHandler.read_parquet(list_path)
-        df = filter_stocks(df, list_df, self.filter, self.filtered_code_list)
-        return df[df['Date']<=end_date]
+        df = filter_stocks(df, list_df, self.filter, self.filtered_code_list, code_col)
+
+        return df[df[date_col]<=end_date]
 
     def read_price(self,
                    basic_path: str = Paths.STOCK_PRICE_PARQUET, 
-                   list_path: str = Paths.STOCK_LIST_PARQUET, 
+                   list_path: str = Paths.STOCK_LIST_PARQUET,
+                   cols_yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML,
                    end_date: datetime = datetime.today()) ->pd.DataFrame: # 価格情報の読み込み
         """
         価格情報を読み込み、調整を行います。
@@ -60,28 +68,37 @@ class Reader:
         Returns:
             pd.DataFrame: 価格情報
         """
-        df = self._generate_price_df(basic_path, list_path, self.filter, self.filtered_code_list, end_date)
-        return self._recalc_adjustment_factors(df)
+        df = self._generate_price_df(basic_path, list_path, self.filter, self.filtered_code_list, end_date, cols_yaml_path)
+        return self._recalc_adjustment_factors(df, cols_yaml_path)
 
-    def _recalc_adjustment_factors(self, df: pd.DataFrame) -> pd.DataFrame:
-        """全銘柄の最終日の累積調整係数が1となるように再計算します。"""
-        adjustment_factors = df.groupby('Code')['CumulativeAdjustmentFactor'].transform('last')
-        df[['Open', 'High', 'Low', 'Close', 'Volume']] *= adjustment_factors.values[:, None]
-        return df
-
-    def _generate_price_df(self, basic_path: str, list_path: str, filter: str, filtered_code_list: list[str], end_date: datetime) -> pd.DataFrame:
+    def _generate_price_df(self, basic_path: str, list_path: str, filter: str, filtered_code_list: list[str], end_date: datetime, cols_yaml_path: str) -> pd.DataFrame:
         """年次の株価データから、通期の価格データフレームを生成します。"""
+        ccg = ColumnConfigsGetter(cols_yaml_path = cols_yaml_path)
+        date_col = ccg.get_column_name('日付')
+        code_col = ccg.get_column_name('銘柄コード')
+        cols = ccg.get_column_names(['日付', '銘柄コード', '始値', '高値', '安値', '終値', '取引高', '調整係数', '取引代金'])
+        cols.append('CumulativeAdjustmentFactor')
         list_df = FileHandler.read_parquet(list_path)
         dfs = []
         for my_year in range(2013, end_date.year + 1):
             if os.path.exists(basic_path.replace('0000', str(my_year))):
                 df = pd.read_parquet(Paths.STOCK_PRICE_PARQUET.replace('0000', str(my_year)))
-                df = df[['Date', 'Code', 'Open', 'High', 'Low', 'Close', 'Volume',
-                        'AdjustmentFactor', 'CumulativeAdjustmentFactor', 'TurnoverValue']]
-                df = filter_stocks(df, list_df, filtered_code_list=filtered_code_list, filter=filter)
+                df = df[cols].copy()
+                df = filter_stocks(df, list_df, filtered_code_list=filtered_code_list, filter=filter, code_col=code_col)
                 dfs.append(df)
-        df =  pd.concat(dfs, axis=0).drop_duplicates(subset=['Date', 'Code'], keep='last')
-        return df[df['Date']<=end_date]
+        df =  pd.concat(dfs, axis=0).drop_duplicates(subset=[date_col, code_col], keep='last')
+        
+        return df[df[date_col]<=end_date]
+    
+    def _recalc_adjustment_factors(self, df: pd.DataFrame, cols_yaml_path: str) -> pd.DataFrame:
+        """全銘柄の最終日の累積調整係数が1となるように再計算します。"""
+        ccg = ColumnConfigsGetter(cols_yaml_path = cols_yaml_path)
+        code_col = ccg.get_column_name('銘柄コード')
+        cols = ccg.get_column_names(['始値', '高値', '安値', '終値', '取引高'])
+
+        adjustment_factors = df.groupby(code_col)['CumulativeAdjustmentFactor'].transform('last')
+        df[cols] *= adjustment_factors.values[:, None]
+        return df
 
 
 if __name__ == '__main__':

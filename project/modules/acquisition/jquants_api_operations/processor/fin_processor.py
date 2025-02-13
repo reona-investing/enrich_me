@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
 from utils.paths import Paths
-from utils import yaml_utils
+from utils.yaml_utils import ColumnConfigsGetter
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.processor.code_replacement_info import codes_to_merge_dict, manual_adjustment_dict_list, codes_to_replace_dict
+from typing import Callable
 
 class FinProcessor:
     """
@@ -16,7 +17,9 @@ class FinProcessor:
     def __init__(self,
                  raw_path: str = Paths.RAW_STOCK_FIN_PARQUET,
                  processing_path: str = Paths.STOCK_FIN_PARQUET,
-                 yaml_path: str = Paths.STOCK_FIN_COLUMNS_YAML) -> None: # 財務情報の加工
+                 raw_cols_yaml_path: str = Paths.RAW_STOCK_FIN_COLUMNS_YAML,
+                 cols_yaml_path: str = Paths.STOCK_FIN_COLUMNS_YAML,
+                 ) -> None: # 財務情報の加工
         """
         インスタンス生成と同時にデータの加工と保存を行う。
 
@@ -26,11 +29,8 @@ class FinProcessor:
             yaml_path (str): YAML設定ファイルのパス
         """
 
-        self.original_columns_info = self._load_yaml_original_columns(yaml_path, 'original_columns')
-        self.calculated_columns_info = self._load_yaml_original_columns(yaml_path, 'calculated_columns')
-        stock_fin = self._get_col_names()
+        self._get_col_info(raw_cols_yaml_path, cols_yaml_path)
         stock_fin = self._load_fin_data(raw_path)
-        stock_fin = self._filter_fin_data(stock_fin)
         stock_fin = self._rename_columns(stock_fin)
         stock_fin = self._format_dtypes(stock_fin)
         stock_fin = self._drop_duplicated_data(stock_fin)
@@ -40,36 +40,31 @@ class FinProcessor:
         print(stock_fin)
         FileHandler.write_parquet(stock_fin, processing_path)
 
-    def _load_yaml_original_columns(self, yaml_path: str, key: str):
-        """
-        財務データのカラム情報を YAML からロードし、使用するカラムのみを抽出する。
+    def _get_col_info(self, raw_cols_yaml_path: str, cols_yaml_path: str):
+        raw_ccg = ColumnConfigsGetter(raw_cols_yaml_path)
+        ccg = ColumnConfigsGetter(cols_yaml_path)
+        keys = ['日付', '銘柄コード', '開示書類種別', '時刻', '期末自己株式数', '期末発行済株式数', '当事業年度終了日', '当会計期間終了日', '当会計期間の種類', 
+                'EPS_予想_期末', 'EPS_予想_翌事業年度期末',
+                '予想EPS', '発行済み株式数', '年度', '予測対象の年度の終了日']
 
-        Args:
-            yaml_path (str | None): YAML ファイルのパス
-            key (str): YAMLファイル内の大元のキー
+
+        self.raw_cols = self._get_column_mapping(keys, raw_ccg.get_column_name)
+        self.cols = self._get_column_mapping(keys, ccg.get_column_name)
+        self.col_dtypes = self._get_column_mapping(keys, ccg.get_column_dtype)
+        self.cols_plus_for_merger = self._get_column_mapping(keys, ccg.get_any_column_info, info_name = 'plus_for_merger')
+
+    def _get_column_mapping(self, keys: list, column_config_getter: Callable, **kwargs):
+        """
+        指定されたキーリストに基づいて、ColumnConfigsGetter からカラム名のマッピング辞書を作成する。
+
+        Parameters:
+            keys (list): 取得するキーのリスト
+            column_config_getter (ColumnConfigsGetterの関数): カラム名を取得用の関数
 
         Returns:
-            list[dict]: 設定されたカラム情報のリスト
+            dict: 指定されたキーと取得したカラム名の辞書
         """
-        return yaml_utils.including_columns_loader(yaml_path, key)
-    
-    def _get_col_names(self):
-        self.code_col = self._column_name_getter(self.original_columns_info, 'LocalCode')
-        self.date_col = self._column_name_getter(self.original_columns_info, 'DisclosedDate')
-        self.type_of_document_col = self._column_name_getter(self.original_columns_info, 'TypeOfDocument')
-        self.disclosed_time_col = self._column_name_getter(self.original_columns_info, 'DisclosedTime')
-        self.treasury_stock_fiscal_year_end_col = self._column_name_getter(self.original_columns_info, 'NumberOfTreasuryStockAtTheEndOfFiscalYear')
-        self.shares_fiscal_year_end_col = \
-            self._column_name_getter(self.original_columns_info, 'NumberOfIssuedAndOutstandingSharesAtTheEndOfFiscalYearIncludingTreasuryStock')
-        self.fiscal_year_end_date_col = self._column_name_getter(self.original_columns_info, 'CurrentFiscalYearEndDate')
-        self.type_of_current_period_col = self._column_name_getter(self.original_columns_info, 'TypeOfCurrentPeriod')
-        self.raw_forecast_eps_col = self._column_name_getter(self.original_columns_info, 'ForecastEarningsPerShare')
-        self.next_year_forecast_eps_col = self._column_name_getter(self.original_columns_info, 'NextYearForecastEarningsPerShare')
-
-        self.forecast_eps_col = self._column_name_getter(self.calculated_columns_info, 'FORECAST_EPS')
-        self.outstanding_shares_col = self._column_name_getter(self.calculated_columns_info, 'OUTSTANDING_SHARES')
-        self.fiscal_year_col = self._column_name_getter(self.calculated_columns_info, 'CURRENT_FISCAL_YEAR')
-        self.forecast_fy_end_date_col = self._column_name_getter(self.calculated_columns_info, 'FORECAST_FISCAL_YEAR_END_DATE')
+        return {key: column_config_getter(key, **kwargs) for key in keys if column_config_getter(key, **kwargs) is not None}
 
 
     def _load_fin_data(self, raw_path: str) -> pd.DataFrame:
@@ -82,20 +77,10 @@ class FinProcessor:
         Returns:
             pd.DataFrame: 読み込んだ財務データ
         """
-        fin_df =  FileHandler.read_parquet(raw_path)
+        usecols = self.raw_cols.values()
+        fin_df =  FileHandler.read_parquet(raw_path, usecols = usecols)
         return fin_df.replace('', np.nan)
 
-    def _filter_fin_data(self, fin_df: str) -> pd.DataFrame:
-        """
-        設定ファイルをもとに、必要な列のみを抽出。
-
-        Args:
-            fin_df (pd.DataFrame): 読み込んだ財務データ
-
-        Returns:
-            pd.DataFrame: フィルタリング後の財務データ
-        """
-        return fin_df[[col['name'] for col in self.original_columns_info]]
 
     def _rename_columns(self, fin_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -107,9 +92,9 @@ class FinProcessor:
         Returns:
             pd.DataFrame: カラム名変換後の財務データ
         """
-        rename_dict = {col['name']: col['fixed_name'] \
-                       for col in self.original_columns_info if col['name'] != col['fixed_name']}
-        return fin_df.rename(columns=rename_dict)
+    
+        rename_mapping =  {self.raw_cols[key]: self.cols[key] for key in self.raw_cols.keys()}
+        return fin_df.rename(columns=rename_mapping)
 
     def _format_dtypes(self, fin_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -121,10 +106,18 @@ class FinProcessor:
         Returns:
             pd.DataFrame: データ型変換後の財務データ
         """
-        fin_df = yaml_utils.dtypes_converter(self.original_columns_info, fin_df)
+        type_mapping = {self.cols[key]: eval(self.col_dtypes[key]) for key in self.raw_cols.keys()
+                        if self.col_dtypes[key] != 'datetime'} 
+        datetime_columns = [self.cols[key] for key in self.raw_cols.keys() if self.col_dtypes[key] == 'datetime']
+
+        fin_df[[x for x in type_mapping.keys()]] = fin_df[[x for x in type_mapping.keys()]].astype(type_mapping)
+
+        for column in datetime_columns:
+            fin_df[column]= fin_df[column].astype(str).str[:10]
+            fin_df[column] = pd.to_datetime(fin_df[column])
     
-        fin_df[self.code_col] = Formatter.format_stock_code(fin_df[self.code_col])
-        fin_df[self.code_col] = fin_df[self.code_col].replace(codes_to_replace_dict)
+        fin_df[self.cols['銘柄コード']] = Formatter.format_stock_code(fin_df[self.cols['銘柄コード']])
+        fin_df[self.cols['銘柄コード']] = fin_df[self.cols['銘柄コード']].replace(codes_to_replace_dict)
         return fin_df
 
     def _drop_duplicated_data(self, fin_df: pd.DataFrame) -> pd.DataFrame:
@@ -138,9 +131,9 @@ class FinProcessor:
             pd.DataFrame: 重複削除後の財務データ
         """
         # 発表の訂正などで、同一日に複数回のリリースがある場合がある。当日最後の発表を最新の発表として残す。
-        fin_df = fin_df.loc[~fin_df[self.type_of_document_col].isin(
+        fin_df = fin_df.loc[~fin_df[self.cols['開示書類種別']].isin(
             ['DividendForecastRevision', 'EarnForecastRevision', 'REITDividendForecastRevision', 'REITEarnForecastRevision'])]
-        return fin_df.sort_values(self.disclosed_time_col).drop_duplicates(subset=[self.code_col, self.date_col], keep="last") #コードと開示日が重複しているデータを、最後を残して削除
+        return fin_df.sort_values(self.cols['時刻']).drop_duplicates(subset=[self.cols['銘柄コード'], self.cols['日付']], keep="last") #コードと開示日が重複しているデータを、最後を残して削除
 
     def _calculate_additional_fins(self, fin_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -160,11 +153,11 @@ class FinProcessor:
 
     def _merge_forecast_eps(self, fin_df: pd.DataFrame) -> pd.DataFrame:
         fin_df.loc[
-            (fin_df[self.raw_forecast_eps_col].notnull()) & (fin_df[self.next_year_forecast_eps_col].notnull()), 
-            self.next_year_forecast_eps_col] = 0
-        fin_df[[self.raw_forecast_eps_col, self.next_year_forecast_eps_col]] = \
-            fin_df[[self.raw_forecast_eps_col, self.next_year_forecast_eps_col]].fillna(0)
-        fin_df[self.forecast_eps_col] = fin_df[self.raw_forecast_eps_col].values + fin_df[self.next_year_forecast_eps_col].values
+            (fin_df[self.cols['EPS_予想_期末']].notnull()) & (fin_df[self.cols['EPS_予想_翌事業年度期末']].notnull()), 
+            self.cols['EPS_予想_翌事業年度期末']] = 0
+        fin_df[[self.cols['EPS_予想_期末'], self.cols['EPS_予想_翌事業年度期末']]] = \
+            fin_df[[self.cols['EPS_予想_期末'], self.cols['EPS_予想_翌事業年度期末']]].fillna(0)
+        fin_df[self.cols['予想EPS']] = fin_df[self.cols['EPS_予想_期末']].values + fin_df[self.cols['EPS_予想_翌事業年度期末']].values
         return fin_df
 
 
@@ -178,11 +171,11 @@ class FinProcessor:
         Returns:
             pd.DataFrame: 追加計算後の財務データ
         """
-        fin_df[self.outstanding_shares_col] = np.nan
-        fin_df.loc[fin_df[self.treasury_stock_fiscal_year_end_col].notnull(), self.outstanding_shares_col] = \
-            fin_df[self.shares_fiscal_year_end_col] - fin_df[self.treasury_stock_fiscal_year_end_col]
-        fin_df.loc[fin_df[self.treasury_stock_fiscal_year_end_col].isnull(), self.outstanding_shares_col] = \
-            fin_df[self.shares_fiscal_year_end_col]
+        fin_df[self.cols['発行済み株式数']] = np.nan
+        fin_df.loc[fin_df[self.cols['期末自己株式数']].notnull(), self.cols['発行済み株式数']] = \
+            fin_df[self.cols['期末発行済株式数']] - fin_df[self.cols['期末自己株式数']]
+        fin_df.loc[fin_df[self.cols['期末自己株式数']].isnull(), self.cols['発行済み株式数']] = \
+            fin_df[self.cols['期末発行済株式数']]
         return fin_df
  
 
@@ -196,10 +189,10 @@ class FinProcessor:
         Returns:
             pd.DataFrame: 追加計算後の財務データ
         """
-        fin_df[self.fiscal_year_col] = fin_df[self.fiscal_year_end_date_col].dt.strftime("%Y")
-        fin_df[self.forecast_fy_end_date_col] = fin_df[self.fiscal_year_end_date_col].dt.strftime("%Y/%m")
-        fin_df.loc[fin_df[self.type_of_current_period_col] == "FY", self.forecast_fy_end_date_col] = (
-            fin_df.loc[fin_df[self.type_of_current_period_col] == "FY", self.fiscal_year_end_date_col] \
+        fin_df[self.cols['年度']] = fin_df[self.cols['当事業年度終了日']].dt.strftime("%Y")
+        fin_df[self.cols['予測対象の年度の終了日']] = fin_df[self.cols['当事業年度終了日']].dt.strftime("%Y/%m")
+        fin_df.loc[fin_df[self.cols['当会計期間の種類']] == "FY", self.cols['予測対象の年度の終了日']] = (
+            fin_df.loc[fin_df[self.cols['当会計期間の種類']] == "FY", self.cols['当事業年度終了日']] \
             + pd.offsets.DateOffset(years=1)
                 ).dt.strftime("%Y/%m")
         return fin_df
@@ -216,33 +209,34 @@ class FinProcessor:
             pd.DataFrame: 追加計算後の財務データ
         """
         #合併前の各社のデータを足し合わせる項目
-        plus_when_merging = [col['fixed_name'] for col in self.original_columns_info if col['plus_for_merger'] == True]
+        plus_when_merging_mapping = {self.cols[k]: v for k, v in self.cols_plus_for_merger.items()}
+        plus_when_merging = [k for k, v in plus_when_merging_mapping.items() if v]
         #合併リストの中身の分だけ処理を繰り返し
         for key, value in codes_to_merge_dict.items():
-            merger1 = stock_fin.loc[stock_fin[self.code_col]==value['Code1']].sort_values(self.date_col) #合併前1（存続）
-            merger2 = stock_fin.loc[stock_fin[self.code_col]==value['Code2']].sort_values(self.date_col) #合併前2（消滅）
+            merger1 = stock_fin.loc[stock_fin[self.cols['銘柄コード']]==value['Code1']].sort_values(self.cols['日付']) #合併前1（存続）
+            merger2 = stock_fin.loc[stock_fin[self.cols['銘柄コード']]==value['Code2']].sort_values(self.cols['日付']) #合併前2（消滅）
             #存続会社のデータを、合併前後に分ける。
-            merger1_before = merger1[merger1[self.date_col]<=value['MergerDate']]
-            merger1_after = merger1[merger1[self.date_col]>value['MergerDate']]
+            merger1_before = merger1[merger1[self.cols['日付']]<=value['MergerDate']]
+            merger1_after = merger1[merger1[self.cols['日付']]>value['MergerDate']]
             #インデックスを揃える
             merger1_before = \
-                pd.merge(merger1_before, merger2[self.date_col], how='outer', on=self.date_col).sort_values(self.date_col).reset_index(drop=True)
+                pd.merge(merger1_before, merger2[self.cols['日付']], how='outer', on=self.cols['日付']).sort_values(self.cols['日付']).reset_index(drop=True)
             merger2 = \
-                pd.merge(merger2, merger1_before[self.date_col], how='outer', on=self.date_col).sort_values(self.date_col).reset_index(drop=True)
+                pd.merge(merger2, merger1_before[self.cols['日付']], how='outer', on=self.cols['日付']).sort_values(self.cols['日付']).reset_index(drop=True)
             #NaN値を埋める
             merger1_before = merger1_before.ffill()
             merger1_before = merger1_before.bfill()
             merger2 = merger2.ffill()
             merger2 = merger2.bfill()
             #merger1_beforeの値を書き換えていく。
-            merger1_before[self.code_col] = key
-            merger1_before[self.outstanding_shares_col] = merger1_before[self.outstanding_shares_col] + \
-                                                merger2[self.outstanding_shares_col] * value['ExchangeRate']
+            merger1_before[self.cols['銘柄コード']] = key
+            merger1_before[self.cols['発行済み株式数']] = merger1_before[self.cols['発行済み株式数']] + \
+                                                merger2[self.cols['発行済み株式数']] * value['ExchangeRate']
             merger1_before[plus_when_merging] =  merger1_before[plus_when_merging] + merger2[plus_when_merging]
             #合併前後のデータを結合する。
-            merged = pd.concat([merger1_before, merger1_after], axis=0).sort_values(self.date_col)
-            stock_fin = stock_fin[(stock_fin[self.code_col]!=value['Code1'])&(stock_fin[self.code_col]!=value['Code2'])]
-            return pd.concat([stock_fin, merged], axis=0).sort_values([self.date_col, self.code_col])
+            merged = pd.concat([merger1_before, merger1_after], axis=0).sort_values(self.cols['日付'])
+            stock_fin = stock_fin[(stock_fin[self.cols['銘柄コード']]!=value['Code1'])&(stock_fin[self.cols['銘柄コード']]!=value['Code2'])]
+            return pd.concat([stock_fin, merged], axis=0).sort_values([self.cols['日付'], self.cols['銘柄コード']])
 
     def _finalize_df(self, stock_fin: pd.DataFrame) -> pd.DataFrame:
         """
@@ -254,23 +248,7 @@ class FinProcessor:
         Returns:
             pd.DataFrame: 最終処理後のデータ
         """
-        return stock_fin.drop([self.disclosed_time_col], axis=1).drop_duplicates(keep='last').reset_index(drop=True) # データフレームの最終処理
-
-    # --------------------------------------------------------------------------
-    #  以下、ヘルパーメソッド
-    # --------------------------------------------------------------------------
-
-    def _column_name_getter(self, yaml_info: list, name: str) -> str:
-        """
-        指定したカラム名の変換後の名称を取得。
-
-        Args:
-            name (str): 変換前のカラム名
-
-        Returns:
-            str: 変換後のカラム名
-        """ 
-        return yaml_utils.column_name_getter(yaml_info, {'name': name}, 'fixed_name')
+        return stock_fin.drop([self.cols['時刻']], axis=1).drop_duplicates(keep='last').reset_index(drop=True) # データフレームの最終処理
 
 
 if __name__ == '__main__':
