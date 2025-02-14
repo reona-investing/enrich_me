@@ -4,7 +4,7 @@ from models import MLDataset
 from utils.paths import Paths
 
 async def main():
-    dataset_folder_path = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125'
+    dataset_folder_path = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250125'
     dataset = MLDataset(dataset_folder_path)
     lh = LoginHandler()
     tpm = TradePossibilityManager(lh)

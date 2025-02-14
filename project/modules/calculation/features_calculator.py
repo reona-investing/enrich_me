@@ -62,6 +62,8 @@ class FeaturesCalculator:
                                                                                 add_rank=add_rank)
             else:
                 features_price_df = pd.DataFrame(index=new_sector_price.index)
+            print(features_indices_df.tail(48))
+            print(features_price_df.tail(48))
             features_df = FeaturesCalculator.merge_features(features_indices_df, features_price_df)
             features_df = features_df.sort_index()
         elif adopts_features_price:
@@ -101,7 +103,6 @@ class FeaturesCalculator:
             #commodity_typeがJPYのとき、コモディティのリターンを円建てで補正
             should_convert_to_JPY = (row['Group'] == 'commodity') & (commodity_type == 'JPY')
             if should_convert_to_JPY:
-                print()
                 USDJPY_path = features_to_scrape_df.loc[features_to_scrape_df['Name']=='USDJPY', 'Path'].values[0]
                 a_feature_df = FeaturesCalculator._calculate_1day_return_commodity_JPY(row, USDJPY_path=USDJPY_path)
             else:
@@ -253,15 +254,8 @@ class FeaturesCalculator:
         # EPSファクター
         if adopt_eps_factor:
             eps_df = stock_dfs_dict['fin'][[
-                'Code', 'Date', 'EarningsPerShare', 'ForecastEarningsPerShare', 'NextYearForecastEarningsPerShare',
+                'Code', 'Date', 'ForecastEPS',
                 ]].copy()
-            eps_df.loc[
-                (eps_df['ForecastEarningsPerShare'].notnull()) & (eps_df['NextYearForecastEarningsPerShare'].notnull()), 
-                'NextYearForecastEarningsPerShare'] = 0
-            eps_df[['ForecastEarningsPerShare', 'NextYearForecastEarningsPerShare']] = \
-                eps_df[['ForecastEarningsPerShare', 'NextYearForecastEarningsPerShare']].fillna(0)
-            eps_df['ForecastEPS'] = eps_df['ForecastEarningsPerShare'].values + eps_df['NextYearForecastEarningsPerShare'].values
-            eps_df = eps_df[['Code', 'Date', 'ForecastEPS']]
             eps_df = pd.merge(stock_dfs_dict['price'][['Date', 'Code']], eps_df, how='outer', on=['Date', 'Code'])
             eps_df = pd.merge(new_sector_list[['Code', 'Sector']], eps_df, on='Code', how='right')
             eps_df['ForecastEPS'] = eps_df.groupby('Code')['ForecastEPS'].ffill()
@@ -302,7 +296,6 @@ class FeaturesCalculator:
 if __name__ == '__main__':
 
     from facades.stock_acquisition_facade import StockAcquisitionFacade
-    from IPython.display import display
 
     '''パス類'''
     NEW_SECTOR_LIST_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' # 別でファイルを作っておく
@@ -325,14 +318,12 @@ if __name__ == '__main__':
                                                         names_setting=None,
                                                         currencies_type='relative',
                                                         adopt_1d_return=True, 
-                                                        mom_duration=[],
-                                                        vola_duration=[],
-                                                        adopt_size_factor=False,
-                                                        adopt_eps_factor=False,
-                                                        adopt_sector_categorical=False,
-                                                        add_rank=False,
+                                                        mom_duration=[5, 21],
+                                                        vola_duration=[5, 21],
+                                                        adopt_size_factor=True,
+                                                        adopt_eps_factor=True,
+                                                        adopt_sector_categorical=True,
+                                                        add_rank=True,
                                                         )
     from datetime import datetime
-    #display(features_df[features_df.index.get_level_values(0)>=datetime(2022,1,1)].iloc[:-48])
-
-    print(features_df.loc[features_df.index.get_level_values(1)=='ITインフラ', :])
+    print(features_df[features_df.index.get_level_values(0)>=datetime(2022,1,1)].tail(48))

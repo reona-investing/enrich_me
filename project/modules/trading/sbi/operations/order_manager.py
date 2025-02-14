@@ -243,6 +243,7 @@ class OrderManager:
         """
         try:
             await self.page_navigator.order_inquiry()
+            await self.browser_utils.wait(1)
             html_content = await self.browser_utils.get_html_content()
             html = soup(html_content, "html.parser")
             table = html.find("th", string=re.compile("注文状況"))
@@ -431,6 +432,7 @@ class OrderManager:
 
     async def _extract_margin_list(self):
         await self.page_navigator.credit_position()
+        await self.browser_utils.wait(1)
         html_content = await self.browser_utils.get_html_content()
         self.margin_list_df = self._parse_margin_table(html_content)
     
