@@ -9,6 +9,7 @@ import unicodedata
 import pandas as pd
 from bs4 import BeautifulSoup as soup
 import traceback
+import asyncio
 
 # ヘルパー関数の定義
 def _get_selector(order_param_dicts: dict, category: str, key: str) -> str:
@@ -192,18 +193,34 @@ class OrderManager:
         await self._input_trade_pass()
         await self.browser_utils.click_element('input[id="shouryaku"]', is_css = True)
         await self.browser_utils.click_element('img[title="注文発注"]', is_css = True)
-        
-        order_index = self._append_trade_params_to_orders(trade_params)
-        html_content = await self.browser_utils.get_html_content()
+
         text_to_show = f'{trade_params.symbol_code} {trade_params.trade_type} {trade_params.unit}株:'
-        if "ご注文を受け付けました。" in html_content:
-            print(f"{text_to_show} 注文が成功しました")
-            await self._edit_position_manager_for_order(order_index)
-            return True
-        else:
-            print(f"{text_to_show} 注文が失敗しました")
-            self.error_tickers.append(trade_params.symbol_code)
-            return False
+        order_index = self._append_trade_params_to_orders(trade_params)
+        success_text = "ご注文を受け付けました。"
+        error_selector = '#MAINAREA02_780 > form > table:nth-child(22) > tbody > tr > td > b > p'
+
+        try:
+            # 両方の要素を同時に待機する（最大10秒）
+            success = None
+            error = None
+            while True:
+                success = self.browser_utils.wait_for(success_text, timeout=1)
+                print(success)
+                error = self.browser_utils.wait_for(error_selector, is_css=True, timeout=1)
+                print(error)
+                
+                if success:
+                    print(f"{text_to_show} 注文が成功しました")
+                    await self._edit_position_manager_for_order(order_index)
+                    return True
+
+                if error:
+                    print(f"{text_to_show} 注文が失敗しました")
+                    self.error_tickers.append(trade_params.symbol_code)
+                    return False             
+        except Exception as e:
+            print(f"エラーが発生しました: {e}")
+        
 
     async def _edit_position_manager_for_order(self, order_index: int) -> None:
             order_id = await self._get_element('注文番号') 
@@ -242,7 +259,8 @@ class OrderManager:
         """
         try:
             await self.page_navigator.order_inquiry()
-            await self.browser_utils.wait(1)
+            await self.browser_utils.wait_for('未約定注文一覧', timeout=60)
+            await self.browser_utils.wait(2)
             html_content = await self.browser_utils.get_html_content()
             html = soup(html_content, "html.parser")
             table = html.find("th", string=re.compile("注文状況"))
@@ -266,6 +284,8 @@ class OrderManager:
             self.order_list_df["注文番号"] = self.order_list_df["注文番号"].astype(int)
             self.order_list_df["コード"] = self.order_list_df["コード"].astype(str)
             self.order_list_df = self.order_list_df[self.order_list_df["注文状況"] != "取消中"].reset_index(drop=True)
+            print('キャンセル対象注文')
+            print(self.order_list_df)
         except Exception as e:
             print(f"注文リストの取得中にエラーが発生しました: {e}")
             
@@ -306,18 +326,24 @@ class OrderManager:
 
 
     async def _cancel_single_order(self) -> None:
+        await self.browser_utils.wait_for('取引パスワード')
         await self._input_trade_pass()
         await self.browser_utils.click_element('input[value=注文取消]', is_css = True)
+        await self.browser_utils.wait_for('ご注文を受け付けました。')
+        await self.browser_utils.wait(1)
         await self._handle_cancel_response()
 
     async def _handle_cancel_response(self) -> None:
         html_content = await self.browser_utils.get_html_content()
-
-        code = await self._get_element("銘柄コード")
-        code = str(code)
-        unit = await self._get_element("株数")
+        html = soup(html_content, "html.parser")
+        code_element = html.find("b", string=re.compile("銘柄コード"))
+        code = code_element.find_parent("th").find_next_sibling("td").get_text(strip=True)
+        unit_element = html.find("b", string=re.compile("株数"))
+        unit = unit_element.find_parent("th").find_next_sibling("td").get_text(strip=True)
         unit = int(unit[:-1].replace(',', ''))
-        order_type = await self._get_element("取引")
+        order_type_element = html.find("b", string=re.compile("取引"))
+        order_type = order_type_element.find_parent("th").find_next_sibling("td").get_text(strip=True)
+        
 
         if "ご注文を受け付けました。" in html_content:
             print(f"{code} {unit}株 {order_type}：注文取消が完了しました。")
@@ -331,8 +357,13 @@ class OrderManager:
         return re.sub(r'\s+', '', element.text)
 
     async def _edit_position_manager_for_cancel(self) -> None:
-        order_id = await self._get_element("注文番号")
-        order_type = await self._get_element("取引")
+        html_content = await self.browser_utils.get_html_content()
+        html = soup(html_content, "html.parser")
+        order_id_element = html.find("b", string=re.compile("注文番号"))
+        order_id = order_id_element.find_parent("th").find_next_sibling("td").get_text(strip=True)
+        order_type_element = html.find("b", string=re.compile("取引"))
+        order_type = order_type_element.find_parent("th").find_next_sibling("td").get_text(strip=True)
+
         if any(order in order_type for order in ["信用新規買", "信用新規売", "現物買"]):
             status_type_to_update = 'order_status'
         if any(order in order_type for order in ["信用返済買", "信用返済売", "現物売"]):

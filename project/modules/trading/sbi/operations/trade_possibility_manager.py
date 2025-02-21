@@ -26,11 +26,10 @@ class TradePossibilityManager:
         # 取引可能性情報ページに遷移
         await self.page_navigator.domestic_top()
         await self.browser_utils.wait(1)
-        await self.browser_utils.wait_and_click('#navi01P > ul > li:nth-child(3) > a', is_css = False)
-        await self.browser_utils.wait_and_click('#rightNav\\ mt-8 > div:nth-child(1) > ul > li:nth-child(5) > a', is_css = False)
-        await self.browser_utils.wait(5)
+        await self.browser_utils.wait_and_click('一般信用売り銘柄一覧', is_css = False, timeout=60)
 
         # ダウンロード処理
+        await self.browser_utils.wait_for('#csvDownload', is_css = True)
         await self.browser_utils.set_download_path(Path(self.download_path))
         await self.browser_utils.wait_and_click('#csvDownload', is_css = True)
         await self.browser_utils.wait(10)
@@ -64,7 +63,12 @@ class TradePossibilityManager:
         Returns:
             Path: 最新のCSVファイルパス
         """
-        files = list(Path(self.download_path).glob("*.csv"))
+        for i in range(10):
+            files = list(Path(self.download_path).glob("*.csv"))
+            if files:
+                break
+            self.browser_utils.wait(1)
+            
         if not files:
             raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
         return max(files, key=os.path.getmtime)

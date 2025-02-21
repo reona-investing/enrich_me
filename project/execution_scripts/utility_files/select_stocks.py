@@ -15,7 +15,7 @@ async def main():
                                 None,
                                 sector_dif_csv
                                 )
-    long_df, short_df, pred_sector = await stock_selector.select(margin_power=61390000)
+    long_df, short_df, pred_sector = await stock_selector.select(margin_power=60000000)
     om = OrderManager(lh)
     nom = NewOrderMaker(long_df, short_df, om)
     failed_orders = await nom.run_new_orders()

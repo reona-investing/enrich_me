@@ -27,7 +27,7 @@ class LoginHandler:
         login = await self.session.tab.wait_for('input[name="ACT_login"]')
         await login.click()
 
-        await self.session.tab.wait_for(text='ログイン履歴')
+        await self.session.tab.wait_for(text='ログイン履歴', timeout=60)
         print('yeah!')
 
 if __name__ == '__main__':

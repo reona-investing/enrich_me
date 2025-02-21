@@ -111,6 +111,7 @@ class PageNavigator:
         """
         await self.trade()
         await self._click_and_wait('注文照会')
+        await self.browser_utils.wait_for('未約定注文一覧')
 
 
     async def order_cancel(self):
@@ -119,6 +120,7 @@ class PageNavigator:
         """
         await self.order_inquiry()
         await self._click_and_wait('取消')
+        await self.browser_utils.wait_for('注文取消')
 
 
     async def fetch_past_margin_trades_csv(self, mydate: datetime):

@@ -89,7 +89,7 @@ class BrowserUtils:
         await self.tab.wait(0.5)
 
 
-    async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 10):
+    async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
         """
         指定した要素の表示を待ってからクリックします。
         Args:
@@ -106,7 +106,7 @@ class BrowserUtils:
             element = await self.tab.wait_for(text=selector, timeout=timeout)
         return element
 
-    async def wait_and_click(self, selector: str, is_css: bool = False, timeout: int | float | None = 10):
+    async def wait_and_click(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
         """
         指定した要素の表示を待ってからクリックします。
         Args:

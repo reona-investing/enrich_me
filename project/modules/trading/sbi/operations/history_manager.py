@@ -31,6 +31,7 @@ class HistoryManager:
         self.today_margin_trades_df: 取引履歴データ
         """
         await self.page_navigator.domestic_margin()
+        await self.browser_utils.wait(3)
 
         table_elements = []
         
