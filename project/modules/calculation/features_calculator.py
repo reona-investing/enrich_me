@@ -62,8 +62,7 @@ class FeaturesCalculator:
                                                                                 add_rank=add_rank)
             else:
                 features_price_df = pd.DataFrame(index=new_sector_price.index)
-            print(features_indices_df.tail(48))
-            print(features_price_df.tail(48))
+
             features_df = FeaturesCalculator.merge_features(features_indices_df, features_price_df)
             features_df = features_df.sort_index()
         elif adopts_features_price:

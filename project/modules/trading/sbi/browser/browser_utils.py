@@ -37,9 +37,9 @@ class BrowserUtils:
         """
         await self._set_tab()
         if is_css:
-            element = await self.tab.select(selector_text)
+            element = await self.tab.wait_for(selector = selector_text)
         else:
-            element = await self.tab.find(selector_text)
+            element = await self.tab.wait_for(text = selector_text)
         return element
 
     async def select_all(self, css_selector: str):

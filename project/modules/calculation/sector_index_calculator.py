@@ -13,11 +13,11 @@ class SectorIndexCalculator:
     def _get_column_names():
         if SectorIndexCalculator._col_names is None:
             fin_col_configs = ColumnConfigsGetter(Paths.STOCK_FIN_COLUMNS_YAML)
-            fin_cols = {x: fin_col_configs.get_column_name(x) for x in [y['key'] for y in fin_col_configs.column_config_info]}
+            fin_cols = fin_col_configs.get_all_columns_name_asdict()
             price_col_configs = ColumnConfigsGetter(Paths.STOCK_PRICE_COLUMNS_YAML)
-            price_cols = {x: price_col_configs.get_column_name(x) for x in [y['key'] for y in price_col_configs.column_config_info]}
+            price_cols = price_col_configs.get_all_columns_name_asdict()
             sector_col_configs = ColumnConfigsGetter(Paths.SECTOR_INDEX_COLUMNS_YAML)
-            sector_cols = {x: sector_col_configs.get_column_name(x) for x in [y['key'] for y in sector_col_configs.column_config_info]}
+            sector_cols = sector_col_configs.get_all_columns_name_asdict()
             
             return fin_cols, price_cols, sector_cols
 

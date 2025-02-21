@@ -22,7 +22,18 @@ class LoginHandler:
         
         password = await self.session.tab.wait_for('input[name="user_password"]')
         await password.send_keys(os.getenv('SBI_LOGINPASS'))
-
+        
+        await self.session.tab.wait(1)
         login = await self.session.tab.wait_for('input[name="ACT_login"]')
         await login.click()
 
+        await self.session.tab.wait_for(text='ログイン履歴')
+        print('yeah!')
+
+if __name__ == '__main__':
+    async def main():
+        lh = LoginHandler()
+        await lh.sign_in()
+    
+    import asyncio
+    asyncio.run(main())

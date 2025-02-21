@@ -1,8 +1,9 @@
 import pandas as pd
 import logging
 import re
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Iterable
 from utils.paths import Paths
+from utils.yaml_utils import ColumnConfigsGetter
 from utils.metadata import FeatureMetadata
 from calculation import SectorIndexCalculator
 from utils import yaml_utils
@@ -321,27 +322,23 @@ class PriceFeatureCalculator:
       - ボラティリティ計算には rolling(std) を用いる。
     """
 
-    def __init__(self, yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML, key_name: str = 'original_columns',
-                 date_col: str = 'Date', code_col: str = 'Code', price_col: str = 'Close'):
+    def __init__(self, is_sector: bool, cols_yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML):
         """
         コンストラクタ。
 
         Args:
-            yaml_path (str): 列の設定を記録したYAMLファイル。
-            date_col (str): 日付列の名称。デフォルトは "Date"。
-            code_col (str): 日付列の名称。デフォルトは "Code"。
-            price_col (str): 価格列の名称。デフォルトは "Close"。
+            cols_yaml_path (str): 列の設定を記録したYAMLファイル。
         """
-        _price_yaml = yaml_utils.including_columns_loader(yaml_path, key_name)
-        self.date_col = yaml_utils.column_name_getter(_price_yaml, {'name': date_col}, 'fixed_name')
-        self.code_col = yaml_utils.column_name_getter(_price_yaml, {'name': code_col}, 'fixed_name')
-        self.price_col = yaml_utils.column_name_getter(_price_yaml, {'name': price_col}, 'fixed_name')
+        ccg = ColumnConfigsGetter(cols_yaml_path)
+        self.col = ccg.get_all_columns_name_asdict()
+        self.group_col = None
+        self.is_sector = is_sector
 
     def calculate_price_features(
         self,
         price_df: pd.DataFrame,
-        return_duration: Optional[List[int]] = None,
-        vola_duration: Optional[List[int]] = None,
+        return_duration: Optional[Iterable[int]] = (1, 5, 21),
+        vola_duration: Optional[Iterable[int]] = (5, 21),
     ) -> pd.DataFrame:
         """
         株価時系列に対してリターンやボラティリティを一括で計算する。
@@ -349,7 +346,7 @@ class PriceFeatureCalculator:
         Args:
             price_df (pd.DataFrame):
                 個別銘柄の時系列DataFrame。
-                インデックス・カラム構成は自由だが、少なくとも self.date_col と self.price_col が含まれる。
+                インデックス・カラム構成は自由だが、少なくとも self.col['日付'] と self.col['終値'] が含まれる。
             return_duration (List[int] or None):
                 リターンを算出する日数のリスト。None の場合はリターンを計算しない。デフォルトは[1, 5, 21]。
             vola_duration (List[int] or None):
@@ -361,17 +358,17 @@ class PriceFeatureCalculator:
                 インデックス・行数は入力に準じる。
         """
         # デフォルトリストの対応（可変オブジェクトを避けるため）
-        if return_duration is None:
-            return_duration = [1, 5, 21]
-        if vola_duration is None:
-            vola_duration = [5, 21]
 
         # 必要であれば日付でソート
         price_df = price_df.reset_index(drop=False)
-        price_df = price_df.sort_values(by=self.date_col).copy()
+        price_df = price_df.sort_values(by=self.col['日付']).copy()
 
         # 今回の出力DF: Date, Code のみ初期列として持たせる
-        df = price_df[[self.date_col, self.code_col]].copy()
+        if self.is_sector:
+            self.group_col = self.col['セクター']
+        else:
+            self.group_col = self.col['銘柄コード']
+        df = price_df[[self.col['日付'], self.group_col]].copy()
 
         # リターン計算をヘルパー関数へ切り出し
         df = self._calculate_returns(
@@ -414,7 +411,7 @@ class PriceFeatureCalculator:
         return_duration_sorted = sorted(return_duration)
         for d in return_duration_sorted:
             df[f"{d}d_return"] = (
-                price_df.groupby(self.code_col)[self.price_col]
+                price_df.groupby(self.group_col)[self.col['終値']]
                 .pct_change(d, fill_method=None)
                 .values
             )
@@ -452,7 +449,7 @@ class PriceFeatureCalculator:
         else:
             # 1日リターンだけ仮で計算
             df["_temp_1d_return_for_vola"] = (
-                price_df.groupby(self.code_col)[self.price_col]
+                price_df.groupby(self.group_col)[self.col['終値']]
                 .pct_change(1, fill_method=None)
                 .values
             )
@@ -460,9 +457,8 @@ class PriceFeatureCalculator:
 
         for v in vola_duration:
             df[f"{v}d_vola"] = (
-                df.groupby(self.code_col)[base_return_col]
+                df.groupby(self.group_col)[base_return_col]
                   .rolling(v)
-
                   .std()
                   .values
             )
@@ -487,7 +483,8 @@ class FinancialFeatureCalculator:
       - 時系列欠損などがある場合は適宜 ffill/bfill を行うなど運用方針に合わせる。
     """
 
-    def __init__(self, 
+    def __init__(self,
+                 is_sector: bool,
                  fin_yaml_path: str = Paths.STOCK_FIN_COLUMNS_YAML,
                  sector_yaml_path: str = Paths.SECTOR_INDEX_COLUMNS_YAML):
         """
@@ -496,13 +493,11 @@ class FinancialFeatureCalculator:
         Args:
             yaml_path (str): カラム情報を格納したyamlファイルのパス。
         """
-        _fin_yaml = yaml_utils.including_columns_loader(fin_yaml_path, 'original_columns') + \
-                    yaml_utils.including_columns_loader(fin_yaml_path, 'calculated_columns')
-        _sector_yaml = yaml_utils.including_columns_loader(sector_yaml_path, 'calculated_columns')
-        self.date_col = yaml_utils.column_name_getter(_fin_yaml, {'name': 'DisclosedDate'}, 'fixed_name')
-        self.code_col = yaml_utils.column_name_getter(_fin_yaml, {'name': 'LocalCode'}, 'fixed_name')
-        self.marketcap_col = yaml_utils.column_name_getter(_sector_yaml, {'name': 'MARKET_CAP_CLOSE'}, 'fixed_name')
-        self.eps_col = yaml_utils.column_name_getter(_fin_yaml, {'name': 'FORECAST_EPS'}, 'fixed_name')
+        _fin_ccg = ColumnConfigsGetter(fin_yaml_path)
+        _sector_ccg = ColumnConfigsGetter(sector_yaml_path)
+        self.fin_col = _fin_ccg.get_all_columns_name_asdict()
+        self.sector_col = _sector_ccg.get_all_columns_name_asdict()
+        self.is_sector = is_sector
 
     def calculate_financial_features(self, fin_df: pd.DataFrame, price_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -522,6 +517,11 @@ class FinancialFeatureCalculator:
                 銘柄×日次で EPS や 時価総額 を持つDataFrame。
                 Indexやカラムは自由だが、"Date" と "Code" を含む形に整形するのが望ましい。
         """
+        if self.is_sector:
+            self.group_col = self.fin_col['セクター']
+        else:
+            self.group_col = self.fin_col['銘柄コード']
+
         # 1) EPS列を合算し、ForecastEPSとして一列にまとめる
         eps_df = self._combine_forecast_eps(fin_df)
         # 2) ForecastEPSを銘柄・日付順に並べて ffill
@@ -545,10 +545,10 @@ class FinancialFeatureCalculator:
             fin_df (pd.DataFrame): 財務データのDataFrame。
 
         Returns:
-            pd.DataFrame: 合算後のDataFrame（self.code_col, self.date_col, self.eps_col 列を含む）。
+            pd.DataFrame: 合算後のDataFrame（self.group_col, self.col['日付'], self.fin_col['予想EPS'] 列を含む）。
         """
         # 利用する列だけ残す (コード, 日付, ForecastEPS)
-        return fin_df[[self.code_col, self.date_col, self.eps_col]]
+        return fin_df[[self.group_col, self.fin_col['日付'], self.fin_col['予想EPS']]]
 
     def _ffill_forecast_eps(self, eps_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -560,8 +560,8 @@ class FinancialFeatureCalculator:
         Returns:
             pd.DataFrame: ffill処理後の eps_df。
         """
-        eps_df = eps_df.sort_values(by=[self.code_col, self.date_col])
-        eps_df[self.eps_col] = eps_df.groupby(self.code_col)[self.eps_col].ffill()
+        eps_df = eps_df.sort_values(by=[self.group_col, self.fin_col['日付']])
+        eps_df[self.fin_col['予想EPS']] = eps_df.groupby(self.group_col)[self.fin_col['予想EPS']].ffill()
 
         return eps_df
 
@@ -578,17 +578,19 @@ class FinancialFeatureCalculator:
             pd.DataFrame:
                 date_col, code_col, MarketCapCloseを含むDataFrame。
         """
-        price_df_with_cap = SectorIndexCalculator.calc_marketcap(price_df, fin_df)
+        if self.is_sector:
+            price_df_with_cap = price_df
+        else:
+            price_df_with_cap = SectorIndexCalculator.calc_marketcap(price_df, fin_df)
 
         # marketcap_col が計算された場合、列名を固定 (MarketCapClose) に変更
-        if self.marketcap_col in price_df_with_cap.columns:
-            market_cap_df = price_df_with_cap[[self.date_col, self.code_col, self.marketcap_col]].copy()
-            market_cap_df.rename(columns={self.marketcap_col: "MarketCapClose"}, inplace=True)
+        if self.sector_col['終値時価総額'] in price_df_with_cap.columns:
+            market_cap_df = price_df_with_cap[[self.fin_col['日付'], self.group_col, self.sector_col['終値時価総額']]].copy()
         else:
             # 想定外の場合、空のDataFrameを返すかエラーを投げるなど運用次第
-            market_cap_df = pd.DataFrame(columns=[self.date_col, self.code_col, "MarketCapClose"])
+            market_cap_df = pd.DataFrame(columns=[self.fin_col['日付'], self.group_col, "MarketCapClose"])
 
-        return market_cap_df.sort_values(by=[self.date_col, self.code_col])
+        return market_cap_df.sort_values(by=[self.fin_col['日付'], self.group_col])
 
     def _merge_and_fill(self, market_cap_df: pd.DataFrame, eps_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -605,15 +607,15 @@ class FinancialFeatureCalculator:
         """
         merged = pd.merge(
             market_cap_df, eps_df,
-            on=[self.date_col, self.code_col],
+            on=[self.fin_col['日付'], self.group_col],
             how="left"
-        ).sort_values(by=[self.date_col, self.code_col])
+        ).sort_values(by=[self.fin_col['日付'], self.group_col])
 
         # 欠損補完
-        merged["ForecastEPS"] = merged.groupby(self.code_col)["ForecastEPS"].ffill()
-        merged["ForecastEPS"] = merged.groupby(self.code_col)["ForecastEPS"].bfill()
-        if "MarketCapClose" in merged.columns:
-            merged["MarketCapClose"] = merged.groupby(self.code_col)["MarketCapClose"].ffill()
+        merged[self.fin_col['予想EPS']] = merged.groupby(self.group_col)[self.fin_col['予想EPS']].ffill()
+        merged[self.fin_col['予想EPS']] = merged.groupby(self.group_col)[self.fin_col['予想EPS']].bfill()
+        if self.sector_col['終値時価総額'] in merged.columns:
+            merged[self.sector_col['終値時価総額']] = merged.groupby(self.group_col)[self.sector_col['終値時価総額']].ffill()
 
         return merged
 
@@ -659,7 +661,7 @@ class FeaturesMerger:
         Args:
             df_list (List[pd.DataFrame]): 
                 結合対象となるDataFrameのリスト。
-                すべてに self.date_col が存在する必要がある。
+                すべてに self.col['日付'] が存在する必要がある。
 
         Returns:
             pd.DataFrame:
@@ -699,7 +701,7 @@ class FeaturesMerger:
         Args:
             df_list (List[pd.DataFrame]):
                 結合対象のDataFrameリスト。
-                いずれも self.date_col を持つ必要がある。
+                いずれも self.col['日付'] を持つ必要がある。
                 Code列は存在してもしなくても良い。
 
         Returns:
@@ -831,50 +833,53 @@ class FeaturesMerger:
         return df
 
 
-
-# セクターを設定しない場合の使用方法
-if __name__ == '__main__':
-    from utils.paths import Paths
-    from datetime import datetime
-    
-    setting_df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
+def main(price_df: pd.DataFrame, fin_df: pd.DataFrame, is_sector: bool, code_col: str, 
+         price_yaml_path: str, fin_yaml_path: str,
+         return_duration: Iterable[int] = (1, 5, 21),
+         vola_duration: Iterable[int] = (5, 21),
+         index_config_path: str = Paths.FEATURES_TO_SCRAPE_CSV,
+         ):
+    setting_df = pd.read_csv(index_config_path)
     ifc = IndexFeatureCalculator()
+    
     for _, row in setting_df.iterrows():
         fmd = FeatureMetadata(row['Name'], row['Group'], f"{Paths.SCRAPED_DATA_FOLDER}/{row['Group']}/{row['Path']}", row['URL'], row['is_adopted'])
         ifc.calculate_return(feature_metadata=fmd, days=1)
     index_df = ifc.finalize()
 
+    pfc = PriceFeatureCalculator(is_sector=is_sector, cols_yaml_path=price_yaml_path)
+    return_df = pfc.calculate_price_features(price_df, return_duration=return_duration, vola_duration=vola_duration)
+
+    ffc = FinancialFeatureCalculator(is_sector=is_sector, fin_yaml_path=fin_yaml_path)
+    financial_df = ffc.calculate_financial_features(fin_df, price_df)
+    
+    fm = FeaturesMerger(code_col=code_col)
+    merged_df = fm.merge_on_date_code([index_df, return_df, financial_df])
+
+    return merged_df
+
+# セクターを設定しない場合の使用方法
+if __name__ == '__main__':
     from facades.stock_acquisition_facade import StockAcquisitionFacade
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
     stock_dfs = acq.get_stock_data_dict()
-    pfc = PriceFeatureCalculator()
-    return_df = pfc.calculate_price_features(stock_dfs['price'])
-    
-    ffc = FinancialFeatureCalculator()
-    financial_df = ffc.calculate_financial_features(stock_dfs['fin'], stock_dfs['price'])
-    
-    fm = FeaturesMerger()
-    merged_df = fm.merge_on_date_code([index_df, return_df, financial_df])
+
+    merged_df = main(stock_dfs['price'], stock_dfs['fin'], is_sector=False, code_col='Code', 
+                     price_yaml_path=Paths.STOCK_PRICE_COLUMNS_YAML, fin_yaml_path=Paths.STOCK_FIN_COLUMNS_YAML)
+
     print(merged_df)
 
 # セクターを設定する場合の使用方法
 if __name__ == '__main__':
-    from utils.paths import Paths
-    from datetime import datetime
-    
-    setting_df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
-    ifc = IndexFeatureCalculator()
-    for _, row in setting_df.iterrows():
-        fmd = FeatureMetadata(row['Name'], row['Group'], f"{Paths.SCRAPED_DATA_FOLDER}/{row['Group']}/{row['Path']}", row['URL'], row['is_adopted'])
-        ifc.calculate_return(feature_metadata=fmd, days=1)
-    index_df = ifc.finalize()
+    from facades.stock_acquisition_facade import StockAcquisitionFacade
+    acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
+    stock_dfs = acq.get_stock_data_dict()
 
     sector_index_df = pd.read_parquet(f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet')
-    pfc = PriceFeatureCalculator(yaml_path=Paths.SECTOR_INDEX_COLUMNS_YAML, key_name='calculated_columns', date_col='DATE', code_col='SECTOR', price_col='CLOSE')
-    return_df = pfc.calculate_price_features(sector_index_df)
-    
     financial_df = pd.read_parquet(f'{Paths.SECTOR_FIN_FOLDER}/New48sectors_fin.parquet').reset_index(drop=False)
-       
-    fm = FeaturesMerger(code_col='Sector')
-    merged_df = fm.merge_on_date_code([index_df, return_df, financial_df])
+
+
+    merged_df = main(sector_index_df, financial_df, is_sector=True, code_col='Sector', 
+                     price_yaml_path=Paths.SECTOR_INDEX_COLUMNS_YAML, fin_yaml_path=Paths.SECTOR_FIN_COLUMNS_YAML)
+
     print(merged_df)

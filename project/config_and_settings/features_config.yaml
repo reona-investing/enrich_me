@@ -1,0 +1,938 @@
+features_config:
+  currency:
+    - name: USDJPY
+      path: raw_USDJPY_price.parquet
+      url: currencies/usd-jpy
+      is_adopted: true
+
+    - name: EURJPY
+      path: raw_EURJPY_price.parquet
+      url: currencies/eur-jpy
+      is_adopted: true
+
+    - name: AUDJPY
+      path: raw_AUDJPY_price.parquet
+      url: currencies/aud-jpy
+      is_adopted: true
+
+    - name: EURUSD
+      path: raw_EURUSD_price.parquet
+      url: currencies/eur-usd
+      is_adopted: true
+
+    - name: AUDUSD
+      path: raw_AUDUSD_price.parquet
+      url: currencies/aud-usd
+      is_adopted: true
+
+    - name: EURAUD
+      path: raw_EURAUD_price.parquet
+      url: currencies/eur-aud
+      is_adopted: true
+
+  bond:
+    - name: USbond10
+      path: raw_USbond10_price.parquet
+      url: rates-bonds/u.s.-10-year-bond-yield
+      is_adopted: true
+
+    - name: USbond2
+      path: raw_USbond2_price.parquet
+      url: rates-bonds/u.s.-2-year-bond-yield
+      is_adopted: true
+
+    - name: JPbond10
+      path: raw_JPbond10_price.parquet
+      url: rates-bonds/japan-10-year-bond-yield
+      is_adopted: true
+
+    - name: JPbond2
+      path: raw_JPbond2_price.parquet
+      url: rates-bonds/japan-2-year-bond-yield
+      is_adopted: true
+
+    - name: GEbond10
+      path: raw_GEbond10_price.parquet
+      url: rates-bonds/germany-10-year-bond-yield
+      is_adopted: false
+
+    - name: GEbond2
+      path: raw_GEbond2_price.parquet
+      url: rates-bonds/germany-2-year-bond-yield
+      is_adopted: false
+
+  stockindex:
+    - name: TOPIX
+      path: raw_topix_price.parquet
+      url: indices/topix
+      is_adopted: true
+
+    - name: DJUS
+      path: raw_DJUS_price.parquet
+      url: indices/us-30
+      is_adopted: true
+
+    - name: DAX
+      path: raw_GEDAX_price.parquet
+      url: indices/germany-30
+      is_adopted: true
+
+    - name: MSCIEmerging
+      path: raw_MSCIEmerging_price.parquet
+      url: indices/msci-emerging-markets
+      is_adopted: true
+
+    - name: N225
+      path: raw_N225_price.parquet
+      url: indices/japan-ni225
+      is_adopted: false
+
+    - name: N225future
+      path: raw_N225future_price.parquet
+      url: indices/japan-225-futures
+      is_adopted: false
+
+    - name: VIX
+      path: raw_VIX_price.parquet
+      url: indices/volatility-s-p-500
+      is_adopted: true
+
+  commodity:
+    - name: AgricultureTR
+      path: raw_AgricultureTR_price.parquet
+      url: indices/bbg-agriculture-tr
+      is_adopted: true
+
+    - name: AluminumTR
+      path: raw_AluminumTR_price.parquet
+      url: indices/bbg-aluminum-tr
+      is_adopted: true
+
+    - name: BrentCrude
+      path: raw_BrentCrude_price.parquet
+      url: indices/bbg-brent-crude
+      is_adopted: true
+
+    - name: CocoaTR
+      path: raw_CocoaTR_price.parquet
+      url: indices/bbg-cocoa-tr
+      is_adopted: true
+
+    - name: CoffeeTR
+      path: raw_CoffeeTR_price.parquet
+      url: indices/bbg-coffee-tr
+      is_adopted: true
+
+    - name: CommodityTR
+      path: raw_CommodityTR_price.parquet
+      url: indices/bbg-commodity-tr
+      is_adopted: true
+
+    - name: CopperTR
+      path: raw_CopperTR_price.parquet
+      url: indices/bloomberg-copper-tr
+      is_adopted: false
+
+    - name: Corn
+      path: raw_Corn_price.parquet
+      url: indices/bloomberg-corn
+      is_adopted: true
+
+    - name: CottonTR
+      path: raw_CottonTR_price.parquet
+      url: indices/bbg-cotton-tr
+      is_adopted: true
+
+    - name: CopperTR
+      path: raw_CopperTR_price.parquet
+      url: indices/bloomberg-copper-tr
+      is_adopted: false
+
+    - name: EnergyTR
+      path: raw_EnergyTR_price.parquet
+      url: indices/bbg-energy-tr
+      is_adopted: true
+
+    - name: ExEnergyTR
+      path: raw_ExEnergyTR_price.parquet
+      url: indices/bbg-exenergy-tr
+      is_adopted: true
+
+    - name: FeederCattle
+      path: raw_CmdFeederCattle_price.parquet
+      url: commodities/feed-cattle
+      is_adopted: true
+
+    - name: GasOil
+      path: raw_CmdGasOil_price.parquet
+      url: commodities/london-gas-oil
+      is_adopted: true
+
+    - name: GrainsTR
+      path: raw_GrainsTR_price.parquet
+      url: indices/bbg-grains-tr
+      is_adopted: true
+
+    - name: IndustrialMetalsTR
+      path: raw_IndustrialMetalsTR_price.parquet
+      url: indices/bbg-industrial-metals-tr
+      is_adopted: true
+
+    - name: IronORE62
+      path: raw_CmdIronORE62_price.parquet
+      url: commodities/iron-ore-62-cfr-futures
+      is_adopted: true
+
+    - name: LeadTR
+      path: raw_LeadTR_price.parquet
+      url: indices/bbg-lead-tr
+      is_adopted: true
+
+    - name: LeanHogsTR
+      path: raw_LeanHogsTR_price.parquet
+      url: indices/bbg-lean-hogs-tr
+      is_adopted: true
+
+    - name: LiveCattleTR
+      path: raw_LiveCattleTR_price.parquet
+      url: indices/bbg-live-cattle-tr
+      is_adopted: true
+
+    - name: LivestockTR
+      path: raw_LivestockTR_price.parquet
+      url: indices/bbg-livestock-tr
+      is_adopted: true
+
+    - name: NaturalGasTR
+      path: raw_NaturalGasTR_price.parquet
+      url: indices/bbg-natural-gas-tr
+      is_adopted: true
+
+    - name: NickelTR
+      path: raw_NickelTR_price.parquet
+      url: indices/bbg-nickel-tr
+      is_adopted: true
+
+    - name: Nikkei_Rubber
+      path: raw_Nikkei_Rubber_price.parquet
+      url: indices/nk-tce-rb
+      is_adopted: true
+
+    - name: PlatinumTR
+      path: raw_PlatinumTR_price.parquet
+      url: indices/bbg-platinum-tr
+      is_adopted: true
+
+    - name: PreciousMetalsTR
+      path: raw_PreciousMetalsTR_price.parquet
+      url: indices/bbg-precious-metals-tr
+      is_adopted: true
+
+    - name: RoughRice
+      path: raw_CmdRoughRice_price.parquet
+      url: commodities/rough-rice
+      is_adopted: true
+
+    - name: SoftsTR
+      path: raw_SoftsTR_price.parquet
+      url: indices/bloomberg-softs-tr
+      is_adopted: true
+
+    - name: SoybeanOilTR
+      path: raw_SoybeanOilTR_price.parquet
+      url: indices/bbg-soybean-oil-tr
+      is_adopted: true
+
+    - name: SoybeansTR
+      path: raw_SoybeansTR_price.parquet
+      url: indices/bbg-soybeans-tr
+      is_adopted: true
+
+    - name: SugarTR
+      path: raw_SugarTR_price.parquet
+      url: indices/bbg-sugar-tr
+      is_adopted: true
+
+    - name: TinTR
+      path: raw_TinTR_price.parquet
+      url: indices/bbg-tin-tr
+      is_adopted: true
+
+    - name: UnleadedGasolineTR
+      path: raw_UnleadedGasolineTR_price.parquet
+      url: indices/bbg-unleaded-gasoline-tr
+      is_adopted: true
+
+    - name: Uranium
+      path: raw_Uranium_price.parquet
+      url: commodities/uranium-futures
+      is_adopted: false
+
+    - name: WheatTR
+      path: raw_WheatTR_price.parquet
+      url: indices/bbg-wheat-tr
+      is_adopted: true
+
+    - name: WTICrudeTR
+      path: raw_WTICrudeTR_price.parquet
+      url: indices/bbg-wti-crude-oil-tr
+      is_adopted: true
+
+    - name: ZincTR
+      path: raw_ZincTR_price.parquet
+      url: indices/bbg-zinc-tr
+      is_adopted: true
+
+
+
+  other_index:
+    - name: BalticDry
+      path: raw_BalticDry_price.parquet
+      url: indices/baltic-dry
+      is_adopted: true
+
+    - name: PHLX Semicondactor
+      path: raw_PHLXSemicondactor_price.parquet
+      url: indices/phlx-semiconductor
+      is_adopted: true
+
+    - name: JPREIT
+      path: raw_JPREIT_price.parquet
+      url: indices/topix-reit-market
+      is_adopted: true
+
+  dj_sectors:
+    - name: DJ_OilGas
+      path: raw_DJOilGas_price.parquet
+      url: indices/dj-oil---gas
+      is_adopted: true
+
+    - name: DJ_OilGasProducers
+      path: raw_DJOilGasProducers_price.parquet
+      url: indices/dj-oil---gas-producers
+      is_adopted: true
+
+    - name: DJ_ExplorationProduction
+      path: raw_DJExplorationProduction_price.parquet
+      url: indices/dj-exploration---production
+      is_adopted: true
+
+    - name: DJ_IntegratedOilGas
+      path: raw_DJIntegratedOilGas_price.parquet
+      url: indices/dj-integrated-oil---gas
+      is_adopted: true
+
+    - name: DJ_OilEquipServiceDistrib
+      path: raw_DJOilEquipServiceDistrib_price.parquet
+      url: indices/dj-oil-equipment,-services---dist
+      is_adopted: true
+
+    - name: DJ_OilEquipServices
+      path: raw_DJOilEquipServices_price.parquet
+      url: indices/dj-oil-equipment---services
+      is_adopted: true
+
+    - name: DJ_Pipelines
+      path: raw_DJPipelines_price.parquet
+      url: indices/dj-pipelines
+      is_adopted: true
+
+    - name: DJ_BasicMaterials
+      path: raw_DJBasicMaterials.parquet
+      url: indices/dj-basic-materials
+      is_adopted: true
+
+    - name: DJ_Chemicals
+      path: raw_DJChemicals_price.parquet
+      url: indices/dj-chemicals
+      is_adopted: true
+
+    - name: DJ_CommodityChem
+      path: raw_DJCommodityChem_price.parquet
+      url: indices/dj-commodity-chemicals
+      is_adopted: true
+
+    - name: DJ_SpecialtyChem
+      path: raw_DJSpecialtyChem_price.parquet
+      url: indices/dj-specialty-chemicals
+      is_adopted: true
+
+    - name: DJ_BasicResources
+      path: raw_DJBasicResource.parquet
+      url: indices/dj-basic-resources
+      is_adopted: true
+
+    - name: DJ_IndustrialMetals
+      path: raw_DJIndustrialMetals_price.parquet
+      url: indices/dj-industrial-metals---mining
+      is_adopted: true
+
+    - name: DJ_Alminum
+      path: raw_DJAluminum_price.parquet
+      url: indices/dj-aluminum
+      is_adopted: true
+
+    - name: DJ_NonferrousMetals
+      path: raw_DJNonferrousMetals_price.parquet
+      url: indices/dj-nonferrous-metals
+      is_adopted: true
+
+    - name: DJ_IronSteel
+      path: raw_DJIronSteel_price.parquet
+      url: indices/dj-iron---steel
+      is_adopted: true
+
+    - name: DJ_Mining
+      path: raw_DJMining_price.parquet
+      url: indices/dj-mining
+      is_adopted: true
+
+    - name: DJ_Industrials
+      path: raw_DJIndustrials_price.parquet
+      url: indices/dj-industrials
+      is_adopted: true
+
+    - name: DJ_ConstMaterials
+      path: raw_DJConstMaterials_price.parquet
+      url: indices/dj-construction---materials
+      is_adopted: true
+
+    - name: DJ_BuildingMaterialsFixtures
+      path: raw_DJBuildingMaterialsFixtures_price.parquet
+      url: indices/dj-building-materials---fixtures
+      is_adopted: true
+
+    - name: DJ_HeavyConstruction
+      path: raw_DJHeavyConstruction_price.parquet
+      url: indices/dj-heavy-construction
+      is_adopted: true
+
+    - name: DJ_IndustrialGoodsServices
+      path: raw_DJIndustrialGoodsServices_price.parquet
+      url: indices/dj-industrial-goods---srvcs
+      is_adopted: true
+
+    - name: DJ_AerospaceDefense
+      path: raw_DJAerospaceDefense_price.parquet
+      url: indices/dj-aerospace---defense
+      is_adopted: true
+
+    - name: DJ_Aerospace
+      path: raw_DJAerospace_price.parquet
+      url: indices/dj-aerospace
+      is_adopted: true
+
+    - name: DJ_Defense
+      path: raw_DJDefense_price.parquet
+      url: indices/dj-defense
+      is_adopted: true
+
+    - name: DJ_GeneralIndustrials
+      path: raw_DJGeneralIndustrials_price.parquet
+      url: indices/dj-general-industrials
+      is_adopted: true
+
+    - name: DJ_ContainersPackaging
+      path: raw_DJContainersPackaging_price.parquet
+      url: indices/dj-containers---packaging
+      is_adopted: true
+
+    - name: DJ_DiversifiedIndustrials
+      path: raw_DJDiversifiedIndustrials_price.parquet
+      url: indices/dj-diversified-industrials
+      is_adopted: true
+
+    - name: DJ_ElectronicElectrical
+      path: raw_DJElectronicElectrical_price.parquet
+      url: indices/dj-aerospace
+      is_adopted: true
+
+    - name: DJ_ElectricalCompEquip
+      path: raw_DJElectricalCompEquip_price.parquet
+      url: indices/dj-electrical-components---equip
+      is_adopted: true
+
+    - name: DJ_ElectronicEquip
+      path: raw_DJElectronicEquip_price.parquet
+      url: indices/dj-electronic-equipment
+      is_adopted: true
+
+    - name: DJ_IndustrialEngineering
+      path: raw_DJIndustrialEngineering_price.parquet
+      url: indices/dj-industrial-engineering
+      is_adopted: true
+
+    - name: DJ_CommercialVehiclesTrucks
+      path: raw_DJCommercialVehiclesTrucks_price.parquet
+      url: indices/dj-commercial-vehicles---trucks
+      is_adopted: true
+
+    - name: DJ_IndustrialMachinery
+      path: raw_DJIndustrialMachinery_price.parquet
+      url: indices/dj-industrial-machinery
+      is_adopted: true
+
+    - name: DJ_IndustrialTransportation
+      path: raw_DJIndustrialTransportation_price.parquet
+      url: indices/dj-industrial-transportation
+      is_adopted: true
+
+    - name: DJ_DeliveryServices
+      path: raw_DJDeliveryServices_price.parquet
+      url: indices/dj-delivery-services
+      is_adopted: true
+
+    - name: DJ_MarineTransport
+      path: raw_DJMarineTransport_price.parquet
+      url: indices/dj-marine-transportation
+      is_adopted: true
+
+    - name: DJ_Railroads
+      path: raw_DJRailroads_price.parquet
+      url: indices/dj-railroads
+      is_adopted: true
+
+    - name: DJ_TransportationServices
+      path: raw_DJTransportationServices_price.parquet
+      url: indices/dj-transportation-services
+      is_adopted: false
+
+    - name: DJ_Trucking
+      path: raw_DJTrucking_price.parquet
+      url: indices/dj-trucking
+      is_adopted: true
+
+    - name: DJ_SupportServices
+      path: raw_DJSupportServices_price.parquet
+      url: indices/dj-support-services
+      is_adopted: true
+
+    - name: DJ_BizSupportServices
+      path: raw_DJBizSupportServices_price.parquet
+      url: indices/dj-business-support-services
+      is_adopted: true
+
+    - name: DJ_BizTrainingEmployAgencies
+      path: raw_DJBizTrainingEmployAgencies.parquet
+      url: indices/dj-business-training---employment
+      is_adopted: true
+
+    - name: DJ_FinancialAdministration
+      path: raw_DJFinancialAdministration.parquet
+      url: indices/dj-financial-administration
+      is_adopted: true
+
+    - name: DJ_IndustrialSuppliers
+      path: raw_DJIndustrialSuppliers.parquet
+      url: indices/dj-industrial-suppliers
+      is_adopted: true
+
+    - name: DJ_WasteDisposalServices
+      path: raw_DJWasteDisposalServices_price.parquet
+      url: indices/dj-waste---disposal-services
+      is_adopted: true
+
+    - name: DJ_ConsumerGoods
+      path: raw_DJConsumerGoods_price.parquet
+      url: indices/dj-consumer-goods
+      is_adopted: true
+
+    - name: DJ_AutomobilesParts
+      path: raw_DJAutomobilesParts_price.parquet
+      url: indices/dj-automobiles---parts
+      is_adopted: true
+
+    - name: DJ_Automobiles
+      path: raw_DJAutomobiles_price.parquet
+      url: indices/dj-automobiles
+      is_adopted: true
+
+    - name: DJ_AutoParts
+      path: raw_DJAutoParts_price.parquet
+      url: indices/dj-auto-parts
+      is_adopted: true
+
+    - name: DJ_FoodBeverage
+      path: raw_DJFoodBeverage_price.parquet
+      url: indices/dj-food---beverage
+      is_adopted: true
+
+    - name: DJ_Beverages
+      path: raw_DJBeverages_price.parquet
+      url: indices/dj-beverages
+      is_adopted: true
+
+    - name: DJ_Brewers
+      path: raw_DJBrewers_price.parquet
+      url: indices/dj-brewers
+      is_adopted: true
+
+    - name: DJ_DistillersVinters
+      path: raw_DJDistillersVinters_price.parquet
+      url: indices/dj-distillers---vintners
+      is_adopted: true
+
+    - name: DJ_SoftDrinks
+      path: raw_DJSoftDrinks_price.parquet
+      url: indices/dj-soft-drinks
+      is_adopted: true
+
+    - name: DJ_FoodProducers
+      path: raw_DJFoodProducers_price.parquet
+      url: indices/dj-food-producers
+      is_adopted: true
+
+    - name: DJ_FoodProducts
+      path: raw_DJFoodProducts_price.parquet
+      url: indices/dj-food-products
+      is_adopted: true
+
+    - name: DJ_PersonalHouseholdGoods
+      path: raw_DJPersonalHouseholdGoods_price.parquet
+      url: indices/dj-personal---household-goods
+      is_adopted: true
+
+    - name: DJ_HouseholdHomeConst
+      path: raw_DJHouseholdHomeConst_price.parquet
+      url: indices/dj-household-goods---home-construct
+      is_adopted: true
+
+    - name: DJ_DurableHoushold
+      path: raw_DJDurableHoushold_price.parquet
+      url: indices/dj-durable-household-products
+      is_adopted: true
+
+    - name: DJ_NondurableHousehold
+      path: raw_DJNondurableHousehold_price.parquet
+      url: indices/dj-nondurable-household-products
+      is_adopted: true
+
+    - name: DJ_Furnishings
+      path: raw_DJFurnishings_price.parquet
+      url: indices/dj-furnishings
+      is_adopted: true
+
+    - name: DJ_HomeConstruction
+      path: raw_DJHomeConstruction_price.parquet
+      url: indices/dj-home-construction
+      is_adopted: true
+
+    - name: DJ_LeisureGoods
+      path: raw_DJLeisureGoods_price.parquet
+      url: indices/dj-leisure-goods
+      is_adopted: true
+
+    - name: DJ_RecreationalProducts
+      path: raw_DJRecreationalProducts_price.parquet
+      url: indices/dj-recreational-products
+      is_adopted: true
+
+    - name: DJ_Toys
+      path: raw_DJToys_price.parquet
+      url: indices/dj-toys
+      is_adopted: true
+
+    - name: DJ_PersonalGoods
+      path: raw_DJPersonalGoods_price.parquet
+      url: indices/dj-personal-goods
+      is_adopted: true
+
+    - name: DJ_ClothingAccessories
+      path: raw_DJClothingAccessories_price.parquet
+      url: indices/dj-clothing---accessories
+      is_adopted: true
+
+    - name: DJ_Footwear
+      path: raw_DJFootwear_price.parquet
+      url: indices/dj-footwear
+      is_adopted: true
+
+    - name: DJ_PersonalProducts
+      path: raw_DJPersonalProducts_price.parquet
+      url: indices/dj-personal-products
+      is_adopted: true
+
+    - name: DJ_Tobacco
+      path: raw_DJTobacco_price.parquet
+      url: indices/dj-tobacco
+      is_adopted: true
+
+    - name: DJ_HealthCare
+      path: raw_DJHealthCare_price.parquet
+      url: indices/dj-health-care
+      is_adopted: true
+
+    - name: DJ_HealthCareEquipServ
+      path: raw_DJHealthCareEquipServ_price.parquet
+      url: indices/dj-health-care-equip---services
+      is_adopted: true
+
+    - name: DJ_HealthCareProviders
+      path: raw_DJHealthCareProviders_price.parquet
+      url: indices/dj-health-care-providers
+      is_adopted: true
+
+    - name: DJ_MedicalEquip
+      path: raw_DJMedicalEquipment_price.parquet
+      url: indices/dj-medical-equipment
+      is_adopted: true
+
+    - name: DJ_MedicalSupplies
+      path: raw_DJMedicalSupplies_price.parquet
+      url: indices/dj-medical-supplies
+      is_adopted: true
+
+    - name: DJ_PharmBiotech
+      path: raw_DJPharmBiotech_price.parquet
+      url: indices/dj-pharmaceuticals---biotechnology
+      is_adopted: true
+
+    - name: DJ_Pharmaceuticals
+      path: raw_DJPharmaceuticals_price.parquet
+      url: indices/dj-pharmaceuticals
+      is_adopted: true
+
+    - name: DJ_Biotech
+      path: raw_DJBiotech_price.parquet
+      url: indices/dj-biotechnology
+      is_adopted: true
+
+    - name: DJ_ConsumerServices
+      path: raw_DJConsumerServices_price.parquet
+      url: indices/dj-consumer-services
+      is_adopted: true
+
+    - name: DJ_Retail
+      path: raw_DJRetailers_price.parquet
+      url: indices/dj-retail
+      is_adopted: true
+
+    - name: DJ_FoodDrugRetailers
+      path: raw_DJFoodDrugRetailers_price.parquet
+      url: indices/dj-food---drug-retailers
+      is_adopted: true
+
+    - name: DJ_DrugRetailers
+      path: raw_DJDrugRetailers_price.parquet
+      url: indices/dj-drug-retailers
+      is_adopted: true
+
+    - name: DJ_FoodRetailWholesale
+      path: raw_DJFoodRetailWholesale_price.parquet
+      url: indices/dj-food-retailers---wholesalers
+      is_adopted: true
+
+    - name: DJ_GeneralRetailers
+      path: raw_DJGeneralRetailers_price.parquet
+      url: indices/dj-general-retailers
+      is_adopted: true
+
+    - name: DJ_ApparelRetailers
+      path: raw_DJApparelRetailers_price.parquet
+      url: indices/dj-apparel-retailers
+      is_adopted: true
+
+    - name: DJ_BroadlineRetailers
+      path: raw_DJBroadlineRetailers_price.parquet
+      url: indices/dj-broadline-retailers
+      is_adopted: true
+
+    - name: DJ_HomeImprovenetRetailers
+      path: raw_DJHomeImprovenetRetailers_price.parquet
+      url: indices/dj-home-improvement-retailers
+      is_adopted: true
+
+    - name: DJ_SpecializedConsumerServ
+      path: raw_DJSpecializedConsumerServ_price.parquet
+      url: indices/dj-special-consumer-services
+      is_adopted: true
+
+    - name: DJ_SpecialtyRetailers
+      path: raw_DJSpecialtyRetailers_price.parquet
+      url: indices/dj-specialty-retailers
+      is_adopted: true
+
+    - name: DJ_Media
+      path: raw_DJMedia_price.parquet
+      url: indices/dj-media
+      is_adopted: true
+
+    - name: DJ_BroadcastEntertainment
+      path: raw_DJBroadcastEntertainment_price.parquet
+      url: indices/dj-broadcasting---entertainment
+      is_adopted: true
+
+    - name: DJ_MediaAgencies
+      path: raw_DJMediaAgencies_price.parquet
+      url: indices/dj-media-agencies
+      is_adopted: true
+
+    - name: DJ_Publishing
+      path: raw_DJPublishing_price.parquet
+      url: indices/dj-publishing
+      is_adopted: true
+
+    - name: DJ_TravelLeisure
+      path: raw_DJTravelLeisure_price.parquet
+      url: indices/dj-travel---leisure
+      is_adopted: true
+
+    - name: DJ_Airlines
+      path: raw_DJAirlines_price.parquet
+      url: indices/dj-airlines
+      is_adopted: true
+
+    - name: DJ_Gambling
+      path: raw_DJGambling_price.parquet
+      url: indices/dj-gambling
+      is_adopted: true
+
+    - name: DJ_Hotels
+      path: raw_DJHotels_price.parquet
+      url: indices/dj-hotels
+      is_adopted: true
+
+    - name: DJ_RecreationalServ
+      path: raw_DJRecreationalServ_price.parquet
+      url: indices/dj-recreational-services
+      is_adopted: true
+
+    - name: DJ_RestaurantsBars
+      path: raw_DJRestaurantsBars_price.parquet
+      url: indices/dj-restaurants---bars
+      is_adopted: true
+
+    - name: DJ_TravelTourism
+      path: raw_DJTravelTourism_price.parquet
+      url: indices/dj-travel---tourism
+      is_adopted: true
+
+    - name: DJ_Telecommunications
+      path: raw_DJTelecommunications_price.parquet
+      url: indices/dj-telecommunications
+      is_adopted: true
+
+    - name: DJ_FixedLineTelecom
+      path: raw_DJFixedLineTelecom_price.parquet
+      url: indices/dj-fixed-line-telecommunications
+      is_adopted: true
+
+    - name: DJ_MobileTelecom
+      path: raw_DJMobileTelecom_price.parquet
+      url: indices/dj-mobile-telecommunications
+      is_adopted: true
+
+    - name: DJ_Utilities
+      path: raw_DJUtilities_price.parquet
+      url: indices/dj-utilities
+      is_adopted: true
+
+    - name: DJ_Electricity
+      path: raw_DJElectricity_price.parquet
+      url: indices/dj-electricity
+      is_adopted: true
+
+    - name: DJ_ConventionalElectricity
+      path: raw_DJConventionalElectricity_price.parquet
+      url: indices/dj-conventional-electricity
+      is_adopted: true
+
+    - name: DJ_GasWater
+      path: raw_DJGasWater_price.parquet
+      url: indices/dj-gas,-water---multiutilities
+      is_adopted: true
+
+    - name: DJ_Gas
+      path: raw_DJGas_price.parquet
+      url: indices/dj-gas-distribution
+      is_adopted: true
+
+    - name: DJ_MultiUtilities
+      path: raw_DJMultiUtilities_price.parquet
+      url: indices/dj-multiutilities
+      is_adopted: true
+
+    - name: DJ_Water
+      path: raw_DJWater_price.parquet
+      url: indices/dj-water
+      is_adopted: true
+
+    - name: DJ_Financials
+      path: raw_DJFinancials_price.parquet
+      url: indices/dj-financials
+      is_adopted: true
+
+    - name: DJ_Banks
+      path: raw_DJBanks_price.parquet
+      url: indices/dj-banks
+      is_adopted: true
+
+    - name: DJ_NonLifeInsurance
+      path: raw_DJNonLifeInsurance_price.parquet
+      url: indices/dj-nonlife-insurance
+      is_adopted: true
+
+    - name: DJ_LifeInsurance
+      path: raw_DJLifeInsurance_price.parquet
+      url: indices/dj-life-insurance
+      is_adopted: true
+
+    - name: DJ_RealEstateInvestServ
+      path: raw_DJRealEstateInvestServ_price.parquet
+      url: indices/dj-real-estate-invest---services
+      is_adopted: true
+
+    - name: DJ_REIT
+      path: raw_DJREIT_price.parquet
+      url: indices/dj-real-estate-investment-trusts
+      is_adopted: true
+
+    - name: DJ_FinServices
+      path: raw_DJFinServices_price.parquet
+      url: indices/dj-financial-services
+      is_adopted: true
+
+    - name: DJ_Technology
+      path: raw_DJTechnology_price.parquet
+      url: indices/dj-technology
+      is_adopted: true
+
+    - name: DJ_SoftwareComservices
+      path: raw_DJSoftwareComservices_price.parquet
+      url: indices/dj-software---computer-services
+      is_adopted: true
+
+    - name: DJ_ComputerServices
+      path: raw_DJComputerServices_price.parquet
+      url: indices/dj-computer-services
+      is_adopted: true
+
+    - name: DJ_Internet
+      path: raw_DJInternet_price.parquet
+      url: indices/dj-internet
+      is_adopted: true
+
+    - name: DJ_Software
+      path: raw_DJSoftware_price.parquet
+      url: indices/dj-software
+      is_adopted: true
+
+    - name: DJ_TechHardEquip
+      path: raw_DJTechHardEquip_price.parquet
+      url: indices/dj-technology-hardware---equipment
+      is_adopted: true
+
+    - name: DJ_ComputerHardware
+      path: raw_DJComputerHardware_price.parquet
+      url: indices/dj-computer-hardware
+      is_adopted: true
+
+    - name: DJ_Semiconductors
+      path: raw_DJSemiconductors_price.parquet
+      url: indices/dj-semiconductors
+      is_adopted: true
+
+    - name: DJ_TelecomEquip
+      path: raw_DJTelecomEquip_price.parquet
+      url: indices/dj-telecommunications-equipment
+      is_adopted: true

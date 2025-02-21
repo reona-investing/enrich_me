@@ -11,6 +11,6 @@ calculated_columns:
     name: MarketCap
     dtype: float
     
-  - key: EPS
-    name: EPS
+  - key: 予想EPS
+    name: ForecastEPS
     dtype: float

@@ -1,3 +1,3 @@
-from .column_name_getter import ColumnConfigsGetter, column_name_getter
-from .yaml_loader import yaml_loader, including_columns_loader
+from .column_configs_getter import ColumnConfigsGetter
+from .yaml_loader import yaml_loader
 from .dtypes_converter import dtypes_converter

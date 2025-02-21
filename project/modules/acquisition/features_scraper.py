@@ -91,7 +91,7 @@ async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame
             #更新時刻：イギリス時間で13時
             if row['Name'] == 'BalticDry':
                 tab = await browser.get('https://www.balticexchange.com/en/index.html')
-                await tab.wait(1)
+                await tab.wait(3)
                 element = await tab.wait_for('#ticker > div > div > div:nth-child(1) > span.value')
                 value = float(element.text.replace(',', ''))
                 UK_time = datetime.now().astimezone(pytz.utc).astimezone(pytz.timezone('Europe/London')) #現在のイギリス時間を取得
@@ -105,7 +105,7 @@ async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame
             #IronOREも遅れ配信なので、当日分のみtradingviewからスクレイピング
             if row['Name'] == 'IronORE62':
                 tab = await browser.get('https://www.tradingview.com/symbols/COMEX-TIO1!/')
-                await tab.wait(5)
+                await tab.wait(10)
                 element = await tab.wait_for('#js-category-content > div.tv-react-category-header > div.js-symbol-page-header-root > div > div > div > div.quotesRow-pAUXADuj > div:nth-child(1) > div > div.lastContainer-JWoJqCpY > span.last-JWoJqCpY.js-symbol-last > span')
                 value = float(element.text)
                 chicago_time = datetime.now().astimezone(pytz.utc).astimezone(pytz.timezone('America/Chicago')) #現在のイギリス時間を取得

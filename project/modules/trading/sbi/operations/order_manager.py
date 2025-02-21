@@ -192,8 +192,7 @@ class OrderManager:
         await self._input_trade_pass()
         await self.browser_utils.click_element('input[id="shouryaku"]', is_css = True)
         await self.browser_utils.click_element('img[title="注文発注"]', is_css = True)
-        await self.browser_utils.wait(1)
-
+        
         order_index = self._append_trade_params_to_orders(trade_params)
         html_content = await self.browser_utils.get_html_content()
         text_to_show = f'{trade_params.symbol_code} {trade_params.trade_type} {trade_params.unit}株:'
@@ -392,15 +391,16 @@ class OrderManager:
                         )
                 await self.browser_utils.wait_and_click('input[value="全株指定"]', is_css = True)
                 await self.browser_utils.wait_and_click('input[value="注文入力へ"]', is_css = True)
-                await self.browser_utils.wait(1)
+                await self.browser_utils.wait(2)
                 order_type_elements = await self.browser_utils.select_all('input[name="in_sasinari_kbn"]')
                 await order_type_elements[1].click()  # 成行
                 selector = f'select[name="nariyuki_condition"] option[value="H"]'
                 await self.browser_utils.select_pulldown(selector)
+
                 await self.browser_utils.send_keys_to_element('input[id="pwd3"]', is_css = True, keys = os.getenv('SBI_TRADEPASS'))
                 await self.browser_utils.wait_and_click('input[id="shouryaku"]', is_css = True)
                 await self.browser_utils.wait_and_click('img[title="注文発注"]', is_css =  True)
-                await self.browser_utils.wait(1.2)
+                await self.browser_utils.wait(2)
                 try:
                     await self.browser_utils.wait_for('ご注文を受け付けました。')                
                     print(f"{ticker}：正常に決済注文完了しました。")
@@ -413,7 +413,7 @@ class OrderManager:
                         print(f"{ticker}：発注失敗。リトライ回数の上限に達しました。")
                         self.error_tickers.append(ticker)
                         retry_count = 0
-                symbol_code = str(await self._get_element('銘柄コード'))
+                await self.browser_utils.wait(1)
                 extracted_unit = await self._get_element('株数')
                 extracted_unit = int(extracted_unit[:-1].replace(',', ''))
                 trade_type = await self._get_element('取引')
@@ -437,7 +437,7 @@ class OrderManager:
         self.margin_list_df = self._parse_margin_table(html_content)
     
     async def _get_css_element_nums(self, table_body_css: str) -> list[int]:
-        await self.browser_utils.wait(2)
+        await self.browser_utils.wait(5)
         mylist = await self.browser_utils.query_selector(f'{table_body_css} > tr', is_all=True)
         css_element_nums = []
         for num, element in enumerate(mylist):

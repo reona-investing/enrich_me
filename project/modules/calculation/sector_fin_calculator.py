@@ -1,9 +1,7 @@
 from utils.paths import Paths
+from utils.yaml_utils import ColumnConfigsGetter
 from utils import yaml_utils
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from dataclasses import dataclass
 from typing import Any
 
 
@@ -14,28 +12,19 @@ class SectorFinCalculator:
                  price_yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML,
                  sector_index_yaml_path: str = Paths.SECTOR_INDEX_COLUMNS_YAML,
                  sector_fin_yaml_path: str = Paths.SECTOR_FIN_COLUMNS_YAML):
-
-        self.fin_yaml = yaml_utils.including_columns_loader(fin_yaml_path, 'original_columns') \
-            + yaml_utils.including_columns_loader(fin_yaml_path, 'calculated_columns')
-        self.price_yaml =  yaml_utils.including_columns_loader(price_yaml_path, 'original_columns')
-        self.sector_index_yaml = yaml_utils.including_columns_loader(sector_index_yaml_path, 'calculated_columns')
-        self.sector_fin_yaml = yaml_utils.including_columns_loader(sector_fin_yaml_path, 'calculated_columns')
+        
+        self.fin_col_configs = ColumnConfigsGetter(fin_yaml_path)
+        self.price_col_configs = ColumnConfigsGetter(price_yaml_path)
+        self.sector_index_col_configs = ColumnConfigsGetter(sector_index_yaml_path)
+        self.sector_fin_col_configs = ColumnConfigsGetter(sector_fin_yaml_path)
     
     def _get_column_names(self):
-        col = {'fin_date': self._column_name_getter(self.fin_yaml, 'DisclosedDate'),
-               'fin_code': self._column_name_getter(self.fin_yaml, 'LocalCode'),
-               'fin_forecast_eps': self._column_name_getter(self.fin_yaml, 'FORECAST_EPS'),
-               'fin_outstanding_shares': self._column_name_getter(self.fin_yaml, 'OUTSTANDING_SHARES'),
-               'price_date': self._column_name_getter(self.price_yaml, 'Date'),
-               'price_code': self._column_name_getter(self.price_yaml, 'Code'),
-               'price_close': self._column_name_getter(self.price_yaml, 'Close'),
-               'sector': self._column_name_getter(self.sector_index_yaml, 'SECTOR'),
-               'sector_fin_date': self._column_name_getter(self.sector_fin_yaml, 'DATE'),
-               'sector_fin_sector': self._column_name_getter(self.sector_fin_yaml, 'SECTOR'),
-               'sector_fin_market_cap': self._column_name_getter(self.sector_fin_yaml, 'MARKET_CAP'),
-               'sector_fin_eps': self._column_name_getter(self.sector_fin_yaml, 'EPS'),
-               }
-        return col
+        fin_col = self.fin_col_configs.get_all_columns_name_asdict()
+        price_col = self.price_col_configs.get_all_columns_name_asdict()
+        sector_index_col = self.sector_index_col_configs.get_all_columns_name_asdict()
+        sector_fin_col = self.sector_fin_col_configs.get_all_columns_name_asdict()
+
+        return fin_col, price_col, sector_index_col, sector_fin_col
 
     def calculate(self, SECTOR_FIN_PARQUET:str, fin_df: pd.DataFrame, price_df: pd.DataFrame, sector_dif_info: pd.DataFrame, 
                   sector_dif_info_code_col: str = 'Code'):
@@ -45,39 +34,40 @@ class SectorFinCalculator:
             price_df (pd.DataFrame): 価格情報
             sector_dif_info (pd.DataFrame): セクター
         '''
-        col = self._get_column_names()
+        fin_col, price_col, sector_index_col, sector_fin_col = self._get_column_names()
 
-        fin_df[col['fin_code']] = fin_df[col['fin_code']].astype(str)
-        fin_df[col['fin_date']] = pd.to_datetime(fin_df[col['fin_date']])
-        price_df[col['price_code']] = price_df[col['price_code']].astype(str)
-        price_df[col['price_date']] = pd.to_datetime(price_df[col['price_date']])
+        fin_df[fin_col['銘柄コード']] = fin_df[fin_col['銘柄コード']].astype(str)
+        fin_df[fin_col['日付']] = pd.to_datetime(fin_df[fin_col['日付']])
+        price_df[price_col['銘柄コード']] = price_df[price_col['銘柄コード']].astype(str)
+        price_df[price_col['日付']] = pd.to_datetime(price_df[price_col['日付']])
         sector_dif_info[sector_dif_info_code_col] = sector_dif_info[sector_dif_info_code_col].astype(str)
         
-        price_df = price_df.rename(columns = {col['price_code']: col['fin_code'], col['price_date']: col['fin_date']})
-        sector_dif_info = sector_dif_info.rename(columns = {sector_dif_info_code_col: col['fin_code']})
+        price_df = price_df.rename(columns = {price_col['銘柄コード']: fin_col['銘柄コード'], price_col['日付']: fin_col['日付']})
+        sector_dif_info = sector_dif_info.rename(columns = {sector_dif_info_code_col: fin_col['銘柄コード']})
         
-        merged_df = pd.merge(price_df, fin_df, how = 'outer', on = [col['fin_date'], col['fin_code']]) 
-        merged_df = pd.merge(merged_df, sector_dif_info, how = 'left', on = col['fin_code'])
+        merged_df = pd.merge(price_df, fin_df, how = 'outer', on = [fin_col['日付'], fin_col['銘柄コード']]) 
+        merged_df = pd.merge(merged_df, sector_dif_info, how = 'left', on = fin_col['銘柄コード'])
         
         cols_to_ffill = [x for x in merged_df.columns if x not in price_df.columns]
 
-        merged_df[cols_to_ffill] = merged_df.groupby(col['fin_code'])[cols_to_ffill].ffill()
+        merged_df[cols_to_ffill] = merged_df.groupby(fin_col['銘柄コード'])[cols_to_ffill].ffill()
 
-        merged_df[col['sector_fin_market_cap']] = merged_df[col['price_close']] * merged_df[col['fin_outstanding_shares']]   
-        sector_fin_df = merged_df.groupby([col['price_date'], col['sector']])[[col['sector_fin_market_cap']]].mean()
-        sector_fin_df[col['sector_fin_eps']] = merged_df.groupby([col['fin_date'], col['sector']]).apply(self._weighted_average, col['fin_forecast_eps'])
+        merged_df[sector_fin_col['時価総額']] = merged_df[price_col['終値']] * merged_df[fin_col['発行済み株式数']]   
+        sector_fin_df = merged_df.groupby([price_col['日付'], sector_index_col['セクター']])[[sector_fin_col['時価総額']]].mean()
+        sector_fin_df[sector_fin_col['予想EPS']] = \
+            merged_df.groupby([fin_col['日付'], sector_index_col['セクター']]).apply(self._weighted_average, fin_col['予想EPS'])
 
-        sector_fin_df = sector_fin_df.rename(columns={col['fin_date']: col['sector_fin_date'], 
-                                              col['sector']: col['sector_fin_sector']})
+        sector_fin_df = sector_fin_df.rename(columns={fin_col['日付']: sector_fin_col['日付'], 
+                                              sector_index_col['セクター']: sector_fin_col['セクター']})
         sector_fin_df.to_parquet(SECTOR_FIN_PARQUET)
 
         return sector_fin_df
 
     def _weighted_average(self, group, group_name: str):
-        col = self._get_column_names()
-        d = group[col['sector_fin_market_cap']].sum()
+        _, _, _, sector_fin_col = self._get_column_names()
+        d = group[sector_fin_col['時価総額']].sum()
         if d != 0:
-            return (group[group_name] * group[col['sector_fin_market_cap']]).sum() / d
+            return (group[group_name] * group[sector_fin_col['時価総額']]).sum() / d
         else:
             return 0    
     # --------------------------------------------------------------------------
@@ -95,12 +85,11 @@ class SectorFinCalculator:
         Returns:
             str: 変換後のカラム名
         """ 
-        return yaml_utils.column_name_getter(yaml_info, {'name': raw_name}, 'fixed_name')
+        return yaml_utils.column_configs_getter(yaml_info, {'name': raw_name}, 'fixed_name')
 
 
 if __name__ == '__main__':
     from facades import StockAcquisitionFacade
-
     sector_dif_info = pd.read_csv(f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv')
 
     saf = StockAcquisitionFacade(filtered_code_list=sector_dif_info['Code'].astype(str))
@@ -108,3 +97,4 @@ if __name__ == '__main__':
     
     sfc = SectorFinCalculator()
     sector_fin_df = sfc.calculate(f'{Paths.SECTOR_FIN_FOLDER}/New48sectors_fin.parquet', stock_dfs['fin'], stock_dfs['price'], sector_dif_info)
+    print(sector_fin_df)
