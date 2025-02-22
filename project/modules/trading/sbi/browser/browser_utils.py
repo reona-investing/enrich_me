@@ -10,6 +10,7 @@ class BrowserUtils:
             login_handler (LoginHandler): SBI証券へのログイン状態を確認します。
         '''
         self.login_handler = login_handler
+        self.browser = self.login_handler.session.browser
         self.tab = None
 
 
@@ -148,3 +149,11 @@ class BrowserUtils:
             path (Path): ダウンロード先パス
         '''
         await self.tab.set_download_path(path)
+
+    async def close_popup(self):
+        '''
+        意図せず表示された別タブをクリアします。
+        '''
+        for tab in self.browser.tabs:
+            if self.tab != tab:
+                await tab.close()

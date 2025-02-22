@@ -199,28 +199,31 @@ class OrderManager:
         success_text = "ご注文を受け付けました。"
         error_selector = '#MAINAREA02_780 > form > table:nth-child(22) > tbody > tr > td > b > p'
 
-        try:
-            # 両方の要素を同時に待機する（最大10秒）
-            success = None
-            error = None
-            while True:
-                success = self.browser_utils.wait_for(success_text, timeout=1)
-                print(success)
-                error = self.browser_utils.wait_for(error_selector, is_css=True, timeout=1)
-                print(error)
-                
-                if success:
-                    print(f"{text_to_show} 注文が成功しました")
-                    await self._edit_position_manager_for_order(order_index)
-                    return True
+        max_retry = 10
+        for _ in range(max_retry):
+            try: 
+                await self.browser_utils.wait_for(success_text, timeout=1)
+                print(f"{text_to_show} 注文が成功しました")
+                await self._edit_position_manager_for_order(order_index)
+                await self.browser_utils.close_popup()
+                return True
+            except TimeoutError:
+                pass
+            except Exception as e:
+                print(f"エラーが発生しました: {e}")
 
-                if error:
-                    print(f"{text_to_show} 注文が失敗しました")
-                    self.error_tickers.append(trade_params.symbol_code)
-                    return False             
-        except Exception as e:
-            print(f"エラーが発生しました: {e}")
-        
+            try:
+                await self.browser_utils.wait_for(error_selector, is_css=True, timeout=1)
+                print(f"{text_to_show} 注文が失敗しました")       
+                self.error_tickers.append(trade_params.symbol_code)
+                return False      
+            except TimeoutError:
+                pass
+            except Exception as e:
+                print(f"エラーが発生しました: {e}")
+        print(f"{text_to_show} 注文が失敗しました")       
+        self.error_tickers.append(trade_params.symbol_code)
+        return False                
 
     async def _edit_position_manager_for_order(self, order_index: int) -> None:
             order_id = await self._get_element('注文番号') 
@@ -259,7 +262,7 @@ class OrderManager:
         """
         try:
             await self.page_navigator.order_inquiry()
-            await self.browser_utils.wait_for('未約定注文一覧', timeout=60)
+            await self.browser_utils.wait_for('未約定注文一覧')
             await self.browser_utils.wait(2)
             html_content = await self.browser_utils.get_html_content()
             html = soup(html_content, "html.parser")
@@ -417,8 +420,7 @@ class OrderManager:
                 await self.browser_utils.wait_and_click('信用返済')
                 await self.browser_utils.wait_and_click(
                     f'{table_body_css} > tr:nth-child({element_num}) > td:nth-child(10) > a:nth-child(1) > u > font', 
-                    is_css = True,
-                    timeout = 5
+                    is_css = True
                         )
                 await self.browser_utils.wait_and_click('input[value="全株指定"]', is_css = True)
                 await self.browser_utils.wait_and_click('input[value="注文入力へ"]', is_css = True)

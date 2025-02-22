@@ -63,15 +63,13 @@ class TradePossibilityManager:
         Returns:
             Path: 最新のCSVファイルパス
         """
-        for i in range(10):
+        for _ in range(30):
             files = list(Path(self.download_path).glob("*.csv"))
             if files:
-                break
+                return max(files, key=os.path.getmtime)
             self.browser_utils.wait(1)
-            
-        if not files:
-            raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
-        return max(files, key=os.path.getmtime)
+        raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
+        
 
     def _convert_csv_to_df(self, csvfile:str):
         extracted_rows = []
