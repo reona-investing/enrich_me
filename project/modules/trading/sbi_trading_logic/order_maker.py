@@ -1,14 +1,21 @@
 import math
 import pandas as pd
 from typing import Literal
-from trading.sbi import TradeParameters, OrderManager
+from trading.sbi import TradeParameters
+from trading.sbi.operations.order_manager import NewOrderManager, SettlementManager, CancelManager
 from utils.paths import Paths
 from trading.sbi_trading_logic.stock_selector import StockSelector
 
 class OrderMakerBase:
     '''発注用の基底クラス'''
-    def __init__(self, order_manager: OrderManager):
-        self.order_manager = order_manager
+    def __init__(self, new_order_manager: NewOrderManager = None, settlement_manager: SettlementManager = None, cancel_manager: CancelManager = None):
+        '''
+        Args:
+            order_manager (object): NewOrderManager, SettlementManager, CancelManagerのいずれかを選択
+        '''
+        self.new_order_manager = new_order_manager
+        self.settlement_manager = settlement_manager
+        self.cancel_manager = cancel_manager
         self.failed_orders = []
         self.failed_symbol_codes = []
 
@@ -70,7 +77,7 @@ class OrderMakerBase:
                                     limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                                     period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
                                     margin_trade_section=margin_trade_section)
-        has_successfully_ordered =  await self.order_manager.place_new_order(order_params)
+        has_successfully_ordered = await self.new_order_manager.place_new_order(order_params)
         if not has_successfully_ordered:
             self.failed_orders.append(f'{order_params.trade_type}: {order_params.symbol_code} {order_params.unit}株')
             self.failed_symbol_codes.append(symbol_code)
@@ -115,12 +122,12 @@ class OrderMakerBase:
 
 
 class NewOrderMaker(OrderMakerBase):
-    def __init__(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame, order_manager: OrderManager):
+    def __init__(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame, new_order_manager: NewOrderManager):
         '''新規発注用のクラス'''
-        super().__init__(order_manager)
+        super().__init__(new_order_manager = new_order_manager)
         self.long_orders = long_orders
         self.short_orders = short_orders
-        self.order_manager = order_manager
+        self.new_order_manager = new_order_manager
 
     async def run_new_orders(self) -> list[dict]:
         '''
@@ -129,10 +136,10 @@ class NewOrderMaker(OrderMakerBase):
             list[dict]: 発注失敗銘柄のリスト
         '''
         #現時点での注文リストをsbi証券から取得
-        await self.order_manager.extract_order_list()
+        await self.new_order_manager.extract_order_list()
         #発注処理の条件に当てはまるときのみ処理実行
-        if len(self.order_manager.order_list_df) > 0:
-            position_list = [x[:2] for x in self.order_manager.order_list_df['取引'].unique()]
+        if len(self.new_order_manager.order_list_df) > 0:
+            position_list = [x[:2] for x in self.new_order_manager.order_list_df['取引'].unique()]
             #信用新規がある場合のみ注文キャンセル
             if '信新' in position_list:
                 return None
@@ -143,9 +150,9 @@ class NewOrderMaker(OrderMakerBase):
 
 
 class AdditionalOrderMaker(OrderMakerBase):
-    def __init__(self, order_manager: OrderManager):
+    def __init__(self, new_order_manager: NewOrderManager):
         '''追加発注用のクラス'''
-        super().__init__(order_manager)
+        super().__init__(new_order_manager)
 
     async def run_additional_orders(self) -> list[dict]:
         '''
@@ -161,27 +168,28 @@ class AdditionalOrderMaker(OrderMakerBase):
         return self.failed_orders
 
 class PositionSettler(OrderMakerBase):
-    def __init__(self, order_manager: OrderManager):
+    def __init__(self, settlement_manager: SettlementManager):
         '''決済注文時に起動'''
-        super().__init__(order_manager)
+        super().__init__(settlement_manager)
 
     async def settle_all_margins(self):
         '''決済注文を発注する'''
-        await self.order_manager.settle_all_margins()
+        await self.settlement_manager.settle_all_margins()
 
 if __name__ == '__main__':
     async def main():
         from models import MLDataset
         from trading.sbi.operations import TradePossibilityManager, MarginManager
         from trading.sbi.session import LoginHandler
-        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/New48sectors')
+        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
         lh = LoginHandler()
         tpm = TradePossibilityManager(lh)
         mm = MarginManager(lh)
         sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
-        ss = StockSelector(ml, tpm, mm, sd)
-        om = OrderManager(lh)
-        nom = NewOrderMaker(ss, om)
+        ss = StockSelector(ml.stock_selection_materials.order_price_df,ml.stock_selection_materials.pred_result_df, tpm, mm, sd)
+        long_orders, short_orders, _ = await ss.select(margin_power=6000000)
+        om = NewOrderManager(lh)
+        nom = NewOrderMaker(long_orders, short_orders, om)
         failed_list = await nom.run_new_orders()
     import asyncio
     asyncio.run(main())

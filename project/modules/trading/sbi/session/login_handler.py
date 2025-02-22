@@ -28,7 +28,7 @@ class LoginHandler:
         await login.click()
 
         await self.session.tab.wait_for(text='ログイン履歴', timeout=60)
-        print('yeah!')
+
 
 if __name__ == '__main__':
     async def main():

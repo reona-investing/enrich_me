@@ -63,7 +63,8 @@ class TradePossibilityManager:
         Returns:
             Path: 最新のCSVファイルパス
         """
-        for _ in range(30):
+        for i in range(60):
+            print(i)
             files = list(Path(self.download_path).glob("*.csv"))
             if files:
                 return max(files, key=os.path.getmtime)

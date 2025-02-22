@@ -114,6 +114,12 @@ class PageNavigator:
         await self.browser_utils.wait_for('未約定注文一覧')
 
 
+    async def credit_position_close(self):
+        await self.trade()
+        await self._click_and_wait('信用返済')
+        await self.browser_utils.wait_for('信用建玉一覧')
+
+
     async def order_cancel(self):
         """
         注文照会のページに遷移します。
