@@ -152,7 +152,7 @@ class NewOrderMaker(OrderMakerBase):
 class AdditionalOrderMaker(OrderMakerBase):
     def __init__(self, new_order_manager: NewOrderManager):
         '''追加発注用のクラス'''
-        super().__init__(new_order_manager)
+        super().__init__(new_order_manager = new_order_manager)
 
     async def run_additional_orders(self) -> list[dict]:
         '''
@@ -170,7 +170,7 @@ class AdditionalOrderMaker(OrderMakerBase):
 class PositionSettler(OrderMakerBase):
     def __init__(self, settlement_manager: SettlementManager):
         '''決済注文時に起動'''
-        super().__init__(settlement_manager)
+        super().__init__(settlement_manager = settlement_manager)
 
     async def settle_all_margins(self):
         '''決済注文を発注する'''

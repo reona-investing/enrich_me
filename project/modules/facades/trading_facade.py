@@ -1,7 +1,8 @@
 import os
 from utils.paths import Paths
 from utils.notifier import SlackNotifier
-from trading.sbi import OrderManager, HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
+from trading.sbi import HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
+from trading.sbi.operations.order_manager import NewOrderManager, SettlementManager
 from trading.sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
 from models import MLDataset
 
@@ -12,7 +13,8 @@ class TradingFacade:
         self.slack = SlackNotifier(program_name=os.path.basename(__file__))
         self.history_manager = HistoryManager(self.login_handler)
         self.margin_manager = MarginManager(self.login_handler)
-        self.order_manager = OrderManager(self.login_handler)
+        self.new_order_manager = NewOrderManager(self.login_handler)
+        self.settlement_manager = SettlementManager(self.login_handler)
         self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
         self.Paths = Paths
 
@@ -39,7 +41,7 @@ class TradingFacade:
                                        self.trade_possibility_manager, self.margin_manager,
                                        SECTOR_REDEFINITIONS_CSV, num_sectors_to_trade, num_candidate_sectors, top_slope)
         long_orders, short_orders, _ = await stock_selector.select(self.margin_manager.buying_power)
-        order_maker = NewOrderMaker(long_orders, short_orders, self.order_manager)
+        order_maker = NewOrderMaker(long_orders, short_orders, self.new_order_manager)
         failed_order_list = await order_maker.run_new_orders()
         self.slack.send_message(f'発注が完了しました。\n買：{stock_selector.buy_sectors}\n売：{stock_selector.sell_sectors}')
         if failed_order_list:
@@ -49,7 +51,7 @@ class TradingFacade:
         '''
         take_positionsで失敗した注文について、追加で信用新規建を行います。
         '''
-        order_maker = AdditionalOrderMaker(self.order_manager)
+        order_maker = AdditionalOrderMaker(self.new_order_manager)
         failed_order_list = await order_maker.run_additional_orders()
         self.slack.send_message('追加発注が完了しました。')
         if failed_order_list:
@@ -59,12 +61,12 @@ class TradingFacade:
         '''
         信用ポジションの決済注文を発注します。
         '''
-        position_settler = PositionSettler(self.order_manager)
+        position_settler = PositionSettler(self.settlement_manager)
         await position_settler.settle_all_margins()
-        if not self.order_manager.error_tickers:
+        if not self.settlement_manager.error_tickers:
             self.slack.send_message('全銘柄の決済注文が完了しました。')
         else:
-            self.slack.send_message(f'銘柄コード{self.order_manager.error_tickers}の決済注文に失敗しました。')
+            self.slack.send_message(f'銘柄コード{self.settlement_manager.error_tickers}の決済注文に失敗しました。')
 
     async def fetch_invest_result(self, SECTOR_REDEFINITIONS_CSV):
         '''

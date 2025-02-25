@@ -9,7 +9,6 @@ __all__ = [
     "MarginManager",
     "TradePossibilityManager",
     "HistoryManager",
-    "OrderManager",
     "PositionManager",
     "TradeParameters",
     ]

@@ -44,7 +44,7 @@ class SettlementManager(OrderManagerBase):
             if ticker in ordered_tickers:
                 print(f'{ticker}はすでに決済発注済です。')
                 continue
-            self._process_single_settlement_order(ticker, element_num, table_body_css)
+            await self._process_single_settlement_order(ticker, element_num, table_body_css)
 
         print(f'全銘柄の決済処理が完了しました。')
 

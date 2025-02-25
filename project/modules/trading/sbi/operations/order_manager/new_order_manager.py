@@ -211,6 +211,7 @@ class NewOrderManager(OrderManagerBase):
         await self.browser_utils.wait_for(failure_selector, is_css=True, timeout=1)
         print(f"{text_to_show} 注文が失敗しました")       
         self.error_tickers.append(trade_params.symbol_code)
+        await self.browser_utils.close_popup()
         return False  
     
     async def _edit_position_manager_for_order(self, order_index: int) -> None:

@@ -1,7 +1,7 @@
 from trading.sbi.operations.order_manager import NewOrderManager
 from trading.sbi_trading_logic import StockSelector, NewOrderMaker
 
-from trading.sbi import LoginHandler, TradePossibilityManager, OrderManager
+from trading.sbi import LoginHandler, TradePossibilityManager
 from models import MLDataset
 from utils.paths import Paths
 
@@ -17,7 +17,7 @@ async def main():
                                 None,
                                 sector_dif_csv
                                 )
-    long_df, short_df, pred_sector = await stock_selector.select(margin_power=60000000)
+    long_df, short_df, pred_sector = await stock_selector.select(margin_power=6000000)
     om = NewOrderManager(lh)
     nom = NewOrderMaker(long_df, short_df, om)
     failed_orders = await nom.run_new_orders()

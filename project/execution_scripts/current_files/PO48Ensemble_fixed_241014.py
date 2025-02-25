@@ -167,6 +167,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         if predict:
             turn_true.append(Flags.PREDICT)
         flag_manager.set_flags(turn_true=turn_true)
+        flag_manager.set_flags(turn_true=[Flags.TAKE_NEW_POSITIONS])
         print(flag_manager.get_flags())
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:

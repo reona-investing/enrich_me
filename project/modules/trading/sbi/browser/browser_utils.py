@@ -154,6 +154,7 @@ class BrowserUtils:
         '''
         意図せず表示された別タブをクリアします。
         '''
+        self.browser = self.login_handler.session.browser
         for tab in self.browser.tabs:
             if self.tab != tab:
                 await tab.close()
