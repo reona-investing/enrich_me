@@ -1,6 +1,6 @@
 import pandas as pd
 from trading.sbi.session import LoginHandler
-from trading.sbi.browser import PageNavigator, BrowserUtils, FileUtils
+from trading.sbi.browser import PageNavigator, SBIBrowserUtils, FileUtils
 from bs4 import BeautifulSoup as soup
 import re
 import unicodedata
@@ -22,7 +22,7 @@ class HistoryManager:
         self.today_stock_trades_df = pd.DataFrame()
         self.login_handler = login_handler
         self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = BrowserUtils(self.login_handler)
+        self.browser_utils = SBIBrowserUtils(self.login_handler)
 
 
     async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):

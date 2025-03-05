@@ -1,6 +1,6 @@
 import pandas as pd
 from trading.sbi.session import LoginHandler
-from trading.sbi.browser import PageNavigator, BrowserUtils
+from trading.sbi.browser import PageNavigator, SBIBrowserUtils
 import os
 from pathlib import Path
 from utils.paths import Paths
@@ -13,7 +13,7 @@ class TradePossibilityManager:
         os.makedirs(self.download_path, exist_ok=True)
         self.login_handler = login_handler
         self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = BrowserUtils(self.login_handler)
+        self.browser_utils = SBIBrowserUtils(self.login_handler)
 
     async def fetch(self) -> dict:
         """

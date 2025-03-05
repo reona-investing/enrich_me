@@ -2,7 +2,7 @@ from trading.sbi.session import LoginHandler
 from datetime import datetime
 from pathlib import Path
 from utils.paths import Paths
-from trading.sbi.browser import BrowserUtils
+from trading.sbi.browser import SBIBrowserUtils
 
 class PageNavigator:
     def __init__(self, login_handler: LoginHandler):
@@ -11,13 +11,13 @@ class PageNavigator:
         login_handler (LoginHandler): SBI証券へのログイン状態を確認します。
         '''
         self.login_handler = login_handler
-        self.browser_utils = BrowserUtils(login_handler)
+        self.browser_utils = SBIBrowserUtils(login_handler)
         self.tab = None
         self.should_return_to_home = False #特殊なレイアウトのページの場合、操作終了後ホームに戻りたい
  
 
     async def _set_tab(self):
-        self.tab = await self.login_handler.sign_in()  # LoginHandlerを使ってログイン
+        self.tab, _ = await self.login_handler.sign_in()
         if self.should_return_to_home:
             await self._home()
             self.should_return_to_home = False

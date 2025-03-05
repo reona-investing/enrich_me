@@ -1,5 +1,5 @@
 from trading.sbi.session.login_handler import LoginHandler
-from trading.sbi.browser import PageNavigator, BrowserUtils
+from trading.sbi.browser import PageNavigator, SBIBrowserUtils
 import re
 import os
 import unicodedata
@@ -49,7 +49,7 @@ class OrderManagerBase:
     def __init__(self, login_handler: LoginHandler):
         self.login_handler = login_handler
         self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = BrowserUtils(self.login_handler)
+        self.browser_utils = SBIBrowserUtils(self.login_handler)
 
     def _get_selector(self, category: str, key: str) -> str:
         """

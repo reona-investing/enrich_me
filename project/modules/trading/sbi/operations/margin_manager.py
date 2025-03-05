@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup as soup
 from trading.sbi.session import LoginHandler
-from trading.sbi.browser import BrowserUtils, PageNavigator
+from trading.sbi.browser import SBIBrowserUtils, PageNavigator
 import re
 
 class MarginManager:
@@ -10,7 +10,7 @@ class MarginManager:
         """
         self.login_handler = login_handler
         self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = BrowserUtils(self.login_handler)
+        self.browser_utils = SBIBrowserUtils(self.login_handler)
         self.margin_power = None
         self.buying_power = None
 

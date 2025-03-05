@@ -1,22 +1,24 @@
 import nodriver as uc
-from trading.sbi.session import LoginHandler
 from pathlib import Path
 
-class BrowserUtils:
-    def __init__(self, login_handler: LoginHandler):
+class BrowserUtils: 
+    def __init__(self):
         '''
         ブラウザを用いた操作を定義します。
         Args:
             login_handler (LoginHandler): SBI証券へのログイン状態を確認します。
         '''
-        self.login_handler = login_handler
-        self.browser = self.login_handler.session.browser
+        self.browser = None
         self.tab = None
 
+    async def _launch(self):
+        if self.tab is None:
+            self.browser = uc.Browser()
+            self.tab = await self.browser.get()
 
-    async def _set_tab(self):
-        self.tab = await self.login_handler.sign_in()
-
+    async def open_url(self, url: str):
+        await self._launch()
+        self.tab = await self.browser.get(url)
 
     async def wait(self, t: int | float):
         """
@@ -24,7 +26,7 @@ class BrowserUtils:
         Args:
             t (int|float): 待機秒数
         """
-        await self._set_tab()
+        await  self._launch()
         if type(t) is int or type(t) is float:
             if t > 0:
                 await self.tab.wait(t)
@@ -36,7 +38,7 @@ class BrowserUtils:
             selector_text (str): 表示を待ちたい文字列 or CSSセレクタ
             is_css (bool): TrueならCSSセレクタ、Falseなら文字列の表示を待つ
         """
-        await self._set_tab()
+        await  self._launch()
         element = await self.wait_for(selector = selector_text, is_css=is_css)
         return element
 
@@ -44,7 +46,7 @@ class BrowserUtils:
         '''
         特定のcssセレクタを持つ要素をすべて取得します。
         '''
-        await self._set_tab()
+        await  self._launch()
         elements = await self.tab.select_all(css_selector)
         return elements
 
@@ -77,7 +79,7 @@ class BrowserUtils:
         Args:
             css_selector (str): 選択したいプルダウンメニューのCSSセレクタ
         """
-        await self._set_tab()
+        await  self._launch()
         await self.tab.evaluate(f'''
             var option = document.querySelector('{css_selector}');
             option.selected = true;
@@ -97,7 +99,7 @@ class BrowserUtils:
         Returns:
             element: 要素
         """
-        await self._set_tab()
+        await  self._launch()
         if is_css:
             element = await self.tab.wait_for(selector=selector, timeout=timeout)
         else:
@@ -124,7 +126,7 @@ class BrowserUtils:
         Returns:
             list: 検索結果を1つ又は複数格納したリスト
         """
-        await self._set_tab()
+        await  self._launch()
         if is_all:
             find_list = await self.tab.query_selector_all(css_selector)
         else:
@@ -135,7 +137,7 @@ class BrowserUtils:
         '''
         現在のタブからhtmlを取得します。
         '''
-        await self._set_tab()
+        await  self._launch()
         html_content = await self.tab.get_content()
         return html_content
 

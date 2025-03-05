@@ -1,7 +1,7 @@
 from trading.sbi.operations.position_manager import PositionManager
 from trading.sbi.operations.trade_possibility_manager import TradePossibilityManager
 from trading.sbi.operations.trade_parameters import TradeParameters
-from trading.sbi.browser import PageNavigator, BrowserUtils
+from trading.sbi.browser import PageNavigator, SBIBrowserUtils
 from trading.sbi.session.login_handler import LoginHandler
 import os
 import re
@@ -68,7 +68,7 @@ class OrderManager:
         self.position_manager = PositionManager()
         self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
         self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = BrowserUtils(self.login_handler)
+        self.browser_utils = SBIBrowserUtils(self.login_handler)
         self.has_successfully_ordered = False
         self.error_tickers = []
 
