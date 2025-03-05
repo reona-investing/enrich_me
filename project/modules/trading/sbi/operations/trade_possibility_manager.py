@@ -1,6 +1,7 @@
 import pandas as pd
 from trading.sbi.session import LoginHandler
 from trading.sbi.browser import PageNavigator, SBIBrowserUtils
+from trading.jpx import LoanMarginsListGetter
 import os
 from pathlib import Path
 from utils.paths import Paths
@@ -15,7 +16,7 @@ class TradePossibilityManager:
         self.page_navigator = PageNavigator(self.login_handler)
         self.browser_utils = SBIBrowserUtils(self.login_handler)
 
-    async def fetch(self) -> dict:
+    async def _fetch_trade_possibility(self):
         """
         取引可能性情報を取得
         Returns:
@@ -42,19 +43,35 @@ class TradePossibilityManager:
         
         if csv_file is None:
             raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
-        trade_data = self._convert_csv_to_df(csv_file)
+        self.trade_data = self._convert_csv_to_df(csv_file)
     
         # データ整形
-        trade_data["一人あたり建玉上限数"] = trade_data["一人あたり建玉上限数"].replace("-", 1000000).astype(int)
-        sellable_condition = (trade_data["売建受注枠"] != "受付不可") & (trade_data["信用区分（HYPER）"] == "")
+        self.trade_data["一人あたり建玉上限数"] = self.trade_data["一人あたり建玉上限数"].replace("-", 1000000).astype(int)
+
+
+    async def _fetch_loan_margins_list(self):
+        getter = LoanMarginsListGetter()
+        self.loan_margins_list = await getter.get()
+        self.loan_margins_list = self.loan_margins_list.rename(columns={'銘柄コード': 'コード'})
+
+
+    async def fetch(self):
+        await self._fetch_trade_possibility()
+        await self._fetch_loan_margins_list()
+        
+        self.trade_data = pd.merge(self.trade_data, self.loan_margins_list[['コード', '信用区分']], how='inner', on='コード')
+
+        sellable_condition = \
+            ((self.trade_data["信用区分"] == "貸借銘柄") | (self.trade_data["売建受注枠"] != "受付不可")) & \
+            (self.trade_data["信用区分（HYPER）"] == "")
 
         # 結果の辞書化
         self.data_dict = {
-            "buyable_limits": dict(zip(trade_data["コード"], trade_data["一人あたり建玉上限数"])),
-            "sellable_limits": dict(zip(trade_data.loc[sellable_condition, "コード"], 
-                                        trade_data.loc[sellable_condition, "一人あたり建玉上限数"])),
-            "borrowing_stocks": dict(zip(trade_data.loc[sellable_condition, "コード"], 
-                                         trade_data.loc[sellable_condition, "信用区分（無期限）"].replace({"◎":True, "":False})))
+            "buyable_limits": dict(zip(self.trade_data["コード"], self.trade_data["一人あたり建玉上限数"])),
+            "sellable_limits": dict(zip(self.trade_data.loc[sellable_condition, "コード"], 
+                                        self.trade_data.loc[sellable_condition, "一人あたり建玉上限数"])),
+            "borrowing_stocks": dict(zip(self.trade_data.loc[sellable_condition, "コード"], 
+                                         self.trade_data.loc[sellable_condition, "信用区分"].replace({"貸借銘柄":True, "制度信用銘柄":False})))
         }
 
     def _remove_files_in_download_folder(self):
@@ -93,11 +110,19 @@ class TradePossibilityManager:
 
 
 if __name__ == "__main__":
+    from trading.jpx import LoanMarginsListGetter
+
     async def main():
         lh = LoginHandler()
         tpm = TradePossibilityManager(lh)
         await tpm.fetch()
-        print(tpm.data_dict['borrowing_stocks'])
+        getter = LoanMarginsListGetter()
+        loan_margins_list = await getter.get()
+
+        loan_margins_list = loan_margins_list.rename(columns={'銘柄コード': 'コード'})
+        df = pd.merge(tpm.trade_data, loan_margins_list[['コード', '信用区分']], how='inner', on='コード')
+        print(df)
+        df.to_csv('test.csv')
     
     import asyncio
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(main())

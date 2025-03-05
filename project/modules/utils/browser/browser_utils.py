@@ -1,7 +1,8 @@
 import nodriver as uc
 from pathlib import Path
 
-class BrowserUtils: 
+class BrowserUtils:
+    BROWSER_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
     def __init__(self):
         '''
         ブラウザを用いた操作を定義します。
@@ -13,7 +14,7 @@ class BrowserUtils:
 
     async def _launch(self):
         if self.tab is None:
-            self.browser = uc.Browser()
+            self.browser = await uc.start(browser_executable_path=BrowserUtils.BROWSER_PATH)
             self.tab = await self.browser.get()
 
     async def open_url(self, url: str):
