@@ -37,10 +37,7 @@ class BrowserUtils:
             is_css (bool): TrueならCSSセレクタ、Falseなら文字列の表示を待つ
         """
         await self._set_tab()
-        if is_css:
-            element = await self.tab.wait_for(selector = selector_text)
-        else:
-            element = await self.tab.wait_for(text = selector_text)
+        element = await self.wait_for(selector = selector_text, is_css=is_css)
         return element
 
     async def select_all(self, css_selector: str):

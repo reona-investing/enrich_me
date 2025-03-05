@@ -27,15 +27,21 @@ class TradePossibilityManager:
         await self.page_navigator.domestic_top()
         await self.browser_utils.wait(1)
         await self.browser_utils.wait_and_click('一般信用売り銘柄一覧', is_css = False, timeout=60)
-
+        await self.browser_utils.wait(1)
         # ダウンロード処理
-        await self.browser_utils.wait_for('#csvDownload', is_css = True)
-        await self.browser_utils.set_download_path(Path(self.download_path))
-        await self.browser_utils.wait_and_click('#csvDownload', is_css = True)
-        await self.browser_utils.wait(10)
-
-        # CSVファイルの読み込み
-        csv_file = self._get_latest_csv()
+        for _ in range (5):
+            await self.browser_utils.wait_for('#csvDownload', is_css = True)
+            await self.browser_utils.wait(1)
+            await self.browser_utils.set_download_path(Path(self.download_path))
+            await self.browser_utils.wait_and_click('#csvDownload', is_css = True)
+            await self.browser_utils.wait(10)
+            # CSVファイルの読み込み
+            csv_file = self._get_latest_csv()
+            if csv_file is not None:
+                break
+        
+        if csv_file is None:
+            raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
         trade_data = self._convert_csv_to_df(csv_file)
     
         # データ整形
@@ -69,7 +75,6 @@ class TradePossibilityManager:
             if files:
                 return max(files, key=os.path.getmtime)
             self.browser_utils.wait(1)
-        raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
         
 
     def _convert_csv_to_df(self, csvfile:str):

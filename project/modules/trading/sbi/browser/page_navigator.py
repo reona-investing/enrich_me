@@ -60,12 +60,14 @@ class PageNavigator:
     async def trade(self):
         await self._set_tab()
         await self._click_and_wait('img[title="取引"]', is_css=True)
+        await self.browser_utils.wait_for('注文入力')
         
 
     async def account_management(self):
         # 口座管理ページに遷移
         await self._set_tab()
         await self._click_and_wait('img[title=口座管理]', is_css=True)
+        await self.browser_utils.wait_for('口座サマリー')
 
 
     async def cashflow_transactions(self):
@@ -74,17 +76,20 @@ class PageNavigator:
         '''
         await self._set_tab()
         await self._click_and_wait('入出金明細')
+        await self.browser_utils.wait_for('入出金･振替')
         self.should_return_to_home = True
 
 
     async def trade_history(self):
         await self._set_tab()
-        button = await self._click_and_wait('取引履歴')
+        await self._click_and_wait('取引履歴')
+        await self.browser_utils.wait_for('条件選択')
  
 
     async def credit_position(self):
         await self.account_management()
-        button = await self._click_and_wait('area[title=信用建玉]')
+        await self._click_and_wait('area[title=信用建玉]')
+        await self.browser_utils.wait_for('信用建玉一覧')
 
 
     async def domestic_margin(self):

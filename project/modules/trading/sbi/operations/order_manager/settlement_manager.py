@@ -153,6 +153,7 @@ class SettlementManager(OrderManagerBase):
     
 
     async def _update_settlement_status(self, ticker: str) -> None:
+        extracted_unit = await self.browser_utils.wait_for('株数')
         extracted_unit = await self._get_element('株数')
         extracted_unit = int(extracted_unit[:-1].replace(',', ''))
         trade_type = await self._get_element('取引')
