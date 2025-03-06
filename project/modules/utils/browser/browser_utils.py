@@ -92,7 +92,7 @@ class BrowserUtils:
 
     async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
         """
-        指定した要素の表示を待ってからクリックします。
+        指定した要素の表示を待ちます。
         Args:
             selector (str): 表示を待ちたい文字列またはcssセレクタ
             is_css (bool): Trueならcssセレクタ、Falseなら文字列
