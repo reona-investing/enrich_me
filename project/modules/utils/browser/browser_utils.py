@@ -18,8 +18,21 @@ class BrowserUtils:
             self.tab = await self.browser.get()
 
     async def open_url(self, url: str):
+        """
+        指定したURLを開きます。
+
+        Args:
+            url: 開く対象のURL
+        """
         await self._launch()
         self.tab = await self.browser.get(url)
+
+    async def reload(self):
+        """
+        タブをリロードします。
+        """
+        await self._launch()
+        await self.tab.reload()
 
     async def wait(self, t: int | float):
         """

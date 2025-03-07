@@ -1,6 +1,7 @@
 import pandas as pd
 from trading.sbi.session import LoginHandler
 from trading.sbi.browser import PageNavigator, SBIBrowserUtils
+from utils.browser import BrowserUtils
 from trading.jpx import LoanMarginsListGetter
 import os
 from pathlib import Path
@@ -14,7 +15,9 @@ class TradePossibilityManager:
         os.makedirs(self.download_path, exist_ok=True)
         self.login_handler = login_handler
         self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = SBIBrowserUtils(self.login_handler)
+        self.sbi_browser_utils = SBIBrowserUtils(self.login_handler)
+        self.browser_utils = BrowserUtils()
+
 
     async def _fetch_trade_possibility(self):
         """
@@ -26,16 +29,16 @@ class TradePossibilityManager:
         
         # 取引可能性情報ページに遷移
         await self.page_navigator.domestic_top()
-        await self.browser_utils.wait(1)
-        await self.browser_utils.wait_and_click('一般信用売り銘柄一覧', is_css = False, timeout=60)
-        await self.browser_utils.wait(1)
+        await self.sbi_browser_utils.wait(1)
+        await self.sbi_browser_utils.wait_and_click('一般信用売り銘柄一覧', is_css = False, timeout=60)
+        await self.sbi_browser_utils.wait(1)
         # ダウンロード処理
         for _ in range (5):
-            await self.browser_utils.wait_for('#csvDownload', is_css = True)
-            await self.browser_utils.wait(1)
-            await self.browser_utils.set_download_path(Path(self.download_path))
-            await self.browser_utils.wait_and_click('#csvDownload', is_css = True)
-            await self.browser_utils.wait(10)
+            await self.sbi_browser_utils.wait_for('#csvDownload', is_css = True)
+            await self.sbi_browser_utils.wait(1)
+            await self.sbi_browser_utils.set_download_path(Path(self.download_path))
+            await self.sbi_browser_utils.wait_and_click('#csvDownload', is_css = True)
+            await self.sbi_browser_utils.wait(10)
             # CSVファイルの読み込み
             csv_file = self._get_latest_csv()
             if csv_file is not None:
@@ -50,7 +53,7 @@ class TradePossibilityManager:
 
 
     async def _fetch_loan_margins_list(self):
-        getter = LoanMarginsListGetter()
+        getter = LoanMarginsListGetter(self.browser_utils)
         self.loan_margins_list = await getter.get()
         self.loan_margins_list = self.loan_margins_list.rename(columns={'銘柄コード': 'コード'})
 
@@ -91,7 +94,7 @@ class TradePossibilityManager:
             files = list(Path(self.download_path).glob("*.csv"))
             if files:
                 return max(files, key=os.path.getmtime)
-            self.browser_utils.wait(1)
+            self.sbi_browser_utils.wait(1)
         
 
     def _convert_csv_to_df(self, csvfile:str):

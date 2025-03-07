@@ -1,24 +1,34 @@
 import time
+import asyncio
+from functools import wraps
 from contextlib import contextmanager
+
 
 def timekeeper(func):
     """
-    関数の実行時間を測定するデコレーター。
+    関数の実行時間を測定するデコレーター（同期/非同期関数両対応）。
     
-    パラメータ:
-        func (callable): 実行時間を測定する対象の関数。
-
-    戻り値:
-        callable: 実行時間をログ出力するラップされた関数。
+    :param func: 実行時間を測定する対象の関数（同期/非同期の両方に対応）。
+    :return: 実行時間を出力するラップされた関数。
     """
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        print(f"Execution time for {func.__name__}: {end_time - start_time:.4f} seconds")
-        return result
-
-    return wrapper
+    if asyncio.iscoroutinefunction(func):  # 関数が async なら非同期処理として扱う
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            start_time = time.time()
+            result = await func(*args, **kwargs)  # async 関数は await で実行
+            end_time = time.time()
+            print(f"Execution time for {func.__name__}: {end_time - start_time:.4f} seconds")
+            return result
+        return async_wrapper
+    else:
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            start_time = time.time()
+            result = func(*args, **kwargs)  # 通常の関数はそのまま実行
+            end_time = time.time()
+            print(f"Execution time for {func.__name__}: {end_time - start_time:.4f} seconds")
+            return result
+        return sync_wrapper
 
 @contextmanager
 def measure_block_time(block_name="コードブロック"):

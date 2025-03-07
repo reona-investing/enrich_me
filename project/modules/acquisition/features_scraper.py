@@ -1,13 +1,14 @@
 from utils.paths import Paths
+from utils.browser import BrowserUtils
 import asyncio
-import nodriver as uc
 from bs4 import BeautifulSoup as soup
 from datetime import datetime, timedelta
 import pandas as pd
 import pytz
 from typing import Tuple
 import time
-from io import StringIO
+
+from utils.timekeeper import timekeeper
 
 def _get_features_to_scrape_df() -> pd.DataFrame:
     features_to_scrape_df = pd.read_csv(Paths.FEATURES_TO_SCRAPE_CSV)
@@ -16,12 +17,12 @@ def _get_features_to_scrape_df() -> pd.DataFrame:
                                     features_to_scrape_df['Path']
     return features_to_scrape_df
 
-async def _scrape_from_ARCA(code:str,  browser:object) -> Tuple[str, datetime]:
+async def _scrape_from_ARCA(code:str,  browser_utils:BrowserUtils) -> Tuple[str, datetime]:
     '''ARCAからのスクレイピング'''
     url = f'https://www.nyse.com/quote/index/{code}'
-    tab = await browser.get(url)
-    await tab.wait(10)
-    html = await tab.get_content()
+    await browser_utils.open_url(url)
+    await browser_utils.wait(10)
+    html = await browser_utils.get_content()
 
     s = soup(html, 'html.parser')
     #価格
@@ -34,27 +35,37 @@ async def _scrape_from_ARCA(code:str,  browser:object) -> Tuple[str, datetime]:
 
     return value, date_info
 
-async def _scrape_from_investing(url:str, browser:uc.core.browser.Browser) -> pd.DataFrame:
+async def _scrape_from_investing(url:str, browser_utils:BrowserUtils) -> pd.DataFrame:
     '''investingからのスクレイピング'''
     for i in range(10):
         try:
             if i == 0:
-                tab = await browser.tabs[0].get(url)
+                await browser_utils.open_url(url)
             else:
                 print('reloading...')
-                await tab.reload()
-            _ = await tab.wait_for(text='時間枠')
-            html = await tab.get_content()
-            dfs = pd.read_html(StringIO(html))
-            if len(dfs) < 2:
-                continue
-            else:
-                for df in dfs:
-                    if df.columns[0] == '日付け':
-                        df_to_add = df
-                        break
-                if df_to_add is not None:
-                    break
+                await browser_utils.reload()
+                
+
+            # テーブルの要素を取得し、BeautifulSoupで処理
+            table_header_initial = await browser_utils.wait_for('日付け')
+            table_selector = table_header_initial
+            while table_selector.tag_name != "table":
+                table_selector = table_selector.parent
+            html = await table_selector.get_html()
+            souped = soup(html, "html.parser")
+
+            # ヘッダーの取得
+            headers = [th.text.strip() for th in souped.select("thead th")]
+            # データの取得
+            rows = []
+            for tr in souped.select("tbody tr"):
+                cells = [td.text.strip() for td in tr.find_all("td")]
+                rows.append(cells)
+            
+
+            # DataFrame に変換
+            df_to_add = pd.DataFrame(rows, columns=headers)
+            break
         except:
             continue
     else:
@@ -70,13 +81,13 @@ async def _scrape_from_investing(url:str, browser:uc.core.browser.Browser) -> pd
 
     return df_to_add
 
+@timekeeper
 async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame:
 
+    browser_utils = BrowserUtils()
+
     features_to_scrape_df = _get_features_to_scrape_df()
-
-    if should_scrape_features:
-        browser = await uc.start(browser_executable_path='C:\Program Files\Google\Chrome\Application\chrome.exe')
-
+        
     for _, row in features_to_scrape_df.iterrows():
         start_time = time.time()
         print(row['Name'])
@@ -85,14 +96,14 @@ async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame
         #必要な場合のみ新規データをスクレイピング
         if should_scrape_features:
             url = 'https://jp.investing.com/' + str(row['URL']) + '-historical-data'
-            df_to_add = await _scrape_from_investing(url, browser)
+            df_to_add = await _scrape_from_investing(url, browser_utils)
 
             #バルチック海運指数はinvestingでは遅れ配信なので、当日分のみ公式よりスクレイピング
             #更新時刻：イギリス時間で13時
             if row['Name'] == 'BalticDry':
-                tab = await browser.get('https://www.balticexchange.com/en/index.html')
-                await tab.wait(3)
-                element = await tab.wait_for('#ticker > div > div > div:nth-child(1) > span.value')
+                await browser_utils.open_url('https://www.balticexchange.com/en/index.html')
+                await browser_utils.wait(3)
+                element = await browser_utils.wait_for('#ticker > div > div > div:nth-child(1) > span.value', is_css=True)
                 value = float(element.text.replace(',', ''))
                 UK_time = datetime.now().astimezone(pytz.utc).astimezone(pytz.timezone('Europe/London')) #現在のイギリス時間を取得
                 if UK_time.hour >= 13: #時刻が13時を過ぎているか判定
@@ -104,9 +115,11 @@ async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame
                 df_to_add = pd.concat([df_to_add, df_to_add2], ignore_index=True) #行を追加（後で重複行は削除）
             #IronOREも遅れ配信なので、当日分のみtradingviewからスクレイピング
             if row['Name'] == 'IronORE62':
-                tab = await browser.get('https://www.tradingview.com/symbols/COMEX-TIO1!/')
-                await tab.wait(10)
-                element = await tab.wait_for('#js-category-content > div.tv-react-category-header > div.js-symbol-page-header-root > div > div > div > div.quotesRow-pAUXADuj > div:nth-child(1) > div > div.lastContainer-JWoJqCpY > span.last-JWoJqCpY.js-symbol-last > span')
+                await browser_utils.open_url('https://www.tradingview.com/symbols/COMEX-TIO1!/')
+                await browser_utils.wait(10)
+                element = await browser_utils.wait_for(
+                    '#js-category-content > div.tv-react-category-header > div.js-symbol-page-header-root > div > div > div > div.quotesRow-pAUXADuj > div:nth-child(1) > div > div.lastContainer-JWoJqCpY > span.last-JWoJqCpY.js-symbol-last > span',
+                    is_css = True)
                 value = float(element.text)
                 chicago_time = datetime.now().astimezone(pytz.utc).astimezone(pytz.timezone('America/Chicago')) #現在のイギリス時間を取得
                 if chicago_time.hour >= 8: #時刻が8時を過ぎているか判定
@@ -116,9 +129,9 @@ async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame
             #ARCA Grobal Airlinesはinvestingでは遅れ配信なので、当日分のみ公式Webよりスクレイピング
             if 'ARCA' in row['Name']:
                 if row['Name'] == 'ARCA GlobalAirline':
-                    value, latest_day = await _scrape_from_ARCA('AXGAL', browser) #NYSEのWebサイトからスクレイピング
+                    value, latest_day = await _scrape_from_ARCA('AXGAL', browser_utils) #NYSEのWebサイトからスクレイピング
                 if row['Name'] == 'ARCA China':
-                    value, latest_day = await _scrape_from_ARCA('CZH', browser) #NYSEのWebサイトからスクレイピング
+                    value, latest_day = await _scrape_from_ARCA('CZH', browser_utils) #NYSEのWebサイトからスクレイピング
                 latest_day = latest_day.date() #前日の日付
                 df_to_add2 = pd.DataFrame({'Date':latest_day, 'Open':value, 'Close':value, 'High':value, 'Low':value}, index=[0])
                 df_to_add = pd.concat([df_to_add, df_to_add2], ignore_index=True) #行を追加（後で重複行は削除）
@@ -151,5 +164,5 @@ async def scrape_all_indices(should_scrape_features:bool = True) -> pd.DataFrame
     
 if __name__ == '__main__':
     features_to_scrape_df = _get_features_to_scrape_df()
-    df = uc.loop().run_until_complete(scrape_all_indices())
+    df = asyncio.get_event_loop().run_until_complete(scrape_all_indices())
         
