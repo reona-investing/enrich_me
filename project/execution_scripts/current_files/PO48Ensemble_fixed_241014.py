@@ -10,10 +10,10 @@ Slack.start(
 #%% モジュールのインポート
 from datetime import datetime
 import pandas as pd
-from typing import Tuple
 from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
 from acquisition import features_scraper as scraper
+from acquisition.features_updater import FeaturesUpdater
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
 from models.loader import load_datasets
@@ -29,10 +29,10 @@ async def read_and_update_data(filter: str) -> dict:
     if flag_manager.flags[Flags.FETCH_DATA]:
         update = process = True
     stock_dfs_dict = StockAcquisitionFacade(update=update, process=process, filter = filter).get_stock_data_dict()
-    if flag_manager.flags[Flags.UPDATE_DATASET]:    
+    if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.FETCH_DATA]:    
         '''各種金融データ取得or読み込み'''
-        await scraper.scrape_all_indices(
-            should_scrape_features=flag_manager.flags[Flags.FETCH_DATA])
+        fu = FeaturesUpdater()
+        await fu.update_all()
         Slack.send_message(message = 'データの更新が完了しました。')
     return stock_dfs_dict
 
@@ -222,9 +222,9 @@ if __name__ == '__main__':
     '''パス類'''
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
     SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
-    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250125'
-    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LGBM_learned_in_250125'
-    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125'
+    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250308'
+    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LGBM_learned_in_250308'
+    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''
