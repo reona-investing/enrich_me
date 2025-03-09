@@ -1,21 +1,26 @@
 import nodriver as uc
 from pathlib import Path
+import asyncio
 
 class BrowserUtils:
     BROWSER_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+    browser = None
+    lock = asyncio.Lock()
     def __init__(self):
         '''
         ブラウザを用いた操作を定義します。
         Args:
             login_handler (LoginHandler): SBI証券へのログイン状態を確認します。
         '''
-        self.browser = None
         self.tab = None
 
     async def _launch(self):
-        if self.tab is None:
-            self.browser = await uc.start(browser_executable_path=BrowserUtils.BROWSER_PATH)
-            self.tab = await self.browser.get()
+        async with BrowserUtils.lock:
+            if BrowserUtils.browser is None:
+                BrowserUtils.browser = await uc.start(browser_executable_path=BrowserUtils.BROWSER_PATH)
+                self.tab = await BrowserUtils.browser.get()
+            if self.tab is None:
+                self.tab = await BrowserUtils.browser.get(new_tab = True)
 
     async def open_url(self, url: str):
         """
@@ -25,7 +30,8 @@ class BrowserUtils:
             url: 開く対象のURL
         """
         await self._launch()
-        self.tab = await self.browser.get(url)
+        await self.tab.get(url)
+
 
     async def reload(self):
         """
@@ -171,3 +177,29 @@ class BrowserUtils:
         for tab in self.browser.tabs:
             if self.tab != tab:
                 await tab.close()
+    
+    async def close_tab(self):
+        '''
+        タブを閉じます。
+        '''
+        await self.tab.close()
+
+
+if __name__ == '__main__':
+    import asyncio
+    async def main():
+        '''
+        bu1 = BrowserUtils()
+        await bu1.open_url('https://www.google.co.jp/')
+        bu2 = BrowserUtils()
+        await bu2.open_url('https://www.yahoo.co.jp/')
+
+        await asyncio.sleep(5)
+        '''
+
+        tasks = [BrowserUtils().open_url('https://www.google.co.jp/'),
+                 BrowserUtils().open_url('https://www.yahoo.co.jp/')]
+        await asyncio.gather(*tasks)
+        await asyncio.sleep(5)
+
+    asyncio.get_event_loop().run_until_complete(main())

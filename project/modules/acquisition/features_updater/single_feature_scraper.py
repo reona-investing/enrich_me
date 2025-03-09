@@ -142,13 +142,29 @@ class SingleFeatureScraper:
 
 
 if __name__ == '__main__':
-    browser_utils = BrowserUtils()
-    single_feature_scraper = SingleFeatureScraper(browser_utils)
-    df = asyncio.get_event_loop().run_until_complete(
-        single_feature_scraper.scrape_feature(feature_name = 'USDJPY', 
-                                              path = 'raw_USDJPY_price.parquet', 
-                                              investing_code = 'currencies/usd-jpy')
-        )
-    df.to_csv('mock.csv', index=False)
-    print(df)
-        
+    @timekeeper
+    async def main():
+        import numpy as np
+        browser_utils = BrowserUtils()
+        single_feature_scraper = SingleFeatureScraper(browser_utils)
+        df1 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/usd-jpy', additional_scrape = np.nan, additional_code = np.nan)
+        df2 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/eur-jpy', additional_scrape = np.nan, additional_code = np.nan)
+        df3 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/aud-jpy', additional_scrape = np.nan, additional_code = np.nan)
+        dfs = [df1, df2, df3]
+        return dfs
+    
+    @timekeeper
+    async def main_async():
+        import numpy as np
+        tasks = []
+        investing_codes = ['currencies/usd-jpy', 'currencies/eur-jpy', 'currencies/aud-jpy']
+        for investing_code in investing_codes:
+            tasks.append(SingleFeatureScraper(BrowserUtils()).scrape_feature(investing_code = investing_code, additional_scrape = np.nan, additional_code = np.nan))
+
+        dfs = await asyncio.gather(*tasks)
+        return dfs
+
+    dfs = asyncio.get_event_loop().run_until_complete(main())
+    dfs = asyncio.get_event_loop().run_until_complete(main_async())
+    #for df in dfs:
+    #    print(df)

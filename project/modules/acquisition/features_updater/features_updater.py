@@ -4,13 +4,13 @@ from utils.timekeeper import timekeeper
 from acquisition.features_updater.single_feature_scraper import SingleFeatureScraper
 from acquisition.features_updater.scraped_data_merger import ScrapedDataMerger
 import pandas as pd
-
+import asyncio
 
 
 class FeaturesUpdater:
     def __init__(self):
-        self.scraper = SingleFeatureScraper(BrowserUtils())
-        self.merger = ScrapedDataMerger()
+        self.count = 1
+    
     
     @timekeeper
     async def update_all(self):
@@ -18,19 +18,10 @@ class FeaturesUpdater:
         config_df = config_df[config_df['is_adopted']]
         features_num = len(config_df)
 
-        for index, row in config_df.iterrows():
-            print(f"{index + 1}/{features_num}: {row['Name']}")
-            existing_df = pd.read_parquet(path = row['Path'])
-            additional_df = await self.scraper.scrape_feature(
-                investing_code = row['URL'],
-                additional_scrape = row['AdditionalScrape'],
-                additional_code = row['AdditionalCode']
-                )
-            df = self.merger.merge_scraped_data(existing_df = existing_df, additional_df = additional_df)
-            df.to_parquet(row['Path'])
-            print(df.tail(2))
-            print('---------------------------------------')
-            
+        semaphore = asyncio.Semaphore(5)
+        tasks = [self._process_feature(SingleFeatureScraper(BrowserUtils()), ScrapedDataMerger(), semaphore, row, features_num) for _, row in config_df.iterrows()]
+        await asyncio.gather(*tasks)
+        
         print('---------------------------------------')
         print('全データのスクレイピングが完了しました。')
 
@@ -40,10 +31,28 @@ class FeaturesUpdater:
         features_to_scrape_df['Path'] = Paths.SCRAPED_DATA_FOLDER + '/' + \
                                         features_to_scrape_df['Group'] + '/' + \
                                         features_to_scrape_df['Path']
-        return features_to_scrape_df    
+        return features_to_scrape_df 
+    
+
+    async def _process_feature(self, scraper: SingleFeatureScraper, merger: ScrapedDataMerger, semaphore: asyncio.Semaphore, 
+                               row, features_num):
+        async with semaphore:
+            existing_df = pd.read_parquet(path=row['Path'])
+            await asyncio.sleep(1)
+            additional_df = await scraper.scrape_feature(
+                investing_code=row['URL'],
+                additional_scrape=row['AdditionalScrape'],
+                additional_code=row['AdditionalCode']
+            )
+            df = merger.merge_scraped_data(existing_df=existing_df, additional_df=additional_df)
+            df.to_parquet(row['Path'])
+            print(f"{self.count}/{features_num}: {row['Name']}")
+            self.count += 1
+            print(df.tail(2))
+            print('---------------------------------------')
+            await scraper.browser_utils.close_tab()
+
 
 
 if __name__ == '__main__':
-    import asyncio
-    fu = FeaturesUpdater()
-    asyncio.run(fu.update_all())
+    asyncio.get_event_loop().run_until_complete(FeaturesUpdater().update_all())
