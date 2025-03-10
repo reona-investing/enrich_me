@@ -169,20 +169,20 @@ class BrowserUtils:
         '''
         await self.tab.set_download_path(path)
 
-    async def close_popup(self):
-        '''
-        意図せず表示された別タブをクリアします。
-        '''
-        self.browser = self.login_handler.session.browser
-        for tab in self.browser.tabs:
-            if self.tab != tab:
-                await tab.close()
     
     async def close_tab(self):
         '''
         タブを閉じます。
         '''
         await self.tab.close()
+
+
+    async def reset_session_info(self):
+        """
+        セッション情報（ブラウザとタブの情報）を初期化する関数
+        """
+        BrowserUtils.browser = None
+        await self._launch()
 
 
 if __name__ == '__main__':

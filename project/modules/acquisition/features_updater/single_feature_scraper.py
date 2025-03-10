@@ -63,6 +63,12 @@ class SingleFeatureScraper:
                 # DataFrame に変換
                 df_to_add = pd.DataFrame(rows, columns=headers)
                 break
+            except ConnectionRefusedError as e:
+                print(f"{url}: ブラウザの接続が切れました: {e}")
+                print("ブラウザを再起動します...")
+                await self.browser_utils.reset_session_info()
+                i = 0
+                continue
             except:
                 continue
         else:
