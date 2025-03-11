@@ -1,6 +1,7 @@
 import nodriver as uc
 from pathlib import Path
 import asyncio
+from functools import wraps
 
 class BrowserUtils:
     BROWSER_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
@@ -14,6 +15,29 @@ class BrowserUtils:
         '''
         self.tab = None
 
+
+    def retry_on_connection_error(func):
+        """ ConnectionRefusedError 発生時に reset_session_info を実行し再試行するデコレータ """
+        @wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            for _ in range(2):  # 最大2回リトライ
+                try:
+                    return await func(self, *args, **kwargs)
+                except ConnectionRefusedError:
+                    print(f"ConnectionRefusedError発生: {func.__name__} を再試行します。")
+                    await self.reset_session_info()
+            raise ConnectionRefusedError(f"再試行に失敗しました: {func.__name__}")
+        return wrapper
+
+
+    async def reset_session_info(self):
+        """
+        セッション情報（ブラウザとタブの情報）を初期化する関数
+        """
+        BrowserUtils.browser = None
+        await self._launch()
+
+
     async def _launch(self):
         async with BrowserUtils.lock:
             if BrowserUtils.browser is None:
@@ -22,6 +46,8 @@ class BrowserUtils:
             if self.tab is None:
                 self.tab = await BrowserUtils.browser.get(new_tab = True)
 
+
+    @retry_on_connection_error
     async def open_url(self, url: str):
         """
         指定したURLを開きます。
@@ -32,7 +58,7 @@ class BrowserUtils:
         await self._launch()
         await self.tab.get(url)
 
-
+    @retry_on_connection_error
     async def reload(self):
         """
         タブをリロードします。
@@ -40,6 +66,7 @@ class BrowserUtils:
         await self._launch()
         await self.tab.reload()
 
+    @retry_on_connection_error
     async def wait(self, t: int | float):
         """
         指定した秒数待機します。
@@ -51,6 +78,7 @@ class BrowserUtils:
             if t > 0:
                 await self.tab.wait(t)
 
+    @retry_on_connection_error
     async def select_element(self, selector_text: str, is_css: bool = False):
         """
         指定した文字列 or cssセレクタ要素を返します。
@@ -62,6 +90,7 @@ class BrowserUtils:
         element = await self.wait_for(selector = selector_text, is_css=is_css)
         return element
 
+    @retry_on_connection_error
     async def select_all(self, css_selector: str):
         '''
         特定のcssセレクタを持つ要素をすべて取得します。
@@ -69,6 +98,7 @@ class BrowserUtils:
         await  self._launch()
         elements = await self.tab.select_all(css_selector)
         return elements
+
 
     async def click_element(self, selector_text: str, is_css: bool = False):
         """
@@ -93,6 +123,7 @@ class BrowserUtils:
         await element.send_keys(keys)
 
 
+    @retry_on_connection_error
     async def select_pulldown(self, css_selector: str):
         """
         プルダウンメニューのオプションを選択します。
@@ -109,6 +140,7 @@ class BrowserUtils:
         await self.tab.wait(0.5)
 
 
+    @retry_on_connection_error
     async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
         """
         指定した要素の表示を待ちます。
@@ -126,6 +158,7 @@ class BrowserUtils:
             element = await self.tab.wait_for(text=selector, timeout=timeout)
         return element
 
+
     async def wait_and_click(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
         """
         指定した要素の表示を待ってからクリックします。
@@ -137,6 +170,8 @@ class BrowserUtils:
         element = await self.wait_for(selector, is_css, timeout)
         await element.click()
 
+
+    @retry_on_connection_error
     async def query_selector(self, css_selector: str, is_all: bool = False) -> list:
         """
         指定したcssセレクタを持つ要素を、1つまたは複数検索します。
@@ -153,6 +188,7 @@ class BrowserUtils:
             find_list = await self.tab.query_selector(css_selector)
         return find_list
 
+    @retry_on_connection_error
     async def get_html_content(self):
         '''
         現在のタブからhtmlを取得します。
@@ -160,6 +196,7 @@ class BrowserUtils:
         await  self._launch()
         html_content = await self.tab.get_content()
         return html_content
+
 
     async def set_download_path(self, path: Path):
         '''
@@ -176,13 +213,6 @@ class BrowserUtils:
         '''
         await self.tab.close()
 
-
-    async def reset_session_info(self):
-        """
-        セッション情報（ブラウザとタブの情報）を初期化する関数
-        """
-        BrowserUtils.browser = None
-        await self._launch()
 
 
 if __name__ == '__main__':
