@@ -1,26 +1,25 @@
 from bs4 import BeautifulSoup as soup
-from trading.sbi.session import LoginHandler
-from trading.sbi.browser import SBIBrowserUtils, PageNavigator
+from trading.sbi.browser import SBIBrowserManager, PageNavigator
 import re
 
 class MarginManager:
-    def __init__(self, login_handler: LoginHandler):
+    def __init__(self, browser_manager: SBIBrowserManager):
         """
         信用建余力・買付余力取得クラス
         """
-        self.login_handler = login_handler
-        self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = SBIBrowserUtils(self.login_handler)
+        self.browser_manager = browser_manager
+        self.page_navigator = PageNavigator(self.browser_manager)
         self.margin_power = None
         self.buying_power = None
 
     async def fetch(self):
         """信用建余力と買付余力を取得して返す"""
+        await self.browser_manager.launch()
         # 口座管理ページに遷移
-        await self.page_navigator.account_management()
+        named_tab = await self.page_navigator.account_management()
 
         # ページのHTMLを取得
-        html_content = await self.browser_utils.get_html_content()
+        html_content = await named_tab.tab.utils.get_html_content()
         html = soup(html_content, "html.parser")
 
         # 信用建余力を取得
@@ -34,3 +33,15 @@ class MarginManager:
         if not div:
             raise ValueError("買付余力の要素が見つかりません。")
         self.buying_power = int(div.find_next("div").getText().strip().replace(",", ""))
+
+
+if __name__ == '__main__':
+    import asyncio
+    async def main():
+        browser_manager = SBIBrowserManager()
+        mm = MarginManager(browser_manager)
+        await mm.fetch()
+        print(mm.buying_power)
+        print(mm.margin_power)
+    
+    asyncio.get_event_loop().run_until_complete(main())

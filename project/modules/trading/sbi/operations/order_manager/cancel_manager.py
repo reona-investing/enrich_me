@@ -1,21 +1,22 @@
 from trading.sbi.operations.order_manager.order_manager_base import OrderManagerBase
 from trading.sbi.operations.position_manager import PositionManager
 from trading.sbi.operations.trade_possibility_manager import TradePossibilityManager
-from trading.sbi.session.login_handler import LoginHandler
+from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
 import traceback
 import re
 from bs4 import BeautifulSoup as soup
+import asyncio
 
 
 class CancelManager(OrderManagerBase):
     """
     発注操作を管理するクラス（新規注文、再発注、決済など）。
     """
-    def __init__(self, login_handler: LoginHandler):
-        super().__init__(login_handler)
-        self.login_handler = login_handler
+    def __init__(self, browser_manager: SBIBrowserManager):
+        super().__init__(browser_manager)
+        self.browser_manager = browser_manager
         self.position_manager = PositionManager()
-        self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
+        self.trade_possibility_manager = TradePossibilityManager(self.browser_manager)
         self.has_successfully_ordered = False
         self.error_tickers = []
 
@@ -24,6 +25,7 @@ class CancelManager(OrderManagerBase):
         すべての注文をキャンセルする。
         """
         try:
+            await self.browser_manager.launch()
             await self.extract_order_list()
 
             if len(self.order_list_df) == 0:
@@ -38,15 +40,17 @@ class CancelManager(OrderManagerBase):
             traceback.print_exc()  # スタックトレースを出力
 
     async def _cancel_single_order(self) -> None:
-        await self.browser_utils.wait_for('取引パスワード')
+        named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.wait_for('取引パスワード')
         await self._input_trade_pass()
-        await self.browser_utils.click_element('input[value=注文取消]', is_css = True)
-        await self.browser_utils.wait_for('ご注文を受け付けました。')
-        await self.browser_utils.wait(1)
+        await named_tab.tab.utils.click_element('input[value=注文取消]', is_css = True)
+        await named_tab.tab.utils.wait_for('ご注文を受け付けました。')
+        await named_tab.tab.utils.wait(1)
         await self._handle_cancel_response()
 
     async def _handle_cancel_response(self) -> None:
-        html_content = await self.browser_utils.get_html_content()
+        named_tab = self.browser_manager.get_tab('SBI')
+        html_content = await named_tab.tab.utils.get_html_content()
         html = soup(html_content, "html.parser")
         code_element = html.find("b", string=re.compile("銘柄コード"))
         code = code_element.find_parent("th").find_next_sibling("td").get_text(strip=True)
@@ -63,7 +67,8 @@ class CancelManager(OrderManagerBase):
             print(f"{code} {unit}株 {order_type}：注文取消に失敗しました。")
 
     async def _edit_position_manager_for_cancel(self) -> None:
-        html_content = await self.browser_utils.get_html_content()
+        named_tab = self.browser_manager.get_tab('SBI')
+        html_content = await named_tab.tab.utils.get_html_content()
         html = soup(html_content, "html.parser")
         order_id_element = html.find("b", string=re.compile("注文番号"))
         order_id = order_id_element.find_parent("th").find_next_sibling("td").get_text(strip=True)

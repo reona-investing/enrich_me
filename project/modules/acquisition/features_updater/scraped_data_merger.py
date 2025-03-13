@@ -1,14 +1,5 @@
 from utils.paths import Paths
-from utils.browser import BrowserUtils
-import asyncio
-from bs4 import BeautifulSoup as soup
-from datetime import datetime, timedelta
 import pandas as pd
-import pytz
-from typing import Tuple
-import time
-
-from utils.timekeeper import timekeeper
 
 class ScrapedDataMerger:
     def __init__(self):
@@ -38,8 +29,6 @@ class ScrapedDataMerger:
         df = df.sort_values(by='Date').reset_index(drop=True)
         df[['Open', 'Close', 'High', 'Low']] = df[['Open', 'Close', 'High', 'Low']].replace(',', '', regex=True).astype(float)
         return df.drop_duplicates(subset=['Date'], keep='last')
-
-
 
     
 if __name__ == '__main__':

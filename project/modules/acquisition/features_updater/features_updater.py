@@ -1,5 +1,6 @@
 from utils.paths import Paths
 from utils.browser import BrowserUtils
+from utils.browser.browser_manager import BrowserManager
 from utils.timekeeper import timekeeper
 from acquisition.features_updater.single_feature_scraper import SingleFeatureScraper
 from acquisition.features_updater.scraped_data_merger import ScrapedDataMerger
@@ -19,7 +20,10 @@ class FeaturesUpdater:
         features_num = len(config_df)
 
         semaphore = asyncio.Semaphore(5)
-        tasks = [self._process_feature(SingleFeatureScraper(BrowserUtils()), ScrapedDataMerger(), semaphore, row, features_num) for _, row in config_df.iterrows()]
+        browser_manager = BrowserManager()
+        scraper = SingleFeatureScraper(browser_manager=browser_manager)
+        merger = ScrapedDataMerger()
+        tasks = [self._process_feature(scraper, merger, semaphore, row, features_num) for _, row in config_df.iterrows()]
         await asyncio.gather(*tasks)
         
         print('---------------------------------------')
@@ -50,7 +54,6 @@ class FeaturesUpdater:
             self.count += 1
             print(df.tail(2))
             print('---------------------------------------')
-            await scraper.browser_utils.close_tab()
 
 
 

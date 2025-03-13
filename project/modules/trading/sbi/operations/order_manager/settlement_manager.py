@@ -1,8 +1,7 @@
 from trading.sbi.operations.order_manager.order_manager_base import OrderManagerBase
 from trading.sbi.operations.position_manager import PositionManager
 from trading.sbi.operations.trade_possibility_manager import TradePossibilityManager
-from trading.sbi.session.login_handler import LoginHandler
-import os
+from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
 import re
 import pandas as pd
 from bs4 import BeautifulSoup as soup
@@ -12,14 +11,15 @@ class SettlementManager(OrderManagerBase):
     """
     発注操作を管理するクラス（新規注文、再発注、決済など）。
     """
-    def __init__(self, login_handler: LoginHandler):
-        super().__init__(login_handler)
-        self.login_handler = login_handler
+    def __init__(self, browser_manager: SBIBrowserManager):
+        super().__init__(browser_manager)
+        self.browser_manager = browser_manager
         self.position_manager = PositionManager()
-        self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
+        self.trade_possibility_manager = TradePossibilityManager(self.browser_manager)
         self.error_tickers = []
 
     async def settle_all_margins(self):
+        await self.browser_manager.launch()
         await self._extract_margin_list()
         await self.extract_order_list()
         if len(self.margin_list_df) == 0:
@@ -49,9 +49,10 @@ class SettlementManager(OrderManagerBase):
         print(f'全銘柄の決済処理が完了しました。')
 
     async def _extract_margin_list(self):
+        named_tab = self.browser_manager.get_tab('SBI')
         await self.page_navigator.credit_position()
-        await self.browser_utils.wait(1)
-        html_content = await self.browser_utils.get_html_content()
+        await named_tab.tab.utils.wait(1)
+        html_content = await named_tab.tab.utils.get_html_content()
         self.margin_list_df = self._parse_margin_table(html_content)
 
     def _prepare_settlement_data(self) -> tuple[list[str], list[str]]:
@@ -100,8 +101,9 @@ class SettlementManager(OrderManagerBase):
         return data
 
     async def _get_css_element_nums(self, table_body_css: str) -> list[int]:
-        await self.browser_utils.wait(5)
-        mylist = await self.browser_utils.query_selector(f'{table_body_css} > tr', is_all=True)
+        named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.wait(5)
+        mylist = await named_tab.tab.utils.query_selector(f'{table_body_css} > tr', is_all=True)
         css_element_nums = []
         for num, element in enumerate(mylist):
             element_text = element.text_all
@@ -112,14 +114,14 @@ class SettlementManager(OrderManagerBase):
 
     async def _process_single_settlement_order(self, ticker: str, element_num: int, table_body_css: str) -> None:
         retry_count = 0
-        await self.page_navigator.credit_position_close()
+        named_tab = await self.page_navigator.credit_position_close()
 
         await self._navigate_to_individual_tickers_page(element_num, table_body_css)
         await self._input_order_conditions()
         await self._send_order()
 
         try:
-            await self.browser_utils.wait_for('ご注文を受け付けました。')                
+            await named_tab.tab.utils.wait_for('ご注文を受け付けました。')                
             print(f"{ticker}：正常に決済注文完了しました。")
         except:
             if retry_count < 3:
@@ -130,30 +132,33 @@ class SettlementManager(OrderManagerBase):
                 self.error_tickers.append(ticker)
                 retry_count = 0
 
-        await self.browser_utils.wait(1)
+        await named_tab.tab.utils.wait(1)
         await self._update_settlement_status(ticker)
         
 
         retry_count = 0
 
     async def _navigate_to_individual_tickers_page(self, element_num: int, table_body_css: str):
-        await self.browser_utils.wait_and_click(
+        named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.click_element(
             f'{table_body_css} > tr:nth-child({element_num}) > td:nth-child(10) > a:nth-child(1) > u > font', 
             is_css = True
             )
 
     async def _input_order_conditions(self) -> None:
-        await self.browser_utils.wait_and_click('input[value="全株指定"]', is_css = True)
-        await self.browser_utils.wait_and_click('input[value="注文入力へ"]', is_css = True)
-        await self.browser_utils.wait(2)
-        order_type_elements = await self.browser_utils.select_all('input[name="in_sasinari_kbn"]')
+        named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.click_element('input[value="全株指定"]', is_css = True)
+        await named_tab.tab.utils.click_element('input[value="注文入力へ"]', is_css = True)
+        await named_tab.tab.utils.wait(2)
+        order_type_elements = await named_tab.tab.utils.select_all('input[name="in_sasinari_kbn"]')
         await order_type_elements[1].click()  # 成行
         selector = f'select[name="nariyuki_condition"] option[value="H"]'
-        await self.browser_utils.select_pulldown(selector)
+        await named_tab.tab.utils.select_pulldown(selector)
     
 
     async def _update_settlement_status(self, ticker: str) -> None:
-        await self.browser_utils.wait_for('注文番号') # 画面の遷移を待機
+        named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.wait_for('注文番号') # 画面の遷移を待機
         extracted_unit = await self._get_element('株数')
         extracted_unit = int(extracted_unit[:-1].replace(',', ''))
         trade_type = await self._get_element('取引')

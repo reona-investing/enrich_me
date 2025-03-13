@@ -1,10 +1,9 @@
-from .session import LoginHandler
+
 from .operations import MarginManager, TradePossibilityManager, HistoryManager, PositionManager, TradeParameters
-from .browser import SBIBrowserUtils, FileUtils
+from .browser import SBIBrowserManager, FileUtils
 
 __all__ = [
-    "LoginHandler"
-    "SBIBrowserUtils",
+    "SBIBrowserManager",
     "FileUtils",
     "MarginManager",
     "TradePossibilityManager",

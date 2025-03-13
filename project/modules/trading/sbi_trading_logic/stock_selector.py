@@ -264,7 +264,9 @@ class StockSelector:
         if margin_power is None:
             await margin_manager.fetch()
             margin_power = margin_manager.margin_power
+        print(margin_power)
         maxcost_per_sector = margin_power / (sectors_to_trade_num * 2)
+        print(maxcost_per_sector)
         #トップ業種に傾斜をつけない場合
         if top_slope == 1:
             print(f'業種ごとの発注限度額：{maxcost_per_sector}円')

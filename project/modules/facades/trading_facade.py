@@ -1,7 +1,7 @@
 import os
 from utils.paths import Paths
 from utils.notifier import SlackNotifier
-from trading.sbi import HistoryManager, MarginManager, LoginHandler, TradePossibilityManager
+from trading.sbi import HistoryManager, MarginManager, TradePossibilityManager, SBIBrowserManager
 from trading.sbi.operations.order_manager import NewOrderManager, SettlementManager
 from trading.sbi_trading_logic import StockSelector, NewOrderMaker, AdditionalOrderMaker, PositionSettler, HistoryUpdater
 from models import MLDataset
@@ -9,13 +9,13 @@ from models import MLDataset
 class TradingFacade:
     def __init__(self):
         """SBI取引操作を統括するファサード"""
-        self.login_handler = LoginHandler()
         self.slack = SlackNotifier(program_name=os.path.basename(__file__))
-        self.history_manager = HistoryManager(self.login_handler)
-        self.margin_manager = MarginManager(self.login_handler)
-        self.new_order_manager = NewOrderManager(self.login_handler)
-        self.settlement_manager = SettlementManager(self.login_handler)
-        self.trade_possibility_manager = TradePossibilityManager(self.login_handler)
+        self.browser_manager = SBIBrowserManager()
+        self.history_manager = HistoryManager(self.browser_manager)
+        self.margin_manager = MarginManager(self.browser_manager)
+        self.new_order_manager = NewOrderManager(self.browser_manager)
+        self.settlement_manager = SettlementManager(self.browser_manager)
+        self.trade_possibility_manager = TradePossibilityManager(self.browser_manager)
         self.Paths = Paths
 
     async def take_positions(self, 

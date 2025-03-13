@@ -369,11 +369,11 @@ class SectorIndexCalculator:
 
 if __name__ == '__main__':
     from facades.stock_acquisition_facade import StockAcquisitionFacade
-    acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
+    acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))")
     stock_dfs = acq.get_stock_data_dict()
 
     sic = SectorIndexCalculator()
     sector_price_df, order_price_df = sic.calc_new_sector_price(stock_dfs, 
-                                            f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv', 
-                                            f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/New48sectors_price_test.parquet')
-    print(sector_price_df)
+                                            f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/topix1000.csv', 
+                                            f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/TOPIX1000_price.parquet')
+    print(sector_price_df.index.get_level_values('Sector').unique())

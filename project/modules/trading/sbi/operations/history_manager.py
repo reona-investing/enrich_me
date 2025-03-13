@@ -1,6 +1,5 @@
 import pandas as pd
-from trading.sbi.session import LoginHandler
-from trading.sbi.browser import PageNavigator, SBIBrowserUtils, FileUtils
+from trading.sbi.browser import PageNavigator, SBIBrowserManager, FileUtils
 from bs4 import BeautifulSoup as soup
 import re
 import unicodedata
@@ -8,9 +7,10 @@ import os
 from datetime import datetime
 from pathlib import Path
 from utils.paths import Paths
+from utils.browser.named_tab import NamedTab
 
 class HistoryManager:
-    def __init__(self, login_handler: LoginHandler):
+    def __init__(self, browser_manager: SBIBrowserManager):
         """取引履歴管理クラス"""
         self.save_dir_path = Paths.TRADE_HISTORY_FOLDER
         os.makedirs(self.save_dir_path, exist_ok=True)
@@ -20,9 +20,8 @@ class HistoryManager:
         self.today_margin_trades_df = pd.DataFrame()
         self.cashflow_transactions_df = pd.DataFrame()
         self.today_stock_trades_df = pd.DataFrame()
-        self.login_handler = login_handler
-        self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = SBIBrowserUtils(self.login_handler)
+        self.browser_manager = browser_manager
+        self.page_navigator = PageNavigator(self.browser_manager)
 
 
     async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
@@ -30,24 +29,25 @@ class HistoryManager:
         過去の取引履歴をスクレイピングして取得
         self.today_margin_trades_df: 取引履歴データ
         """
-        await self.page_navigator.domestic_margin()
-        await self.browser_utils.wait(3)
+        await self.browser_manager.launch()
+        named_tab = await self.page_navigator.domestic_margin()
+        await named_tab.tab.utils.wait(3)
 
         table_elements = []
         
         while True:
-            html_content = await self.browser_utils.get_html_content()
+            html_content = await named_tab.tab.utils.get_html_content()
             html = soup(html_content, 'html.parser')
             table = html.find("td", string=re.compile("銘柄"))
             if table is None:
                 print('本日約定の注文はありません。')
                 return
-            table = table.findParent("table")
-            for i, tr in enumerate(table.find("tbody").findAll("tr")):
+            table = table.find_parent("table")
+            for i, tr in enumerate(table.find("tbody").find_all("tr")):
                 if i > 0:
                     table_elements.append(tr)
             try:
-                await self.browser_utils.wait_and_click('次へ→', timeout=3)
+                await named_tab.tab.utils.click_element('次へ→', timeout=3)
             except:
                 break
 
@@ -62,8 +62,8 @@ class HistoryManager:
         # データフレームを表示
         print(df)
 
-        self.today_margin_trades_df = df
-        self.today_margin_trades_df = self._format_contracts_df(self.today_margin_trades_df, sector_list_df)
+        self.today_margin_trades_df = self._format_contracts_df(df, sector_list_df)
+
 
     def _add_previous_mtext(self, html_list: list) -> list:
         previous_mtext = None
@@ -103,6 +103,7 @@ class HistoryManager:
         過去の取引履歴をスクレイピングして取得
         self.past_margin_trades_df: 取引履歴データ
         """
+        await self.browser_manager.launch()
         df = await self.page_navigator.fetch_past_margin_trades_csv(mydate=mydate)
         df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
         df = df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
@@ -157,8 +158,9 @@ class HistoryManager:
         """
         直近1週間の入出金履歴をスクレイピングして取得
         """
-        await self.page_navigator.cashflow_transactions()        
-        df = await self._convert_fetched_data_to_df()
+        await self.browser_manager.launch()
+        named_tab = await self.page_navigator.cashflow_transactions()        
+        df = await self._convert_fetched_data_to_df(named_tab)
         if len(df) == 0:
             print('直近1週間の入出金履歴はありません。')
             return
@@ -166,15 +168,15 @@ class HistoryManager:
         print('入出金の履歴')
         print(self.cashflow_transactions_df)
 
-    async def _convert_fetched_data_to_df(self) -> pd.DataFrame:
+    async def _convert_fetched_data_to_df(self, named_tab: NamedTab) -> pd.DataFrame:
         try:
-            selected_element = await self.browser_utils.select_element(
+            selected_element = await named_tab.tab.utils.wait_for(
                 selector_text = '#fc-page-size > div:nth-child(1) > div > select > option:nth-child(5)', 
                 is_css = True)
         except:
             return pd.DataFrame()
         await selected_element.select_option()
-        parent_element = await self.browser_utils.select_element(
+        parent_element = await named_tab.tab.utils.wait_for(
             selector_text = '#fc-page-table > div > ul',
             is_css = True)
         elements = parent_element.children
@@ -216,8 +218,9 @@ class HistoryManager:
         今日の現物取引をスクレイピングして取得
         self.today_stock_trades_df: 現物取引データ
         """
-        await self.page_navigator.domestic_stock()
-        html_content = await self.browser_utils.get_html_content()
+        await self.browser_manager.launch()
+        named_tab = await self.page_navigator.domestic_stock()
+        html_content = await named_tab.tab.utils.get_html_content()
         html = soup(html_content, 'html.parser')
         table = html.find('td', string=re.compile('銘柄'))
         if table is None:
@@ -258,3 +261,18 @@ class HistoryManager:
         return data
     
     
+if __name__ == '__main__':
+    import asyncio
+    from datetime import datetime
+    async def main():
+        bm = SBIBrowserManager()
+        hm = HistoryManager(bm)
+        sector_list_df = pd.read_csv(f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv')
+        '''
+        await hm.fetch_cashflow_transactions()
+        await hm.fetch_today_margin_trades(sector_list_df=sector_list_df)
+        await hm.fetch_today_stock_trades()
+        '''
+        df = await hm.fetch_past_margin_trades(sector_list_df, datetime(2025,3,10))
+        print(df)
+    asyncio.get_event_loop().run_until_complete(main())

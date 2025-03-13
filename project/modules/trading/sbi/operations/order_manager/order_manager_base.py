@@ -1,5 +1,4 @@
-from trading.sbi.session.login_handler import LoginHandler
-from trading.sbi.browser import PageNavigator, SBIBrowserUtils
+from trading.sbi.browser import PageNavigator, SBIBrowserManager
 import re
 import os
 import unicodedata
@@ -46,10 +45,9 @@ class OrderManagerBase:
             "日計り": 2
         }
     }
-    def __init__(self, login_handler: LoginHandler):
-        self.login_handler = login_handler
-        self.page_navigator = PageNavigator(self.login_handler)
-        self.browser_utils = SBIBrowserUtils(self.login_handler)
+    def __init__(self, browser_manager: SBIBrowserManager):
+        self.browser_manager = browser_manager
+        self.page_navigator = PageNavigator(browser_manager)
 
     def _get_selector(self, category: str, key: str) -> str:
         """
@@ -58,18 +56,21 @@ class OrderManagerBase:
         return OrderManagerBase.order_param_dicts.get(category, {}).get(key, "")
 
     async def _get_element(self, text: str):
-        element = await self.browser_utils.select_element(text)
+        named_tab = self.browser_manager.get_tab('SBI')
+        element = await named_tab.tab.utils.wait_for(text)
         element = element.parent.parent.children[1]
         return re.sub(r'\s+', '', element.text)
 
     async def _send_order(self):
+        named_tab = self.browser_manager.get_tab('SBI')
         await self._input_trade_pass()
-        await self.browser_utils.click_element('input[id="shouryaku"]', is_css = True)
-        await self.browser_utils.click_element('img[title="注文発注"]', is_css = True)
+        await named_tab.tab.utils.click_element('input[id="shouryaku"]', is_css = True)
+        await named_tab.tab.utils.click_element('img[title="注文発注"]', is_css = True)
 
     async def _input_trade_pass(self):
         '''取引パスワードを入力する。'''
-        await self.browser_utils.send_keys_to_element('input[id="pwd3"]',
+        named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.send_keys_to_element('input[id="pwd3"]',
                                                       is_css = True,
                                                       keys = os.getenv('SBI_TRADEPASS'))
 
@@ -88,9 +89,9 @@ class OrderManagerBase:
             print(f"注文リストの取得中にエラーが発生しました: {e}")
     
     async def _fetch_order_list_table(self):
-        await self.page_navigator.order_inquiry()
-        await self.browser_utils.wait(3)
-        html_content = await self.browser_utils.get_html_content()
+        named_tab = await self.page_navigator.order_inquiry()
+        await named_tab.tab.utils.wait(3)
+        html_content = await named_tab.tab.utils.get_html_content()
         html = soup(html_content, "html.parser")
         table = html.find("th", string=re.compile("注文状況"))
         return table
