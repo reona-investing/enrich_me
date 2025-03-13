@@ -25,6 +25,8 @@ class TabManager:
         """
         return self._utils
 
-
     async def close(self):
+        """
+        タブを閉じる
+        """
         await self._tab.close()

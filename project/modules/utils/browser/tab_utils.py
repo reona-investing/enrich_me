@@ -8,6 +8,10 @@ class TabUtils:
     nodriver の Tab オブジェクトに対する操作（URLオープン、リロード、クリック等）をラップするユーティリティクラス
     """
     def __init__(self, tab: Tab):
+        '''
+        Args:
+            tab (nodriver.Tab): nodriverのタブオブジェクト
+        '''
         self._tab = tab
 
     async def open_url(self, url: str):
@@ -28,6 +32,7 @@ class TabUtils:
     async def wait(self, t: int | float):
         """
         指定した秒数待機します。
+
         Args:
             t (int|float): 待機秒数
         """
@@ -37,10 +42,12 @@ class TabUtils:
     async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
         """
         指定した要素の表示を待ちます。
+
         Args:
             selector (str): 表示を待ちたい文字列またはcssセレクタ
             is_css (bool): Trueならcssセレクタ、Falseなら文字列
             timeout (int|float|None): タイムアウト秒数
+
         Returns:
             element: 要素
         """
@@ -57,6 +64,7 @@ class TabUtils:
         Args:
             selector_text (str): 表示を待ちたい文字列 or CSSセレクタ
             is_css (bool): TrueならCSSセレクタ、Falseなら文字列の表示を待つ
+            timeout (int|float|None): タイムアウト秒数
         """
         element = await self.wait_for(selector=selector_text, is_css=is_css, timeout=timeout)
         await asyncio.sleep(0.3)
@@ -74,18 +82,22 @@ class TabUtils:
         element = await self.wait_for(selector=selector_text, is_css=is_css)
         await element.send_keys(keys)
 
-    async def select_all(self, css_selector: str):
+    async def select_all(self, css_selector: str) -> list:
         '''
         特定のcssセレクタを持つ要素をすべて取得します。
 
         Args:
             css_selector (str): 取得対象のCSSセレクタ
+
+        Returns:
+            list: 指定したcssセレクタを持つ全ての要素を格納したリスト
         '''
         return await self._tab.select_all(css_selector)
 
     async def select_pulldown(self, css_selector: str):
         """
         プルダウンメニューのオプションを選択します。
+
         Args:
             css_selector (str): 選択したいプルダウンメニューのCSSセレクタ
         """
@@ -97,13 +109,14 @@ class TabUtils:
         ''')
         await self._tab.wait(0.5)
 
-    async def query_selector(self, css_selector: str, is_all: bool = False):
+    async def query_selector(self, css_selector: str, is_all: bool = False) -> list:
         """
         指定したcssセレクタを持つ要素を、1つまたは複数検索します。
 
         Args:
             css_selector (str): 探し出すcssセレクタ
             is_all (bool): Trueならquery_selector_all()、Falseならquey_selector()を実行
+
         Returns:
             list: 検索結果を1つ又は複数格納したリスト
         """
@@ -112,15 +125,19 @@ class TabUtils:
         else:
             return await self._tab.query_selector(css_selector)
 
-    async def get_html_content(self):
+    async def get_html_content(self) -> str:
         '''
-        現在のタブからhtmlを取得します。
+        表示されたページのhtmlを取得します。
+
+        Returns:
+            str: 表示されたページのhtml
         '''
         return await self._tab.get_content()
 
     async def set_download_path(self, path: Path):
         '''
         ファイルのダウンロード先パスを指定します。
+
         Args:
             path (Path): ダウンロード先パス
         '''

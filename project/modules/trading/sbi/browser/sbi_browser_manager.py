@@ -8,7 +8,7 @@ class SBIBrowserManager(BrowserManager):
         """
         SBI証券向けのブラウザ操作を定義します。
         Args:
-            login_handler (LoginHandler): SBI証券へのログイン状態を管理
+            browser_manager (BrowserManager): ブラウザおよびタブの操作と管理を司ります。
         """
         self.signed_in = False
         self.browser = None
@@ -45,14 +45,6 @@ class SBIBrowserManager(BrowserManager):
 
         await named_tab.tab.utils.wait_for(selector='ログイン履歴')
 
-    async def close_popup(self):
-        """
-        SBI証券サイトで意図せず開いた別タブを閉じる
-        """
-        tabs_managed = [tab.tab.tab for tab in self.named_tabs.values()]
-        tabs_unmanaged = [tab for tab in self.browser.tabs if tab not in tabs_managed]
-        if tabs_unmanaged:
-            await asyncio.gather(*(tab.close() for tab in tabs_unmanaged))
 
 
 if __name__ == '__main__':

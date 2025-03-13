@@ -8,7 +8,7 @@ class PageNavigator:
     def __init__(self, browser_manager: SBIBrowserManager):
         '''
         SBI証券のWebサイト上の各ページへの遷移を行います。
-        login_handler (LoginHandler): SBI証券へのログイン状態を確認します。
+        browser_manager (SBIBrowserManager): ブラウザ及びタブの管理・操作を司ります。
         '''
         self.browser_manager = browser_manager
         self.should_return_to_home = False #特殊なレイアウトのページの場合、操作終了後ホームに戻りたい

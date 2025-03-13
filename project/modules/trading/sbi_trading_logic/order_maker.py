@@ -180,15 +180,15 @@ if __name__ == '__main__':
     async def main():
         from models import MLDataset
         from trading.sbi.operations import TradePossibilityManager, MarginManager
-        from trading.sbi.session import LoginHandler
+        from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
         ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
-        lh = LoginHandler()
-        tpm = TradePossibilityManager(lh)
-        mm = MarginManager(lh)
+        bm = SBIBrowserManager()
+        tpm = TradePossibilityManager(bm)
+        mm = MarginManager(bm)
         sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
         ss = StockSelector(ml.stock_selection_materials.order_price_df,ml.stock_selection_materials.pred_result_df, tpm, mm, sd)
         long_orders, short_orders, _ = await ss.select(margin_power=6000000)
-        om = NewOrderManager(lh)
+        om = NewOrderManager(bm)
         nom = NewOrderMaker(long_orders, short_orders, om)
         failed_list = await nom.run_new_orders()
     import asyncio
