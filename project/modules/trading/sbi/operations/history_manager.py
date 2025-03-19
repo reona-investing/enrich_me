@@ -36,14 +36,16 @@ class HistoryManager:
         table_elements = []
         
         while True:
-            html_content = await named_tab.tab.utils.get_html_content()
-            html = soup(html_content, 'html.parser')
-            table = html.find("td", string=re.compile("銘柄"))
-            if table is None:
+            try:
+                target_element = await named_tab.tab.utils.wait_for('株数')
+            except:
                 print('本日約定の注文はありません。')
                 return
-            table = table.find_parent("table")
-            for i, tr in enumerate(table.find("tbody").find_all("tr")):
+            
+            table_element = target_element.parent.parent
+            html_content = await table_element.get_html()
+            table_html = soup(html_content, 'html.parser')
+            for i, tr in enumerate(table_html.find_all("tr")):
                 if i > 0:
                     table_elements.append(tr)
             try:
@@ -264,15 +266,30 @@ class HistoryManager:
 if __name__ == '__main__':
     import asyncio
     from datetime import datetime
+
+    async def fetch_today_margin_trades(sector_list_df:pd.DataFrame=None):
+        """
+        過去の取引履歴をスクレイピングして取得
+        self.today_margin_trades_df: 取引履歴データ
+        """
+        bm = SBIBrowserManager()
+        named_tab = await PageNavigator(bm).domestic_margin()
+        await named_tab.tab.utils.wait(3)
+
+        table_elements = []
+        
+
+        print(table_elements)
+
+
+
     async def main():
         bm = SBIBrowserManager()
-        hm = HistoryManager(bm)
         sector_list_df = pd.read_csv(f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv')
         '''
         await hm.fetch_cashflow_transactions()
         await hm.fetch_today_margin_trades(sector_list_df=sector_list_df)
         await hm.fetch_today_stock_trades()
         '''
-        df = await hm.fetch_past_margin_trades(sector_list_df, datetime(2025,3,10))
-        print(df)
+
     asyncio.get_event_loop().run_until_complete(main())
