@@ -75,7 +75,7 @@ class LSDataHandler:
         raw_target_df = self.datetime_manager.extract_duration(raw_target_df)
         self.control_df = self.datetime_manager.extract_duration(ls_control.control_df)
         self.control_type = ls_control.control_type
-        self.original_cols = pred_result_df.columns
+        self.original_column_names = pred_result_df.columns
         pred_result_df = self._append_rank_cols(pred_result_df)
         self.result_df = self._append_raw_target_col(pred_result_df, raw_target_df)
 
@@ -94,129 +94,131 @@ class LSDataHandler:
 class MetricsCalculator:
     """指標計算を担当"""
     def __init__(self, 
-                 ls_data_handler: LSDataHandler, 
-                 trade_sectors_num: int = 3,
-                 bin_num: int = None,
-                 top_slope: float = 1):
+                ls_data_handler: LSDataHandler, 
+                sectors_to_trade_count: int = 3,
+                quantile_bin_count: int = None,
+                top_sector_weight: float = 1):
         '''
         Long-Short戦略のモデルの予測結果を格納し、各種指標を計算します。
         Args:
-            trade_sectors_num (int): 上位（下位）何sectorを取引の対象とするか。
-            bin_num (int):分位リターンのbin数。指定しない場合はsector数が割り当てられる。
-            top_slope (float): 最上位（最下位）予想業種にどれだけの比率で傾斜を掛けるか？
+            ls_data_handler (LSDataHandler): ロングショート戦略の各種データを保持するクラス
+            sectors_to_trade_count (int): 上位（下位）何sectorを取引の対象とするか。
+            quantile_bin_count (int):分位リターンのbin数。指定しない場合はsector数が割り当てられる。
+            top_sector_weight (float): 最上位（最下位）予想業種にどれだけの比率で傾斜を掛けるか？
         '''
+        self.sectors_to_trade_count = sectors_to_trade_count
         self.result_df = ls_data_handler.result_df
         self.control_df = ls_data_handler.control_df
         self.control_type = ls_data_handler.control_type
-        self.trade_sectors_num = trade_sectors_num
-        if bin_num is None:
-            bin_num = int(self.result_df[['RawTarget_Rank']].max().iloc[0] + 1)
-        self.bin_num = bin_num
-        self.top_slope = top_slope
-        self.original_cols = ls_data_handler.original_cols
-        self.metrics_functions = {}
-        self.metrics_dfs = {}
+
+        if quantile_bin_count is None:
+            quantile_bin_count = int(self.result_df[['RawTarget_Rank']].max().iloc[0] + 1)
+        self.quantile_bin_count = quantile_bin_count
+        self.top_sector_weight = top_sector_weight
+        self.original_column_names = ls_data_handler.original_column_names
+        self.metrics_dfs = {}  # 辞書キー名は日本語のままに！
+        
         self._calculate_all_metrics()
     
     def _calculate_all_metrics(self):
-        self.calc_return_by_bin()
-        self.calc_longshort_df()
-        self.calc_longshort_probability()
-        self.calc_longshort_sub_control()
-        self.calc_monthly_longshort()
-        self.calc_daily_sector_performances()
-        self.calc_monthly_sector_performances()
-        self.calc_total_sector_performances()
-        self.calc_spearman_corr()
-        self.calc_numerai_corrs()
+        self.calculate_return_by_quantile_bin()
+        self.calculate_longshort_performance()
+        self.calculate_longshort_probability()
+        self.calculate_longshort_minus_control()
+        self.calculate_monthly_longshort()
+        self.calculate_daily_sector_performances()
+        self.calculate_monthly_sector_performances()
+        self.calculate_total_sector_performances()
+        self.calculate_spearman_correlation()
+        self.calculate_numerai_correlationss()
     
 
-    def calc_return_by_bin(self) -> pd.DataFrame:
+    def calculate_return_by_quantile_bin(self) -> pd.DataFrame:
         '''指定したbin数ごとのリターンを算出。'''
         df = self.result_df.dropna().copy()
-        for column in self.original_cols:
+        for column in self.original_column_names:
             df[f'{column}_Bin'] = \
-              df.groupby('Date')[f'{column}_Rank'].transform(lambda x: pd.qcut(x, q=self.bin_num, labels=False))
+              df.groupby('Date')[f'{column}_Rank'].transform(lambda x: pd.qcut(x, q=self.quantile_bin_count, labels=False))
         self.metrics_dfs['分位成績'] = df.groupby(['Date', 'Pred_Bin'])[['Target']].mean().unstack(-1)
         self.metrics_dfs['分位成績（集計）'] = self.metrics_dfs['分位成績'].stack(future_stack=True).groupby('Pred_Bin').describe().T
 
 
-    def calc_longshort_df(self) -> pd.DataFrame:
+    def calculate_longshort_performance(self) -> pd.DataFrame:
         '''ロング・ショートそれぞれの結果を算出する。'''
         df = self.result_df.copy()
-        short_df = - df.loc[df['Pred_Rank'] <= self.trade_sectors_num]
-        short_df.loc[short_df['Pred_Rank'] == short_df['Pred_Rank'].min(), 'Target'] *= self.top_slope
-        short_df.loc[short_df['Pred_Rank'] != short_df['Pred_Rank'].min(), 'Target'] *= (1 - (self.top_slope - 1) / (self.trade_sectors_num - 1))
-        short_df = short_df.groupby('Date')[['Target']].mean()
-        short_df = short_df.rename(columns={'Target':'Short'})
-        long_df = df.loc[df['Pred_Rank'] > max(df['Pred_Rank']) - self.trade_sectors_num]
-        long_df.loc[long_df['Pred_Rank'] == long_df['Pred_Rank'].max(), 'Target'] *= self.top_slope
-        long_df.loc[long_df['Pred_Rank'] != long_df['Pred_Rank'].max(), 'Target'] *= (1 - (self.top_slope - 1) / (self.trade_sectors_num - 1))
-        long_df = long_df.groupby('Date')[['Target']].mean()
-        long_df = long_df.rename(columns={'Target':'Long'})
-        longshort_df = pd.concat([long_df, short_df], axis=1)
-        longshort_df['LS'] = (longshort_df['Long'] + longshort_df['Short']) / 2
+        short_positions = - df.loc[df['Pred_Rank'] <= self.sectors_to_trade_count]
+        short_positions.loc[short_positions['Pred_Rank'] == short_positions['Pred_Rank'].min(), 'Target'] *= self.top_sector_weight
+        short_positions.loc[short_positions['Pred_Rank'] != short_positions['Pred_Rank'].min(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
+        short_positions_return = short_positions.groupby('Date')[['Target']].mean()
+        short_positions_return = short_positions_return.rename(columns={'Target':'Short'})
+        long_positions = df.loc[df['Pred_Rank'] > max(df['Pred_Rank']) - self.sectors_to_trade_count]
+        long_positions.loc[long_positions['Pred_Rank'] == long_positions['Pred_Rank'].max(), 'Target'] *= self.top_sector_weight
+        long_positions.loc[long_positions['Pred_Rank'] != long_positions['Pred_Rank'].max(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
+        long_positions_return = long_positions.groupby('Date')[['Target']].mean()
+        long_positions_return = long_positions_return.rename(columns={'Target':'Long'})
+        performance_df = pd.concat([long_positions_return, short_positions_return], axis=1)
+        performance_df['LS'] = (performance_df['Long'] + performance_df['Short']) / 2
 
-        longshort_agg = longshort_df.describe()
-        longshort_agg.loc['SR'] = \
-          longshort_agg.loc['mean'] / longshort_agg.loc['std']
+        performance_summary = performance_df.describe()
+        performance_summary.loc['SR'] = \
+          performance_summary.loc['mean'] / performance_summary.loc['std']
 
-        longshort_df['L_Cumprod'] = (longshort_df['Long'] + 1).cumprod() - 1
-        longshort_df['S_Cumprod'] = (longshort_df['Short'] + 1).cumprod() - 1
-        longshort_df['LS_Cumprod'] = (longshort_df['LS'] + 1).cumprod() - 1
-        longshort_df['DD'] = 1 - (longshort_df['LS_Cumprod'] + 1) / (longshort_df['LS_Cumprod'].cummax() + 1)
-        longshort_df['MaxDD'] = longshort_df['DD'].cummax()
-        longshort_df['DDdays'] = longshort_df.groupby((longshort_df['DD'] == 0).cumsum()).cumcount()
-        longshort_df['MaxDDdays'] = longshort_df['DDdays'].cummax()
-        longshort_df = longshort_df[['LS', 'LS_Cumprod',
+        performance_df['L_Cumprod'] = (performance_df['Long'] + 1).cumprod() - 1
+        performance_df['S_Cumprod'] = (performance_df['Short'] + 1).cumprod() - 1
+        performance_df['LS_Cumprod'] = (performance_df['LS'] + 1).cumprod() - 1
+        performance_df['DD'] = 1 - (performance_df['LS_Cumprod'] + 1) / (performance_df['LS_Cumprod'].cummax() + 1)
+        performance_df['MaxDD'] = performance_df['DD'].cummax()
+        performance_df['DDdays'] = performance_df.groupby((performance_df['DD'] == 0).cumsum()).cumcount()
+        performance_df['MaxDDdays'] = performance_df['DDdays'].cummax()
+        performance_df = performance_df[['LS', 'LS_Cumprod',
                                      'DD', 'MaxDD', 'DDdays', 'MaxDDdays',
                                      'Long', 'Short',	'L_Cumprod', 'S_Cumprod']]
-        self.metrics_dfs['日次成績'] = longshort_df
-        self.metrics_dfs['日次成績（集計）'] = longshort_agg
+        self.metrics_dfs['日次成績'] = performance_df
+        self.metrics_dfs['日次成績（集計）'] = performance_summary
 
 
-    def calc_longshort_probability(self) -> pd.DataFrame:
+    def calculate_longshort_probability(self) -> pd.DataFrame:
         '''Long, Short, LSの各リターンを算出する。'''
-        longshort_df = self.metrics_dfs['日次成績'][['LS']].copy()
-        longshort_df['CumMean'] = longshort_df['LS'].expanding().mean().shift(1)
-        longshort_df['CumStd'] = longshort_df['LS'].expanding().std().shift(1)
-        longshort_df['DegFreedom'] = (longshort_df['LS'].expanding().count() - 1).shift(1)
-        longshort_df = longshort_df.dropna(axis=0)
+        performance_df = self.metrics_dfs['日次成績'][['LS']].copy()
+        performance_df['CumMean'] = performance_df['LS'].expanding().mean().shift(1)
+        performance_df['CumStd'] = performance_df['LS'].expanding().std().shift(1)
+        performance_df['DegFreedom'] = (performance_df['LS'].expanding().count() - 1).shift(1)
+        performance_df = performance_df.dropna(axis=0)
         # 前日までのリターンの結果で、その時点での母平均と母標準偏差の信頼区間を算出
-        longshort_df['MeanTuple'] = \
-          longshort_df.apply(lambda row: calculate_stats.estimate_population_mean(row['CumMean'], row['CumStd'], CI=0.997, deg_freedom=row['DegFreedom']), axis=1)
-        longshort_df['StdTuple'] = \
-          longshort_df.apply(lambda row: calculate_stats.estimate_population_std(row['CumStd'], CI=0.997, deg_freedom=row['DegFreedom']), axis=1)
-        longshort_df[['MeanWorst', 'MeanBest']] = longshort_df['MeanTuple'].apply(pd.Series)
-        longshort_df[['StdWorst', 'StdBest']] = longshort_df['StdTuple'].apply(pd.Series)
+        performance_df['MeanTuple'] = \
+          performance_df.apply(lambda row: calculate_stats.estimate_population_mean(row['CumMean'], row['CumStd'], CI=0.997, deg_freedom=row['DegFreedom']), axis=1)
+        performance_df['StdTuple'] = \
+          performance_df.apply(lambda row: calculate_stats.estimate_population_std(row['CumStd'], CI=0.997, deg_freedom=row['DegFreedom']), axis=1)
+        performance_df[['MeanWorst', 'MeanBest']] = performance_df['MeanTuple'].apply(pd.Series)
+        performance_df[['StdWorst', 'StdBest']] = performance_df['StdTuple'].apply(pd.Series)
         # 当日のリターンがどの程度の割合で起こるのかを算出
-        longshort_df['Probability'] = round(longshort_df.apply(lambda row: float(norm.cdf(row['LS'], loc=row['CumMean'], scale=row['CumStd'])), axis=1), 6)
-        longshort_df['ProbabWorst'] = round(longshort_df.apply(lambda row: float(norm.cdf(row['LS'], loc=row['MeanWorst'], scale=row['StdWorst'])), axis=1), 6)
-        longshort_df['ProbabBest'] = round(longshort_df.apply(lambda row: float(norm.cdf(row['LS'], loc=row['MeanBest'], scale=row['StdBest'])), axis=1), 6)
-        longshort_df = longshort_df[['LS', 'Probability', 'ProbabWorst', 'ProbabBest']]
-        self.metrics_dfs['日次成績（確率分布）'] = longshort_df
+        performance_df['Probability'] = round(performance_df.apply(lambda row: float(norm.cdf(row['LS'], loc=row['CumMean'], scale=row['CumStd'])), axis=1), 6)
+        performance_df['ProbabWorst'] = round(performance_df.apply(lambda row: float(norm.cdf(row['LS'], loc=row['MeanWorst'], scale=row['StdWorst'])), axis=1), 6)
+        performance_df['ProbabBest'] = round(performance_df.apply(lambda row: float(norm.cdf(row['LS'], loc=row['MeanBest'], scale=row['StdBest'])), axis=1), 6)
+        performance_df = performance_df[['LS', 'Probability', 'ProbabWorst', 'ProbabBest']]
+        self.metrics_dfs['日次成績（確率分布）'] = performance_df
 
 
-    def calc_longshort_sub_control(self):
+    def calculate_longshort_minus_control(self):
         '''コントロールを差し引いたリターン結果を表示する。'''
-        longshort_df = pd.merge(self.metrics_dfs['日次成績'], self.control_df[[f'{self.control_type}_daytime']], how='left', left_index=True, right_index=True)
-        longshort_df['Long'] -= longshort_df[f'{self.control_type}_daytime']
-        longshort_df['Short'] += longshort_df[f'{self.control_type}_daytime']
+        performance_df = pd.merge(self.metrics_dfs['日次成績'], self.control_df[[f'{self.control_type}_daytime']], how='left', left_index=True, right_index=True)
+        performance_df['Long'] -= performance_df[f'{self.control_type}_daytime']
+        performance_df['Short'] += performance_df[f'{self.control_type}_daytime']
 
-        longshort_agg = longshort_df[['Long', 'Short', 'LS']].describe()
-        longshort_agg.loc['SR'] = \
-          longshort_agg.loc['mean'] / longshort_agg.loc['std']
+        performance_summary = performance_df[['Long', 'Short', 'LS']].describe()
+        performance_summary.loc['SR'] = \
+          performance_summary.loc['mean'] / performance_summary.loc['std']
 
-        longshort_df['L_Cumprod'] = (longshort_df['Long'] + 1).cumprod() - 1
-        longshort_df['S_Cumprod'] = (longshort_df['Short'] + 1).cumprod() - 1
-        longshort_df = longshort_df[['LS', 'LS_Cumprod',
+        performance_df['L_Cumprod'] = (performance_df['Long'] + 1).cumprod() - 1
+        performance_df['S_Cumprod'] = (performance_df['Short'] + 1).cumprod() - 1
+        performance_df = performance_df[['LS', 'LS_Cumprod',
                                      'DD', 'MaxDD', 'DDdays', 'MaxDDdays',
                                      'Long', 'Short',	'L_Cumprod', 'S_Cumprod']]
-        self.metrics_dfs[f'日次成績（{self.control_type}差分）'] = longshort_df
-        self.metrics_dfs[f'日次成績（集計・{self.control_type}差分）'] = longshort_agg
+        self.metrics_dfs[f'日次成績（{self.control_type}差分）'] = performance_df
+        self.metrics_dfs[f'日次成績（集計・{self.control_type}差分）'] = performance_summary
 
 
-    def calc_monthly_longshort(self):
+    def calculate_monthly_longshort(self):
         '''月次のリターンを算出'''
         monthly_longshort = (self.metrics_dfs['日次成績'][['Long', 'Short', 'LS']] + 1).resample('ME').prod() - 1
         monthly_longshort_sub_control = (self.metrics_dfs[f'日次成績（{self.control_type}差分）'][['Long', 'Short', 'LS']] + 1).resample('ME').prod() - 1
@@ -226,18 +228,18 @@ class MetricsCalculator:
         self.metrics_dfs[f'月次成績（{self.control_type}差分）'] = monthly_longshort_sub_control
 
 
-    def calc_daily_sector_performances(self):
+    def calculate_daily_sector_performances(self):
         '''業種ごとの成績を算出する'''
         df = self.result_df.copy()
-        long_theshold = len(df.index.get_level_values('Sector').unique()) - self.trade_sectors_num + 1
+        long_theshold = len(df.index.get_level_values('Sector').unique()) - self.sectors_to_trade_count + 1
         self.long_sectors = df[df['Pred_Rank'] >= long_theshold]
-        self.short_sectors = df[df['Pred_Rank'] <= self.trade_sectors_num]
+        self.short_sectors = df[df['Pred_Rank'] <= self.sectors_to_trade_count]
         #日次リターンの算出
         sector_performances_daily = pd.concat([self.long_sectors, self.short_sectors], axis=0)
         sector_performances_daily = sector_performances_daily.reset_index().sort_values(['Date', 'Pred_Rank'], ascending=True).set_index(['Date', 'Sector'], drop=True)
         self.metrics_dfs['セクター別成績（日次）'] = sector_performances_daily.copy()
 
-    def calc_monthly_sector_performances(self):
+    def calculate_monthly_sector_performances(self):
         '''業種ごとの月次リターンの算出'''
         long_sectors = self.long_sectors.copy()
         short_sectors = self.short_sectors.copy()
@@ -260,7 +262,7 @@ class MetricsCalculator:
         monthly_sector_performances = pd.merge(long_monthly, short_monthly, how='outer', left_index=True, right_index=True).fillna(0)
         self.metrics_dfs['セクター別成績（月次）'] = monthly_sector_performances.copy()
 
-    def calc_total_sector_performances(self):
+    def calculate_total_sector_performances(self):
         #全期間トータル
         long_sectors = self.long_sectors.groupby('Sector')[['Target_Rank']].describe().droplevel(0, axis=1)
         long_sectors = long_sectors[['count', 'mean', '50%', 'std']]
@@ -275,17 +277,16 @@ class MetricsCalculator:
         self.metrics_dfs['セクター別成績（トータル）'] = sector_performances_df.sort_values('Total_num', ascending=False)
 
 
-    '''以下、相関係数関係'''
-    def calc_spearman_corr(self):
-        '''
-      日次のsperamanの順位相関係数と，その平均や標準偏差を算出
-        '''
-        daily_spearman = [spearmanr(x['Target_Rank'], x['Pred_Rank'])[0] for _, x in self.result_df.groupby('Date')]
-        dateindex = self.result_df.index.get_level_values('Date').unique()
-        self.metrics_dfs['Spearman相関'] = pd.DataFrame(daily_spearman, index=dateindex, columns=['SpearmanCorr'])
+    def calculate_spearman_correlation(self):
+        """
+        日次のSpearman順位相関係数と、その平均や標準偏差を算出
+        """
+        daily_correlations = [spearmanr(x['Target_Rank'], x['Pred_Rank'])[0] for _, x in self.result_df.groupby('Date')]
+        date_index = self.result_df.index.get_level_values('Date').unique()
+        self.metrics_dfs['Spearman相関'] = pd.DataFrame(daily_correlations, index=date_index, columns=['SpearmanCorr'])
         self.metrics_dfs['Spearman相関（集計）'] = self.metrics_dfs['Spearman相関'].describe()
 
-    def calc_numerai_corrs(self):
+    def calculate_numerai_correlationss(self):
         '''
         日次のnumerai_corrと，その平均や標準偏差を算出
         numerai_corr：上位・下位の予測に重みづけされた，より実践的な指標．
@@ -386,11 +387,12 @@ class Visualizer:
 #%% デバッグ
 if __name__ == '__main__':
     from models import MLDataset
-    ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/New48sectors'
+    ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
     ml_dataset = MLDataset(ML_DATASET_PATH)
-    materials = ml_dataset.get_materials_for_evaluation()
     ls_control_handler = LSControlHandler()
-    ls_data_handler = LSDataHandler(materials.pred_result_df, materials.raw_target_df, start_day = datetime(2022, 1, 1))
-    metrics_calculator = MetricsCalculator(ls_data_handler = ls_data_handler, bin_num = 5)
+    ls_data_handler = LSDataHandler(ml_dataset.evaluation_materials.pred_result_df, 
+                                    ml_dataset.evaluation_materials.raw_target_df, 
+                                    start_day = datetime(2022, 1, 1))
+    metrics_calculator = MetricsCalculator(ls_data_handler = ls_data_handler, quantile_bin_count = 5)
     visualizer = Visualizer(metrics_calculator)
     visualizer.display_result()
