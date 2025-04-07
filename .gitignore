@@ -9,6 +9,7 @@ wheels/
 # folfers except project
 .venv
 consideration
+sector_pairs
 TOPIX_prediction
 
 # env file
