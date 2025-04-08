@@ -444,6 +444,7 @@ class PriceFeatureCalculator:
             pd.DataFrame: ボラティリティ列が追加された df
         """
         # ボラティリティ計算には最低1日リターンが必要
+        # TODO ボラティリティの算出方法修正！！！
         if 1 in base_return_duration:
             base_return_col = "1d_return"
         else:
@@ -747,7 +748,7 @@ class FeaturesMerger:
         # Date, Code 列を左端へ
         merged_df = self._move_keycols_to_left(merged_df)
 
-        return merged_df
+        return merged_df.set_index([self.date_col, self.code_col], drop=True)
 
     def merge_on_any_keys(self, df_list: List[pd.DataFrame], keys: List[str]) -> pd.DataFrame:
         """
