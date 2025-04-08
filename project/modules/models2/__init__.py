@@ -6,7 +6,7 @@
 from .base import BaseModel, LassoParams, LgbmParams
 
 # 具体的なモデル実装
-from .models import LassoModel, LgbmModel
+from .models3 import LassoModel, LgbmModel
 
 # コンテナとアンサンブル
 from .containers import ModelContainer, EnsembleModel

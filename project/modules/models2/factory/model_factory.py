@@ -3,10 +3,10 @@
 """
 from typing import Dict, List
 
-from ..base.base_model import BaseModel
-from ..models.lasso_model import LassoModel
-from ..models.lgbm_model import LgbmModel
-from ..containers.model_container import ModelContainer
+from models2.base.base_model import BaseModel
+from models2.models3.lasso_model import LassoModel
+from models2.models3.lgbm_model import LgbmModel
+from models2.containers.model_container import ModelContainer
 
 
 class ModelFactory:

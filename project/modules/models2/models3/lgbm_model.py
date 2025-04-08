@@ -7,8 +7,8 @@ import numpy as np
 import lightgbm as lgb
 from scipy.stats import norm
 
-from ..base.base_model import BaseModel
-from ..base.params import LgbmParams
+from models2.base.base_model import BaseModel
+from models2.base.params import LgbmParams
 
 
 class LgbmModel(BaseModel):
@@ -22,19 +22,18 @@ class LgbmModel(BaseModel):
         self._feature_names = None
         self._feature_importances_df = None
     
-    def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], **kwargs):
+    def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], params: LgbmParams | None = None, **kwargs):
         """
         LightGBMモデルを学習する
         
         Args:
             X: 特徴量DataFrame
             y: 目的変数Series
-            **kwargs: LgbmParamsオブジェクト or パラメータ辞書
+            params: LgbmParams (ハイパーパラメータをまとめたデータクラス)
+            **kwargs: パラメータ辞書
         """
         # パラメータの取得と整理
-        if "params" in kwargs and isinstance(kwargs["params"], LgbmParams):
-            params = kwargs["params"]
-        else:
+        if not params:
             # 直接kwargs から LgbmParams を構築
             additional_params = {k: v for k, v in kwargs.items() 
                                if k not in ["objective", "metric", "boosting_type", 
@@ -91,7 +90,10 @@ class LgbmModel(BaseModel):
             train_data, 
             num_boost_round=params.num_boost_round,
             valid_sets=[train_data] if params.early_stopping_rounds else None,
-            early_stopping_rounds=params.early_stopping_rounds,
+            callbacks=[
+            lgb.early_stopping(stopping_rounds=params.early_stopping_rounds, verbose=True),
+            lgb.log_evaluation(100),
+            ] if params.early_stopping_rounds else None,
             feval=feval
         )
         

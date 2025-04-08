@@ -9,8 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV
 import scipy
 
-from ..base.base_model import BaseModel
-from ..base.params import LassoParams
+from models2.base.base_model import BaseModel
+from models2.base.params import LassoParams
 
 
 class LassoModel(BaseModel):
@@ -25,19 +25,18 @@ class LassoModel(BaseModel):
         self._feature_names: Optional[List[str]] = None
         self._feature_importances_df: Optional[pd.DataFrame] = None
     
-    def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], **kwargs):
+    def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], params: LassoParams | None = None, **kwargs):
         """
         Lassoモデルを学習する
         
         Args:
             X: 特徴量DataFrame
             y: 目的変数Series（または単一列DataFrame）
-            **kwargs: LassoParamsオブジェクト or パラメータ辞書
+            params: LassoParams (ハイパーパラメータをまとめたデータクラス)
+            **kwargs: パラメータ辞書
         """
         # パラメータの取得と整理
-        if "params" in kwargs and isinstance(kwargs["params"], LassoParams):
-            params = kwargs["params"]
-        else:
+        if not params:
             # 直接kwargs から LassoParams を構築
             max_features = kwargs.get("max_features", 5)
             min_features = kwargs.get("min_features", 3)

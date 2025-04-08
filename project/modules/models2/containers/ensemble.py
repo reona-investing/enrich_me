@@ -4,8 +4,8 @@
 from typing import Dict, List, Union, Optional, Tuple, Any
 import pandas as pd
 
-from ..base.base_model import BaseModel
-from .model_container import ModelContainer
+from models2.base.base_model import BaseModel
+from models2.containers.model_container import ModelContainer
 
 
 class EnsembleModel:

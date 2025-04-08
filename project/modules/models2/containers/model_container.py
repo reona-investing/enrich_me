@@ -4,7 +4,7 @@
 from typing import Dict, List, Union, Optional, Any, Tuple
 import pandas as pd
 
-from ..base.base_model import BaseModel
+from models2.base.base_model import BaseModel
 
 
 class ModelContainer:
