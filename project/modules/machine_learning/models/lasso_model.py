@@ -24,6 +24,7 @@ class LassoModel(MachineLearningModelBase):
         self._scaler: Optional[StandardScaler] = None
         self._feature_names: Optional[List[str]] = None
         self._feature_importance_df: Optional[pd.DataFrame] = None
+        self._metadata = {}
     
     def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], params: LassoParams | None = None, **kwargs):
         """
@@ -39,9 +40,9 @@ class LassoModel(MachineLearningModelBase):
         if params:
             # LassoParamsが提供されている場合はそれを使用
             model_params = params.get_model_params()
-            alpha = params.alpha
-            max_features = params.max_features
-            min_features = params.min_features
+            alpha = model_params.pop('alpha', 0.01)  # alphaを取り出し、model_paramsからは削除
+            max_features = model_params.pop('max_features', 5)  # モデルパラメータではないので削除
+            min_features = model_params.pop('min_features', 3)  # モデルパラメータではないので削除
         else:
             # kwargsから直接パラメータを取得
             alpha = kwargs.pop("alpha", None)

@@ -20,7 +20,7 @@ class LassoParams(HyperParams):
     min_features: int = 3
 
 @dataclass
-class LgbmParams:
+class LgbmParams(HyperParams):  # HyperParamsを継承するように変更
     """LightGBMモデルのハイパーパラメータ"""
     
     # 基本パラメータ
@@ -38,7 +38,3 @@ class LgbmParams:
     
     # 特徴量関連パラメータ
     categorical_features: Optional[List[str]] = None
-    
-
-
-print(LassoParams().get_model_params())

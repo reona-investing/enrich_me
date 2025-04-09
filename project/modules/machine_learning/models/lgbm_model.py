@@ -7,11 +7,11 @@ import numpy as np
 import lightgbm as lgb
 from scipy.stats import norm
 
-from models2.base.base_model import BaseModel
-from models2.base.params import LgbmParams
+from machine_learning.models.ml_model_base import MachineLearningModelBase
+from machine_learning.params.hyperparams import LgbmParams
 
 
-class LgbmModel(BaseModel):
+class LgbmModel(MachineLearningModelBase):
     """
     単一のLightGBMモデルを管理するクラス
     """
@@ -23,6 +23,7 @@ class LgbmModel(BaseModel):
         self._prediction = None
         self._feature_names = None
         self._feature_importance_df = None
+        self._metadata = {}
     
     def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], params: LgbmParams | None = None, **kwargs):
         """
@@ -38,9 +39,9 @@ class LgbmModel(BaseModel):
         if params:
             # LgbmParamsが提供されている場合はそれを使用
             model_params = params.get_model_params()
-            num_boost_round = params.num_boost_round
-            early_stopping_rounds = params.early_stopping_rounds
-            categorical_features = params.categorical_features
+            num_boost_round = model_params.pop('num_boost_round', 100000)  # モデルパラメータではないので削除
+            early_stopping_rounds = model_params.pop('early_stopping_rounds', None)  # モデルパラメータではないので削除
+            categorical_features = model_params.pop('categorical_features', None)  # モデルパラメータではないので削除
         else:
             # kwargsから直接パラメータを取得
             num_boost_round = kwargs.pop("num_boost_round", 100000)
@@ -59,30 +60,42 @@ class LgbmModel(BaseModel):
         else:
             y_values = y
         
+        # カテゴリカル特徴量の処理
+        X_processed = X.copy()
+        
+        # カテゴリカル変数があれば、それらをカテゴリ型に変換
+        if categorical_features is not None and len(categorical_features) > 0:
+            for col in categorical_features:
+                if col in X_processed.columns and X_processed[col].dtype == 'object':
+                    # オブジェクト型の場合はカテゴリに変換
+                    X_processed[col] = X_processed[col].astype('category')
+        
         # データセット作成
         train_data = lgb.Dataset(
-            X, 
+            X_processed, 
             label=y_values, 
             categorical_feature=categorical_features,
-            feature_name=X.columns.tolist(),
+            feature_name=X_processed.columns.tolist(),
             free_raw_data=False
         )
         
         # カスタム評価関数の設定
         feval = None
-        if "numerai_corr" in model_params.get("metric", ""):
+        if model_params.get("metric", "") == "numerai_corr":
             feval = self._numerai_corr_lgbm
         
         # 学習実行
+        callbacks = []
+        if early_stopping_rounds:
+            callbacks.append(lgb.early_stopping(stopping_rounds=early_stopping_rounds, verbose=True))
+            callbacks.append(lgb.log_evaluation(100))
+        
         self._model = lgb.train(
             model_params, 
             train_data, 
             num_boost_round=num_boost_round,
             valid_sets=[train_data] if early_stopping_rounds else None,
-            callbacks=[
-                lgb.early_stopping(stopping_rounds=early_stopping_rounds, verbose=True),
-                lgb.log_evaluation(100),
-            ] if early_stopping_rounds else None,
+            callbacks=callbacks if callbacks else None,
             feval=feval
         )
         
@@ -197,7 +210,14 @@ class LgbmModel(BaseModel):
         # 欠損値のない行のみで予測を実行
         if len(not_na_indices) > 0:
             X_filtered = X.loc[not_na_indices, :]
-            predictions = self._model.predict(X_filtered, num_iteration=self._model.best_iteration)
+            
+            # 予測実行（ベストイテレーションがある場合はそれを使用）
+            best_iteration = getattr(self._model, 'best_iteration', 0) or 0
+            if best_iteration > 0:
+                predictions = self._model.predict(X_filtered, num_iteration=best_iteration)
+            else:
+                predictions = self._model.predict(X_filtered)
+                
             full_predictions[X.index.get_indexer(not_na_indices)] = predictions
         
         self._prediction = full_predictions
