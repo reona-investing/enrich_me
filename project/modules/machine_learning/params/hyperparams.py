@@ -1,12 +1,14 @@
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional, Any
 
 
 @dataclass
 class HyperParams(ABC):
     """ハイパーパラメータの基底データクラス"""
-    pass
+    def get_model_params(self) -> Dict[str, Any]:
+        """データクラスのすべてのインスタンス変数を{変数名：変数の中身}の形の辞書で返す"""
+        return asdict(self)
 
 @dataclass
 class LassoParams(HyperParams):
@@ -16,9 +18,6 @@ class LassoParams(HyperParams):
     tol: float = 0.0001
     max_features: int = 5
     min_features: int = 3
-
-    # その他のパラメータは**kwargsで渡せるようにする
-    additional_params: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class LgbmParams:
@@ -40,5 +39,6 @@ class LgbmParams:
     # 特徴量関連パラメータ
     categorical_features: Optional[List[str]] = None
     
-    # その他のパラメータは**kwargsで渡せるようにする
-    additional_params: Dict[str, Any] = field(default_factory=dict)
+
+
+print(LassoParams().get_model_params())
