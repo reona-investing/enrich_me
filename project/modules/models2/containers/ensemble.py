@@ -3,12 +3,15 @@
 """
 from typing import Dict, List, Union, Optional, Tuple, Any
 import pandas as pd
+import os
+import pickle
 
 from models2.base.base_model import BaseModel
 from models2.containers.model_container import ModelContainer
+from models2.base.base_container import BaseContainer
 
 
-class EnsembleModel:
+class EnsembleModel(BaseContainer):
     """
     複数のモデルの予測結果をアンサンブルするクラス
     """
@@ -20,7 +23,7 @@ class EnsembleModel:
         Args:
             name: アンサンブルモデルの名前
         """
-        self.name = name
+        super().__init__(name=name)
         self.models = {}  # 名前→モデルまたはコンテナのマッピング
         self.weights = {}  # 名前→重みのマッピング
     
@@ -74,7 +77,7 @@ class EnsembleModel:
         predictions = {}
         for name, model in self.models.items():
             # モデルのタイプに応じて予測
-            if isinstance(model, ModelContainer):
+            if isinstance(model, (ModelContainer, BaseContainer)):
                 pred_df = model.predict(X)
             else:  # BaseModel
                 pred_df = pd.DataFrame({'Pred': model.predict(X)}, index=X.index)
@@ -116,7 +119,7 @@ class EnsembleModel:
         ensemble_inputs = []
         for name, model in self.models.items():
             # モデルのタイプに応じて予測
-            if isinstance(model, ModelContainer):
+            if isinstance(model, (ModelContainer, BaseContainer)):
                 pred_df = model.predict(X)
             else:  # BaseModel
                 pred_df = pd.DataFrame({'Pred': model.predict(X)}, index=X.index)
@@ -128,3 +131,86 @@ class EnsembleModel:
         result = ensemble.by_rank(ensemble_inputs)
         
         return result
+    
+    def _get_state_dict(self) -> Dict[str, Any]:
+        """コンテナの状態を辞書形式で取得する"""
+        state = super()._get_state_dict()
+        
+        # モデル名とその重みを保存
+        state['model_names'] = list(self.models.keys())
+        state['weights'] = {name: weight for name, weight in self.weights.items()}
+        
+        return state
+    
+    def _set_state_dict(self, state_dict: Dict[str, Any]):
+        """辞書からコンテナの状態を復元する"""
+        super()._set_state_dict(state_dict)
+        
+        # 重みを復元
+        if 'weights' in state_dict:
+            for name, weight in state_dict['weights'].items():
+                if name in self.models:
+                    self.weights[name] = weight
+    
+    def _export_models(self, models_dir: str):
+        """コンテナ内のモデルをエクスポートする"""
+        for name, model in self.models.items():
+            # モデル固有のディレクトリを作成
+            model_dir = os.path.join(models_dir, name)
+            if not os.path.exists(model_dir):
+                os.makedirs(model_dir)
+            
+            # モデルの種類に応じたエクスポート
+            if isinstance(model, BaseContainer):
+                # 他のコンテナの場合はそのエクスポート機能を使用
+                sub_dir = os.path.join(model_dir, "container")
+                if not os.path.exists(sub_dir):
+                    os.makedirs(sub_dir)
+                model.export(sub_dir)
+                
+                # コンテナの種類を記録
+                container_type_path = os.path.join(model_dir, "container_type.txt")
+                with open(container_type_path, 'w') as f:
+                    f.write(model.__class__.__name__)
+            else:
+                # 通常のモデルの場合は直接シリアライズ
+                model_path = os.path.join(model_dir, "model.pkl")
+                with open(model_path, 'wb') as f:
+                    pickle.dump(model, f)
+    
+    def _import_models(self, models_dir: str):
+        """保存されたモデルをインポートする"""
+        # ディレクトリ内の各モデルをロード
+        for model_name in os.listdir(models_dir):
+            model_dir = os.path.join(models_dir, model_name)
+            
+            # コンテナの場合
+            container_type_path = os.path.join(model_dir, "container_type.txt")
+            if os.path.exists(container_type_path):
+                with open(container_type_path, 'r') as f:
+                    container_type = f.read().strip()
+                
+                # コンテナタイプに応じてロード
+                container_dir = os.path.join(model_dir, "container")
+                
+                # コンテナタイプに基づいてインポート
+                if container_type == "ModelContainer":
+                    from models2.containers.model_container import ModelContainer
+                    model = ModelContainer.load(container_dir)
+                elif container_type == "EnsembleModel":
+                    model = EnsembleModel.load(container_dir)
+                elif container_type == "PeriodSwitchingModel":
+                    from models2.containers.period_model import PeriodSwitchingModel
+                    model = PeriodSwitchingModel.load(container_dir)
+                else:
+                    raise ValueError(f"不明なコンテナタイプ: {container_type}")
+                
+                self.models[model_name] = model
+                
+            else:
+                # 通常のモデルの場合
+                model_path = os.path.join(model_dir, "model.pkl")
+                if os.path.exists(model_path):
+                    with open(model_path, 'rb') as f:
+                        model = pickle.load(f)
+                        self.models[model_name] = model

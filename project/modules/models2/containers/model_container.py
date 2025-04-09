@@ -3,11 +3,14 @@
 """
 from typing import Dict, List, Union, Optional, Any, Tuple
 import pandas as pd
+import os
+import pickle
 
 from models2.base.base_model import BaseModel
+from models2.base.base_container import BaseContainer
 
 
-class ModelContainer:
+class ModelContainer(BaseContainer):
     """
     複数のモデルを管理するコンテナクラス
     """
@@ -19,7 +22,7 @@ class ModelContainer:
         Args:
             name: コンテナの名前（任意）
         """
-        self.name = name
+        super().__init__(name=name)
         self.models: Dict[str, BaseModel] = {}
         self._feature_importances: Dict[str, pd.DataFrame] = {}
     
@@ -203,3 +206,43 @@ class ModelContainer:
             return result_df
         else:
             return pd.DataFrame()  # 空のケース
+    
+    def _get_state_dict(self) -> Dict[str, Any]:
+        """コンテナの状態を辞書形式で取得する"""
+        state = super()._get_state_dict()
+        
+        # モデルキーの保存
+        state['model_keys'] = list(self.models.keys())
+        
+        return state
+    
+    def _set_state_dict(self, state_dict: Dict[str, Any]):
+        """辞書からコンテナの状態を復元する"""
+        super()._set_state_dict(state_dict)
+        
+        # モデルは_import_modelsで復元されるため、ここでは何もしない
+        pass
+    
+    def _export_models(self, models_dir: str):
+        """コンテナ内のモデルをエクスポートする"""
+        for key, model in self.models.items():
+            # モデル固有のディレクトリを作成
+            model_dir = os.path.join(models_dir, key)
+            if not os.path.exists(model_dir):
+                os.makedirs(model_dir)
+            
+            # モデルをシリアライズして保存
+            model_path = os.path.join(model_dir, "model.pkl")
+            with open(model_path, 'wb') as f:
+                pickle.dump(model, f)
+    
+    def _import_models(self, models_dir: str):
+        """保存されたモデルをインポートする"""
+        # ディレクトリ内の各モデルをロード
+        for model_dir in os.listdir(models_dir):
+            model_path = os.path.join(models_dir, model_dir, "model.pkl")
+            
+            if os.path.exists(model_path):
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+                    self.models[model_dir] = model
