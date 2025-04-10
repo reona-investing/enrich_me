@@ -1,6 +1,7 @@
 #プログラム開始のライン通知
 from utils.notifier import SlackNotifier
 import os
+import numpy as np
 Slack = SlackNotifier(program_name=os.path.basename(__file__))
 Slack.start(
     message = 'プログラムを開始します。',
@@ -21,6 +22,39 @@ import asyncio
 from models2 import LassoModel, LgbmModel, EnsembleModel, ModelFactory 
 from models2.datasets import DatasetManager, ModelDatasetConnector
 from models2.base import LassoParams, LgbmParams
+from models2.base.base_container import BaseContainer
+from models2.base.base_model import BaseModel
+
+# プログラムの先頭、インポート部分の後に追加
+
+# ダミーの予測モデルクラス - モジュールレベルで定義する
+class PredictionModel(BaseModel):
+    """
+    既存の予測結果を利用するダミーモデル
+    """
+    def __init__(self, predictions: pd.DataFrame = None):
+        self.predictions = predictions
+        self._feature_importances_df = None
+    
+    def train(self, X, y, **kwargs):
+        return self
+    
+    def predict(self, X):
+        if self.predictions is None:
+            return np.zeros(len(X))
+        return self.predictions['Pred'].values
+    
+    @property
+    def feature_importances(self):
+        return self._feature_importances_df
+    
+    # pickleのサポート
+    def __getstate__(self):
+        return {'predictions': self.predictions}
+    
+    def __setstate__(self, state):
+        self.predictions = state['predictions']
+        self._feature_importances_df = None
 
 async def read_and_update_data(filter: str) -> dict:
     stock_dfs_dict = None
@@ -155,47 +189,62 @@ def update_2nd_model(dataset_lasso: DatasetManager, dataset_lgbm: DatasetManager
     return dataset_lgbm, pred_result_df
 
 def ensemble_pred_results(pred_result_df1: pd.DataFrame, pred_result_df2: pd.DataFrame, 
-                          weights: list[float]) -> pd.DataFrame:
+                          weights: list[float]) -> tuple[pd.DataFrame, EnsembleModel]:
     """
     複数モデルの予測結果をアンサンブル
+    
+    Args:
+        pred_result_df1: 1つ目のモデルの予測結果
+        pred_result_df2: 2つ目のモデルの予測結果
+        weights: 各モデルの重み
+        
+    Returns:
+        tuple: (アンサンブル予測結果のDataFrame, アンサンブルモデル)
     """
     # アンサンブルモデルを作成
     ensemble_model = EnsembleModel(name="Sector_Ensemble")
     
-    # モデル結果をアンサンブルに追加
-    ensemble_model.add_model("lasso", None, weight=weights[0])
-    ensemble_model.add_model("lgbm", None, weight=weights[1])
+    # モジュールレベルで定義された PredictionModel を使用
+    model1 = PredictionModel(pred_result_df1)
+    model2 = PredictionModel(pred_result_df2)
     
-    # 予測結果をDataFrameに変換
-    pred_dfs = {
-        "lasso": pred_result_df1,
-        "lgbm": pred_result_df2
-    }
+    # モデルをアンサンブルに追加
+    ensemble_model.add_model("lasso", model1, weight=weights[0])
+    ensemble_model.add_model("lgbm", model2, weight=weights[1])
     
-    # ランクベースのアンサンブルを実行（既存関数の互換性を保持）
-    from models import ensemble as old_ensemble
-    ensemble_inputs = [
-        (pred_result_df1, weights[0]),
-        (pred_result_df2, weights[1])
-    ]
-    ensembled_pred = old_ensemble.by_rank(inputs=ensemble_inputs)
+    # アンサンブル予測を実行
+    # どちらかの予測結果のインデックスを使用
+    X_dummy = pd.DataFrame(index=pred_result_df1.index)
+    ensembled_pred_df = ensemble_model.predict(X_dummy)
     
-    # 結果をDataFrameに変換 - Targetがない場合は新しく作成
+    # 結果にTarget列を追加（存在する場合）
     if 'Target' in pred_result_df1.columns:
-        ensembled_pred_df = pred_result_df1[['Target']].copy()
-    else:
-        # 元のインデックスを保持したまま、空のTarget列を持つDataFrameを作成
-        ensembled_pred_df = pd.DataFrame(index=pred_result_df1.index)
-        # target_testのTargetをマージする必要がある場合は以下のようにする
-        # from_dataset.target_test['Target'] からTargetを取得
+        ensembled_pred_df = pd.merge(
+            ensembled_pred_df,
+            pred_result_df1[['Target']],
+            left_index=True,
+            right_index=True,
+            how='left'
+        )
     
-    ensembled_pred_df['Pred'] = ensembled_pred
-    
-    return ensembled_pred_df
+    return ensembled_pred_df, ensemble_model
 
 def update_ensembled_model(ensembled_dataset_path: str | os.PathLike[str], 
                            ensembled_pred_df: pd.DataFrame, 
-                           source_dataset: DatasetManager) -> DatasetManager:
+                           source_dataset: DatasetManager,
+                           ensemble_model: EnsembleModel) -> DatasetManager:
+    """
+    アンサンブルモデルとその予測結果を保存する
+    
+    Args:
+        ensembled_dataset_path: アンサンブル予測結果を保存するパス
+        ensembled_pred_df: アンサンブル予測結果のDataFrame
+        source_dataset: 元となるデータセット（特徴量やターゲットを取得するため）
+        ensemble_model: 保存するアンサンブルモデル
+        
+    Returns:
+        DatasetManager: 更新されたデータセット
+    """
     # アンサンブル用データセットマネージャーを作成
     dataset_ensembled = DatasetManager(ensembled_dataset_path)
     
@@ -214,6 +263,10 @@ def update_ensembled_model(ensembled_dataset_path: str | os.PathLike[str],
     # アンサンブル予測結果を保存
     dataset_ensembled.set_pred_result(ensembled_pred_df)
     dataset_ensembled.save()
+    
+    # アンサンブルモデル自体を保存
+    model_export_dir = os.path.join(ensembled_dataset_path, "ensemble_model")
+    ensemble_model.export(model_export_dir)
     
     return dataset_ensembled
 
@@ -280,14 +333,23 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
                 force_learn=learn  # 引数で明示的に学習が指定された場合は強制学習
             )
             
-            # 予測結果のアンサンブル
+            # アンサンブルモデルを使用して予測結果を結合
             ensembled_pred_df = ensemble_pred_results(
                 pred_result_df1, pred_result_df2, ensemble_weights
             )
             
-            # アンサンブル結果の保存
+            # アンサンブルモデルを取得 - この関数はアンサンブルモデルも返す必要があります
+            # pred_result_df1, pred_result_df2 および weights から再度モデルを作成
+            ensemble_model = EnsembleModel(name="Sector_Ensemble")
+            
+                
+            # モデルをアンサンブルに追加
+            ensemble_model.add_model("lasso", PredictionModel(pred_result_df1), weight=ensemble_weights[0])
+            ensemble_model.add_model("lgbm", PredictionModel(pred_result_df2), weight=ensemble_weights[1])
+            
+            # アンサンブル結果とモデルの保存
             dataset_ensembled = update_ensembled_model(
-                ML_DATASET_ENSEMBLED_PATH, ensembled_pred_df, dataset_lasso
+                ML_DATASET_ENSEMBLED_PATH, ensembled_pred_df, dataset_lasso, ensemble_model
             )
             
             Slack.send_message(message = f'予測が完了しました。')
