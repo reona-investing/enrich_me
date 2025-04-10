@@ -19,6 +19,7 @@ TOPIX_prediction
 project/debug_files
 project/downloaded_files
 project/ml_datasets
+project/model_collection
 project/execution_scripts/experimental
 project/execution_scripts/old_version
 project/execution_scripts/temp
