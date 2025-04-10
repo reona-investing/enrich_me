@@ -1,223 +1,176 @@
-"""
-単一のLassoモデルを管理するクラス
-"""
-from typing import Optional, List, Union, Dict, Any
 import pandas as pd
 import numpy as np
+from typing import Optional
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV
 import scipy
+from machine_learning.params import LassoParams
+from machine_learning.models import BaseModel
 
-from machine_learning.models.ml_model_base import MachineLearningModelBase
-from machine_learning.params.hyperparams import LassoParams
 
-
-class LassoModel(MachineLearningModelBase):
-    """
-    単一のLassoモデルを管理するクラス
-    """
+class LassoModel(BaseModel):
+    """LASSO回帰モデル"""
     
-    def __init__(self):
-        """初期化"""
-        self._model: Optional[Lasso] = None
-        self._scaler: Optional[StandardScaler] = None
-        self._feature_names: Optional[List[str]] = None
-        self._feature_importance_df: Optional[pd.DataFrame] = None
-        self._metadata = {}
-    
-    def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], params: LassoParams | None = None, **kwargs):
+    def __init__(self, name: str, params: Optional[LassoParams] = None):
         """
-        Lassoモデルを学習する
-        
         Args:
-            X: 特徴量DataFrame
-            y: 目的変数Series（または単一列DataFrame）
-            params: LassoParams (ハイパーパラメータをまとめたデータクラス)
-            **kwargs: パラメータ辞書（paramsが指定されていない場合に使用）
+            name: モデル名
+            params: モデルパラメータ。指定しない場合はデフォルトパラメータが使用される。
         """
-        # パラメータの取得と整理
-        if params:
-            # LassoParamsが提供されている場合はそれを使用
-            model_params = params.get_model_params()
-            alpha = model_params.pop('alpha', 0.01)  # alphaを取り出し、model_paramsからは削除
-            max_features = model_params.pop('max_features', 5)  # モデルパラメータではないので削除
-            min_features = model_params.pop('min_features', 3)  # モデルパラメータではないので削除
-        else:
-            # kwargsから直接パラメータを取得
-            alpha = kwargs.pop("alpha", None)
-            max_features = kwargs.pop("max_features", 5)
-            min_features = kwargs.pop("min_features", 3)
-            model_params = kwargs  # 残りのパラメータはすべてモデルに渡す
-        
-        # 特徴量名を保存
-        self._feature_names = X.columns.tolist()
+        super().__init__(name, params or LassoParams())
+        self.model = None
+        self.scaler = None
+        self.feature_importances = None
+    
+    def train(self) -> None:
+        """モデルを学習する"""
+        if self.target_train_df is None or self.features_train_df is None:
+            raise ValueError("訓練データがセットされていません。load_dataset()を先に実行してください。")
         
         # 欠損値のある行を削除
-        not_na_indices = X.dropna(how='any').index
-        X_filtered = X.loc[not_na_indices, :]
-        
-        if isinstance(y, pd.DataFrame):
-            y_filtered = y.loc[not_na_indices, :]
-            if y_filtered.shape[1] == 1:
-                # 単一列DataFrameをSeriesに変換
-                y_filtered = y_filtered.iloc[:, 0]
-        else:
-            y_filtered = y.loc[not_na_indices]
+        not_na_indices = self.features_train_df.dropna(how='any').index
+        y_train = self.target_train_df.loc[not_na_indices, :]
+        X_train = self.features_train_df.loc[not_na_indices, :]
         
         # 特徴量の標準化
-        self._scaler = StandardScaler().fit(X_filtered)
-        X_scaled = self._scaler.transform(X_filtered)
+        self.scaler = StandardScaler().fit(X_train)
+        X_scaled = self.scaler.transform(X_train)
         
-        # alphaの自動探索（必要な場合）
-        if alpha is None:
-            alpha = self._search_alpha(
-                X_scaled, y_filtered, 
-                max_features, min_features
-            )
+        # パラメータの取得
+        params = self.params
         
-        # モデルの構築と学習
-        self._model = Lasso(alpha=alpha, **model_params)
+        # ランダムサーチで適切なアルファを探索
+        alpha = self._search_alpha(
+            X_scaled, 
+            y_train, 
+            params.max_features, 
+            params.min_features,
+            params.min_alpha,
+            params.max_alpha,
+            params.alpha_search_iterations
+        )
         
-        if isinstance(y_filtered, pd.DataFrame) and y_filtered.shape[1] == 1:
-            # DataFrameの場合は.valuesで配列に変換
-            self._model.fit(X_scaled, y_filtered.values)
-        else:
-            self._model.fit(X_scaled, y_filtered)
+        # 確定したモデルで学習
+        self.model = Lasso(
+            alpha=alpha, 
+            max_iter=params.max_iter, 
+            tol=params.tol, 
+            random_state=params.random_seed,
+            **params.extra_params
+        )
+        self.model.fit(X_scaled, y_train[['Target']])
         
-        # 特徴量重要度の計算
-        self._calculate_feature_importances()
-        print(self.feature_importances)
+        # 特徴量重要度を計算
+        self.feature_importances = self._get_feature_importances(self.model, X_train.columns)
         
-        return self
+        print(f"Model {self.name} trained with alpha={alpha}")
+        print(f"Selected features: {len(self.feature_importances)}")
     
-    def _search_alpha(self, X: np.ndarray, y: Union[pd.Series, np.ndarray], 
-                     max_features: int, min_features: int) -> float:
+    def predict(self) -> pd.DataFrame:
+        """予測を実行する"""
+        if self.model is None or self.scaler is None:
+            raise ValueError("モデルが学習されていません。train()を先に実行してください。")
+        
+        if self.target_test_df is None or self.features_test_df is None:
+            raise ValueError("テストデータがセットされていません。load_dataset()を先に実行してください。")
+        
+        # 欠損値のある行を処理
+        valid_indices = self.features_test_df.dropna(how='any').index
+        y_test = self.target_test_df.loc[valid_indices, :].copy()
+        X_test = self.features_test_df.loc[valid_indices, :]
+        
+        # 特徴量の標準化
+        X_scaled = self.scaler.transform(X_test)
+        
+        # 予測の実行
+        y_test['Pred'] = self.model.predict(X_scaled)
+        
+        # 予測結果を保存
+        self.pred_result_df = y_test
+        
+        return self.pred_result_df
+    
+    def _search_alpha(self, 
+                      X: np.ndarray, 
+                      y: pd.DataFrame, 
+                      max_features: int, 
+                      min_features: int,
+                      min_alpha: float,
+                      max_alpha: float,
+                      n_iter: int) -> float:
         """
-        適切なalphaの値を探索する
-        残る特徴量の数が、min_features以上、max_feartures以下となるように調整
+        適切なalphaの値をサーチする。
+        残る特徴量の数が、min_features以上、max_features以下となるように調整する。
         
         Args:
-            X: 標準化済み特徴量行列
-            y: 目的変数
-            max_features: 最大特徴量数
-            min_features: 最小特徴量数
+            X: 標準化済み特徴量の配列
+            y: 目的変数のデータフレーム
+            max_features: 採用する特徴量の最大値
+            min_features: 採用する特徴量の最小値
+            min_alpha: 探索範囲の最小値
+            max_alpha: 探索範囲の最大値
+            n_iter: ランダム探索の回数
             
         Returns:
-            float: 最適なalpha値
+            選択された適切なalpha値
         """
-        # alphaの探索範囲の初期値
-        min_alpha = 0.000005
-        max_alpha = 0.005
-        
         is_searching = True
+        current_min_alpha = min_alpha
+        current_max_alpha = max_alpha
+        
         while is_searching:
             # ランダムサーチの準備
-            model = Lasso(max_iter=100000, tol=0.00001)
-            param_grid = {'alpha': scipy.stats.uniform(min_alpha, max_alpha - min_alpha)}
-            random_search = RandomizedSearchCV(model, param_distributions=param_grid, 
-                                              n_iter=3, cv=5, random_state=42)
-            
+            model = Lasso(max_iter=self.params.max_iter, tol=self.params.tol)
+            param_grid = {'alpha': scipy.stats.uniform(current_min_alpha, current_max_alpha - current_min_alpha)}
+            random_search = RandomizedSearchCV(
+                model, 
+                param_distributions=param_grid, 
+                n_iter=n_iter, 
+                cv=5, 
+                random_state=self.params.random_seed
+            )
+
             # ランダムサーチを実行
-            if isinstance(y, pd.DataFrame) and y.shape[1] == 1:
-                random_search.fit(X, y.values)
-            else:
-                random_search.fit(X, y)
-            
+            random_search.fit(X, y)
+
             # 最適なalphaを取得
             alpha = random_search.best_params_['alpha']
-            
+
             # Lassoモデルを作成し、特徴量の数を確認
-            model = Lasso(alpha=alpha, max_iter=100000, tol=0.00001)
-            if isinstance(y, pd.DataFrame) and y.shape[1] == 1:
-                model.fit(X, y.values)
-            else:
-                model.fit(X, y)
-            
+            model = Lasso(alpha=alpha, max_iter=self.params.max_iter, tol=self.params.tol)
+            model.fit(X, y[['Target']])
             num_features = len(model.coef_[model.coef_ != 0])
-            
+
             # 特徴量の数が範囲内に収まるか判定
-            if num_features < min_features and max_alpha > alpha:
-                max_alpha = alpha
-            elif num_features > max_features and min_alpha < alpha:
-                min_alpha = alpha
+            if num_features < min_features and current_max_alpha > alpha:
+                current_max_alpha = alpha
+            elif num_features > max_features and current_min_alpha < alpha:
+                current_min_alpha = alpha
             else:
                 is_searching = False
-        
+
         return alpha
     
-    def _calculate_feature_importances(self):
-        """特徴量重要度を計算してDataFrameに格納"""
-        if self._model is None or self._feature_names is None:
-            return
-        
-        # 係数をデータフレームに変換
-        self._feature_importance_df = pd.DataFrame({
-            'Feature': self._feature_names,
-            'Importance': self._model.coef_
-        })
-        
-        # 重要度が0でない特徴量のみ抽出
-        self._feature_importance_df = self._feature_importance_df[
-            self._feature_importance_df['Importance'] != 0
-        ]
-        
-        # 絶対値列を追加して降順ソート
-        self._feature_importance_df['AbsImportance'] = self._feature_importance_df['Importance'].abs()
-        self._feature_importance_df = self._feature_importance_df.sort_values(
-            'AbsImportance', ascending=False
-        )
-    
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
+    def _get_feature_importances(self, model: Lasso, feature_names: pd.Index) -> pd.DataFrame:
         """
-        学習済みモデルを使用して予測を行う
+        特徴量重要度をデータフレーム化して返す
         
         Args:
-            X: 特徴量DataFrame
-        
+            model: 学習済みLASSOモデル
+            feature_names: 特徴量の名前のインデックス
+            
         Returns:
-            np.ndarray: 予測値の配列
+            特徴量とその重要度を格納したデータフレーム
         """
-        if self._model is None or self._scaler is None:
-            raise ValueError("モデルが学習されていません。先にtrainメソッドを呼び出してください。")
+        feature_importances = pd.DataFrame(model.coef_, index=feature_names, columns=['importance'])
+        feature_importances = feature_importances[feature_importances['importance'] != 0]
+        feature_importances['abs_importance'] = feature_importances['importance'].abs()
         
-        # 欠損値のある行を除外
-        not_na_indices = X.dropna(how='any').index
-        X_filtered = X.loc[not_na_indices, :]
-        
-        # 特徴量を標準化
-        X_scaled = self._scaler.transform(X_filtered)
-        
-        # 予測を実行
-        predictions = self._model.predict(X_scaled)
-        
-        # 元のインデックスに合わせた予測結果配列を作成
-        full_predictions = np.full(X.shape[0], np.nan)
-        full_predictions[X.index.get_indexer(not_na_indices)] = predictions
-        
-        return full_predictions
+        return feature_importances.sort_values(by='abs_importance', ascending=False)
     
-    @property
-    def model(self) -> Optional[Lasso]:
-        """内部モデルを取得"""
-        return self._model
-    
-    @property
-    def scaler(self) -> Optional[StandardScaler]:
-        """スケーラーを取得"""
-        return self._scaler
-
-    @property
-    def prediction(self) -> pd.DataFrame:
-        """予測結果を取得する"""
-        return self._prediction_df
-
-    @property
-    def feature_importances(self) -> pd.DataFrame:
-        """特徴量重要度を取得する"""
-        return self._feature_importance_df
-
-    @property
-    def metadata(self) -> Dict[str, Any]:
-        """メタデータを取得する"""
-        return self._metadata
+    def get_feature_importances(self) -> pd.DataFrame:
+        """学習済みモデルの特徴量重要度を取得する"""
+        if self.feature_importances is None:
+            raise ValueError("モデルが学習されていません。train()を先に実行してください。")
+        return self.feature_importances[['importance']]

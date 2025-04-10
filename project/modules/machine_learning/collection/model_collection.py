@@ -1,66 +1,96 @@
-from typing import Union, List, Dict, Optional, Any, TypeVar
-import pandas as pd
-import pickle
 import os
+import pickle
+from typing import Optional
 
-from machine_learning.models.ml_model_base import MachineLearningModelBase
-from machine_learning.params.hyperparams import HyperParams
-from machine_learning.factory.model_factory import ModelFactory
+from machine_learning.collection import BaseCollection
+from machine_learning.models import BaseModel, LassoModel, LgbmModel
+from machine_learning.params import BaseParams, LassoParams, LgbmParams
 
 
-class ModelCollection:
-    """複数の機械学習モデルを管理するクラス"""
+class ModelCollection(BaseCollection):
+    """機械学習モデルのコレクション"""
     
-    def __init__(self, model_type: str = None):
-        self._models: Dict[str, MachineLearningModelBase] = {}
-        self._model_type = model_type
-        self._metadata = {}
+    def __init__(self):
+        """モデルコレクションを初期化"""
+        super().__init__()
+        self.models = {}  # Dict[str, BaseModel]
     
-    def add_model(self, sector_name: str, model: MachineLearningModelBase) -> None:
-        """モデルを追加する"""
-        self._models[sector_name] = model
-    
-    def get_model(self, sector_name: str) -> MachineLearningModelBase:
-        """指定したセクターのモデルを取得する"""
-        return self._models.get(sector_name)
-    
-    def train_all(self, sector_data: Dict[str, Dict[str, Union[pd.DataFrame, pd.Series]]], 
-                 params: HyperParams) -> None:
-        """全てのセクターのモデルを学習する"""
-        for sector_name, data in sector_data.items():
-            if sector_name not in self._models:
-                # モデルがなければ作成
-                self._models[sector_name] = ModelFactory.create_model(self._model_type)
+    def generate_model(self, name: str, type: str, params: Optional[BaseParams] = None) -> BaseModel:
+        """
+        新しいモデルを生成してコレクションに追加する
+        
+        Args:
+            name: モデル名
+            type: モデルタイプ ('lasso' or 'lgbm')
+            params: モデルパラメータ（省略時はデフォルト）
             
-            # 学習実行
-            self._models[sector_name].train(data['y'], data['X'], params)
+        Returns:
+            生成されたモデルのインスタンス
+        
+        Raises:
+            ValueError: 不明なモデルタイプの場合
+        """
+        if type.lower() == 'lasso':
+            model = LassoModel(name, params or LassoParams())
+        elif type.lower() == 'lgbm':
+            model = LgbmModel(name, params or LgbmParams())
+        else:
+            raise ValueError(f"不明なモデルタイプです: {type}. 'lasso'または'lgbm'を指定してください。")
+        
+        self.models[name] = model
+        return model
     
-    def predict_all(self, sector_data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
-        """全てのセクターで予測を行う"""
-        predictions = {}
-        for sector_name, X in sector_data.items():
-            if sector_name in self._models:
-                predictions[sector_name] = self._models[sector_name].predict(X)
-        return predictions
-    
-    def save(self, filepath: str) -> None:
-        """モデルコレクションをファイルに保存する"""
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'wb') as f:
-            pickle.dump(self, f)
+    def save(self, path: str) -> None:
+        """
+        コレクションをファイルに保存する
+        
+        Args:
+            path: 保存先のファイルパス
+        """
+        # ディレクトリが存在しない場合は作成
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        # 保存用の辞書を作成
+        collection_data = {
+            'models': self.models,
+        }
+        
+        # ファイルに保存
+        with open(path, 'wb') as file:
+            pickle.dump(collection_data, file)
+        
+        print(f"モデルコレクションを {path} に保存しました。")
     
     @classmethod
-    def load(cls, filepath: str) -> 'ModelCollection':
-        """ファイルからモデルコレクションを読み込む"""
-        with open(filepath, 'rb') as f:
-            return pickle.load(f)
-    
-    @property
-    def sectors(self) -> List[str]:
-        """管理しているセクターのリストを取得する"""
-        return list(self._models.keys())
-    
-    @property
-    def metadata(self) -> Dict[str, Any]:
-        """メタデータを取得する"""
-        return self._metadata
+    def load(cls, path: str) -> 'ModelCollection':
+        """
+        ファイルからコレクションを読み込む
+        
+        Args:
+            path: 読み込むファイルパス
+            
+        Returns:
+            読み込まれたモデルコレクション
+            
+        Raises:
+            FileNotFoundError: ファイルが存在しない場合
+            ValueError: ファイルが正しくない形式の場合
+        """
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"ファイルが見つかりません: {path}")
+        
+        # ファイルから読み込み
+        with open(path, 'rb') as file:
+            collection_data = pickle.load(file)
+        
+        # コレクションの作成
+        collection = cls()
+        
+        # モデルの設定
+        if 'models' in collection_data:
+            collection.models = collection_data['models']
+        else:
+            raise ValueError(f"ファイル {path} が正しくない形式です。")
+        
+        print(f"モデルコレクションを {path} から読み込みました。")
+        return collection

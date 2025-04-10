@@ -1,15 +1,25 @@
-from machine_learning.models.ml_model_base import MachineLearningModelBase
-from machine_learning.models.lasso_model import LassoModel
-from machine_learning.models.lgbm_model import LgbmModel
+from typing import Optional
+from machine_learning.collection import ModelCollection
+
 
 class ModelFactory:
     """個別モデルのファクトリークラス"""
+    
     @staticmethod
-    def create_model(model_type: str = 'lasso') -> MachineLearningModelBase:
-        """新しいモデルインスタンスを作成する"""
-        if model_type.lower() == 'lasso':
-            return LassoModel()
-        elif model_type.lower() == 'lgbm':
-            return LgbmModel()
-        else:
-            raise ValueError(f"Unknown model type: {model_type}")
+    def create_model(name: str, type: str, collection: Optional[ModelCollection] = None) -> ModelCollection:
+        """
+        指定されたタイプのモデルを作成する
+        
+        Args:
+            name: モデル名
+            type: モデルタイプ ('lasso' or 'lgbm')
+            collection: モデルを追加するコレクション（省略時は新規作成）
+            
+        Returns:
+            モデルを含むコレクション
+        """
+        if collection is None:
+            collection = ModelCollection()
+        
+        collection.generate_model(name, type)
+        return collection

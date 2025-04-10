@@ -1,249 +1,132 @@
-"""
-単一のLightGBMモデルを管理するクラス
-"""
-from typing import Optional, List, Union, Dict, Any
 import pandas as pd
 import numpy as np
+from typing import Optional, List, Dict, Any, Tuple
 import lightgbm as lgb
 from scipy.stats import norm
+from machine_learning.params import LgbmParams
+from machine_learning.models import BaseModel
 
-from machine_learning.models.ml_model_base import MachineLearningModelBase
-from machine_learning.params.hyperparams import LgbmParams
 
-
-class LgbmModel(MachineLearningModelBase):
-    """
-    単一のLightGBMモデルを管理するクラス
-    """
+class LgbmModel(BaseModel):
+    """LightGBM回帰モデル"""
     
-    def __init__(self):
-        """初期化"""
-        self._model = None
-        self._scaler = None
-        self._prediction = None
-        self._feature_names = None
-        self._feature_importance_df = None
-        self._metadata = {}
-    
-    def train(self, X: pd.DataFrame, y: Union[pd.Series, pd.DataFrame], params: LgbmParams | None = None, **kwargs):
+    def __init__(self, name: str, params: Optional[LgbmParams] = None):
         """
-        LightGBMモデルを学習する
-        
         Args:
-            X: 特徴量DataFrame
-            y: 目的変数Series
-            params: LgbmParams (ハイパーパラメータをまとめたデータクラス)
-            **kwargs: パラメータ辞書（paramsが指定されていない場合に使用）
+            name: モデル名
+            params: モデルパラメータ。指定しない場合はデフォルトパラメータが使用される。
         """
-        # パラメータの取得
-        if params:
-            # LgbmParamsが提供されている場合はそれを使用
-            model_params = params.get_model_params()
-            num_boost_round = model_params.pop('num_boost_round', 100000)  # モデルパラメータではないので削除
-            early_stopping_rounds = model_params.pop('early_stopping_rounds', None)  # モデルパラメータではないので削除
-            categorical_features = model_params.pop('categorical_features', None)  # モデルパラメータではないので削除
-        else:
-            # kwargsから直接パラメータを取得
-            num_boost_round = kwargs.pop("num_boost_round", 100000)
-            early_stopping_rounds = kwargs.pop("early_stopping_rounds", None)
-            categorical_features = kwargs.pop("categorical_features", None)
-            
-            # LightGBMのモデルパラメータとして使用
-            model_params = kwargs
+        super().__init__(name, params or LgbmParams())
+        self.model = None
+        self.feature_importances = None
+    
+    def train(self) -> None:
+        """モデルを学習する"""
+        if self.target_train_df is None or self.features_train_df is None:
+            raise ValueError("訓練データがセットされていません。load_dataset()を先に実行してください。")
         
-        # 特徴量名を保存
-        self._feature_names = X.columns.tolist()
+        # 学習データの取得
+        X_train = self.features_train_df
+        y_train = self.target_train_df['Target']
         
-        # DataFrameやSeries をnumpyに変換
-        if isinstance(y, pd.DataFrame) and y.shape[1] == 1:
-            y_values = y.iloc[:, 0]
-        else:
-            y_values = y
+        # パラメータの設定
+        params_dict = self.params.to_dict()
         
-        # カテゴリカル特徴量の処理
-        X_processed = X.copy()
+        # カテゴリカル特徴量の取得
+        categorical_features = params_dict.pop('categorical_features', None)
+        num_boost_round = params_dict.pop('num_boost_round', 100000)
+        early_stopping_rounds = params_dict.pop('early_stopping_rounds', None)
         
-        # カテゴリカル変数があれば、それらをカテゴリ型に変換
-        if categorical_features is not None and len(categorical_features) > 0:
-            for col in categorical_features:
-                if col in X_processed.columns and X_processed[col].dtype == 'object':
-                    # オブジェクト型の場合はカテゴリに変換
-                    X_processed[col] = X_processed[col].astype('category')
-        
-        # データセット作成
+        # LightGBMのデータセット作成
         train_data = lgb.Dataset(
-            X_processed, 
-            label=y_values, 
+            X_train, 
+            label=y_train, 
             categorical_feature=categorical_features,
-            feature_name=X_processed.columns.tolist(),
-            free_raw_data=False
+            feature_name=list(X_train.columns)
         )
         
-        # カスタム評価関数の設定
-        feval = None
-        if model_params.get("metric", "") == "numerai_corr":
-            feval = self._numerai_corr_lgbm
-        
-        # 学習実行
-        callbacks = []
-        if early_stopping_rounds:
-            callbacks.append(lgb.early_stopping(stopping_rounds=early_stopping_rounds, verbose=True))
-            callbacks.append(lgb.log_evaluation(100))
-        
-        self._model = lgb.train(
-            model_params, 
-            train_data, 
+        # 学習の実行
+        self.model = lgb.train(
+            params_dict,
+            train_data,
             num_boost_round=num_boost_round,
-            valid_sets=[train_data] if early_stopping_rounds else None,
-            callbacks=callbacks if callbacks else None,
-            feval=feval
+            early_stopping_rounds=early_stopping_rounds,
+            feval=self._numerai_corr_lgbm
         )
         
         # 特徴量重要度の計算
-        self._calculate_feature_importances()
+        self.feature_importances = self._get_feature_importances()
         
-        return self
+        print(f"Model {self.name} trained with {self.model.best_iteration} iterations")
+    
+    def predict(self) -> pd.DataFrame:
+        """予測を実行する"""
+        if self.model is None:
+            raise ValueError("モデルが学習されていません。train()を先に実行してください。")
+        
+        if self.target_test_df is None or self.features_test_df is None:
+            raise ValueError("テストデータがセットされていません。load_dataset()を先に実行してください。")
+        
+        # テストデータの取得
+        X_test = self.features_test_df
+        
+        # 予測の実行
+        pred_result_df = self.target_test_df.copy()
+        pred_result_df['Pred'] = self.model.predict(X_test, num_iteration=self.model.best_iteration)
+        
+        # 予測結果を保存
+        self.pred_result_df = pred_result_df
+        
+        return self.pred_result_df
     
     def _numerai_corr_lgbm(self, preds, data):
         """
         Numerai相関係数を計算するカスタム評価関数
-        この関数はLightGBMの評価関数の形式に従う
-        
-        Args:
-            preds: 予測値
-            data: Dataset
-            
-        Returns:
-            tuple: (評価指標名, 評価値, is_higher_better)
         """
-        import numpy as np
-        import pandas as pd
-        from scipy.stats import norm
-        
         # データセットからターゲットを取得
         target = data.get_label()
-        # 日付情報を取得（あれば）
-        date = None
-        if hasattr(data, 'get_field') and callable(getattr(data, 'get_field')):
-            try:
-                date = data.get_field('date')
-            except:
-                # 日付フィールドがない場合は無視
-                pass
         
-        # predsとtargetをDataFrameに変換
-        if date is not None:
-            df = pd.DataFrame({'Pred': preds, 'Target': target, 'Date': date})
-            # Target_rankとPred_rankを計算
-            df['Target_rank'] = df.groupby('Date')['Target'].rank(ascending=False)
-            df['Pred_rank'] = df.groupby('Date')['Pred'].rank(ascending=False)
-        else:
-            df = pd.DataFrame({'Pred': preds, 'Target': target})
-            # 日付がない場合は全体でランク付け
-            df['Target_rank'] = df['Target'].rank(ascending=False)
-            df['Pred_rank'] = df['Pred'].rank(ascending=False)
+        # Numerai相関係数の計算
+        target_array = np.array(target)
+        centered_target = target_array - target_array.mean()
+        target_pow = np.sign(centered_target) * np.abs(centered_target) ** 1.5
         
-        # 日次のnumerai_corrを計算する関数
-        def _get_daily_numerai_corr(target_rank, pred_rank):
-            pred_rank = np.array(pred_rank)
-            scaled_pred_rank = (pred_rank - 0.5) / len(pred_rank)
-            gauss_pred_rank = norm.ppf(scaled_pred_rank)
-            pred_pow = np.sign(gauss_pred_rank) * np.abs(gauss_pred_rank) ** 1.5
-            
-            target = np.array(target_rank)
-            centered_target = target - target.mean()
-            target_pow = np.sign(centered_target) * np.abs(centered_target) ** 1.5
-            
-            return np.corrcoef(pred_pow, target_pow)[0, 1]
+        pred_array = np.array(preds)
+        scaled_pred = (pred_array - pred_array.min()) / (pred_array.max() - pred_array.min())
+        scaled_pred = scaled_pred * 0.98 + 0.01  # [0.01, 0.99]の範囲に収める
+        gauss_pred = norm.ppf(scaled_pred)
+        pred_pow = np.sign(gauss_pred) * np.abs(gauss_pred) ** 1.5
         
-        # 日付ごとに相関を計算し平均を取る
-        if date is not None:
-            numerai_corr = df.groupby('Date').apply(
-                lambda x: _get_daily_numerai_corr(x['Target_rank'], x['Pred_rank'])
-            ).mean()
-        else:
-            # 日付がない場合は全体で一度だけ計算
-            numerai_corr = _get_daily_numerai_corr(df['Target_rank'], df['Pred_rank'])
+        # 相関係数の計算
+        numerai_corr = np.corrcoef(pred_pow, target_pow)[0, 1]
         
         # LightGBMのカスタムメトリックの形式で返す
         return 'numerai_corr', numerai_corr, True
     
-    def _calculate_feature_importances(self):
-        """特徴量重要度を計算してDataFrameに格納"""
-        if self._model is None or self._feature_names is None:
-            return
-        
-        # LightGBMから特徴量重要度を取得
-        importance_type = 'gain'  # 'gain'、'split'、'weight' のいずれか
-        importance = self._model.feature_importance(importance_type=importance_type)
-        
-        # DataFrameに変換
-        self._feature_importance_df = pd.DataFrame({
-            'Feature': self._feature_names,
-            'Importance': importance
-        })
-        
-        # 重要度降順でソート
-        self._feature_importance_df = self._feature_importance_df.sort_values(
-            'Importance', ascending=False
-        )
-    
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
+    def _get_feature_importances(self) -> pd.DataFrame:
         """
-        学習済みモデルを使用して予測を行う
-        
-        Args:
-            X: 特徴量DataFrame
+        モデルの特徴量重要度を取得する
         
         Returns:
-            np.ndarray: 予測値の配列
+            特徴量とその重要度を格納したデータフレーム
         """
-        if self._model is None:
-            raise ValueError("モデルが学習されていません。先にtrainメソッドを呼び出してください。")
+        importance_type = 'gain'
+        feature_names = self.model.feature_name()
         
-        # 欠損値のある行を特定
-        not_na_indices = X.dropna(how='any').index
+        # 特徴量重要度の取得
+        importance = self.model.feature_importance(importance_type=importance_type)
         
-        # 完全な予測結果配列を初期化
-        full_predictions = np.full(X.shape[0], np.nan)
+        # データフレームの作成
+        df = pd.DataFrame({
+            'feature': feature_names,
+            'importance': importance
+        })
         
-        # 欠損値のない行のみで予測を実行
-        if len(not_na_indices) > 0:
-            X_filtered = X.loc[not_na_indices, :]
-            
-            # 予測実行（ベストイテレーションがある場合はそれを使用）
-            best_iteration = getattr(self._model, 'best_iteration', 0) or 0
-            if best_iteration > 0:
-                predictions = self._model.predict(X_filtered, num_iteration=best_iteration)
-            else:
-                predictions = self._model.predict(X_filtered)
-                
-            full_predictions[X.index.get_indexer(not_na_indices)] = predictions
-        
-        self._prediction = full_predictions
-        return full_predictions
+        # 重要度でソート
+        return df.sort_values('importance', ascending=False).reset_index(drop=True)
     
-    @property
-    def model(self):
-        """内部モデルを取得"""
-        return self._model
-    
-    @property
-    def scaler(self):
-        """スケーラーを取得"""
-        return self._scaler
-
-    @property
-    def prediction(self):
-        """予測結果を取得する"""
-        return self._prediction
-
-    @property
-    def feature_importance(self) -> pd.DataFrame:
-        """特徴量重要度を取得する"""
-        return self._feature_importance_df
-
-    @property
-    def metadata(self) -> Dict[str, Any]:
-        """メタデータを取得する"""
-        return self._metadata
+    def get_feature_importances(self) -> pd.DataFrame:
+        """学習済みモデルの特徴量重要度を取得する"""
+        if self.feature_importances is None:
+            raise ValueError("モデルが学習されていません。train()を先に実行してください。")
+        return self.feature_importances
