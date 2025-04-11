@@ -45,7 +45,7 @@ for sector in sectors:
 lasso_collection.train_all()
 lasso_collection.predict_all()
 
-pred_result_df = lasso_collection.merge_result_dfs()
+pred_result_df = lasso_collection.get_result_df()
 lasso_collection.save(path = collection_path)
 
 print(pred_result_df)

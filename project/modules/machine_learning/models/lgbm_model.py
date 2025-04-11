@@ -35,7 +35,6 @@ class LgbmModel(BaseModel):
         # カテゴリカル特徴量の取得
         categorical_features = params_dict.pop('categorical_features', None)
         num_boost_round = params_dict.pop('num_boost_round', 100000)
-        early_stopping_rounds = params_dict.pop('early_stopping_rounds', None)
         
         # LightGBMのデータセット作成
         train_data = lgb.Dataset(
@@ -50,7 +49,6 @@ class LgbmModel(BaseModel):
             params_dict,
             train_data,
             num_boost_round=num_boost_round,
-            early_stopping_rounds=early_stopping_rounds,
             feval=self._numerai_corr_lgbm
         )
         

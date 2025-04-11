@@ -38,6 +38,6 @@ for sector, single_model in lasso_collection.get_models():
     lasso_collection.set_model(model = single_model)
 
 lasso_collection.predict_all()
-pred_result_df = lasso_collection.merge_result_dfs()
+pred_result_df = lasso_collection.get_result_df()
 lasso_collection.save(path = collection_path)
 print(pred_result_df)
