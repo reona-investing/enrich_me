@@ -40,7 +40,7 @@ class BaseCollection(ABC):
         for model in self.models.values():
             model.predict()
     
-    def merge_result_dfs(self) -> pd.DataFrame:
+    def get_result_df(self) -> pd.DataFrame:
         """全てのモデルの予測結果を結合する"""
         result_dfs = []
         for model in self.models.values():

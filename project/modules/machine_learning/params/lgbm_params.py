@@ -18,7 +18,6 @@ class LgbmParams(BaseParams):
     
     # その他のパラメータ
     num_boost_round: int = 100000  # ブースト回数
-    early_stopping_rounds: Optional[int] = None  # 早期終了のラウンド数
     
     # カテゴリ特徴量
     categorical_features: List[str] = field(default_factory=list)
