@@ -68,7 +68,8 @@ class ModelCollection:
 
     def generate_model(self, name: str, type: str, params: Optional[BaseParams] = None) -> BaseModel:
         """
-        新しいモデルを生成してコレクションに追加する
+        新しいモデルを生成してコレクションに追加する。既に同名のモデルが存在する場合は、
+        既存のモデルを返す。
         
         Args:
             name: モデル名
@@ -76,18 +77,22 @@ class ModelCollection:
             params: モデルパラメータ（省略時はデフォルト）
             
         Returns:
-            生成されたモデルのインスタンス
+            生成されたモデルのインスタンス、または既存のモデルのインスタンス
         
         Raises:
             ValueError: 不明なモデルタイプの場合
         """
-        if not isinstance(self.models[name]):
-            if type.lower() == 'lasso':
-                model = LassoModel(name, params or LassoParams())
-            elif type.lower() == 'lgbm':
-                model = LgbmModel(name, params or LgbmParams())
-            else:
-                raise ValueError(f"不明なモデルタイプです: {type}. 'lasso'または'lgbm'を指定してください。")
+        # 既存のモデルがあれば、それを返す
+        if name in self.models:
+            return self.models[name]
+        
+        # 新しいモデルを作成
+        if type.lower() == 'lasso':
+            model = LassoModel(name, params or LassoParams())
+        elif type.lower() == 'lgbm':
+            model = LgbmModel(name, params or LgbmParams())
+        else:
+            raise ValueError(f"不明なモデルタイプです: {type}. 'lasso'または'lgbm'を指定してください。")
         
         self.models[name] = model
         return model
@@ -140,7 +145,26 @@ class ModelCollection:
             raise ValueError("予測結果が存在しません。predict_all()を先に実行してください。")
         
         return pd.concat(result_dfs)
-
+    
+    def set_result_df(self, result_df: pd.DataFrame, separate_by_sector: bool = True):
+        """
+        全てのモデルの予測結果を結合する
+        
+        Args:
+            結合された予測結果のデータフレーム
+            
+        Raises:
+            ValueError: 予測結果が存在しない場合
+        """
+        for sector, model in self.models.items():
+            # セクターでフィルタリングして設定
+            if model.pred_result_df.index.nlevels > 1 and \
+                "Sector" in model.pred_result_df.index.names and \
+                    separate_by_sector:
+                model.pred_result_df = result_df[result_df.index.get_level_values('Sector') == sector]
+            else:
+                model.pred_result_df = result_df        
+    
     def set_train_test_data_all(self, 
                                 target_df: pd.DataFrame, 
                                 features_df: pd.DataFrame,
@@ -151,18 +175,18 @@ class ModelCollection:
                                 outlier_threshold: float = 0,
                                 no_shift_features: List[str] = None,
                                 get_next_open_date_func: Optional[Callable] = None,
-                                reuse_features_df: bool = False) -> None:
+                                reuse_features_df: bool = False,
+                                separate_by_sector: bool =True) -> None:
         
-        
-        for model in self.models.values():
-            sector = model.name
+
+        for sector, model in self.models.items():
             # セクターでフィルタリングして設定
-            if target_df.index.nlevels > 1 and "Sector" in target_df.index.names:
+            if target_df.index.nlevels > 1 and "Sector" in target_df.index.names and separate_by_sector:
                 sector_target = target_df[target_df.index.get_level_values('Sector') == sector]
             else:
                 sector_target = target_df
 
-            if features_df.index.nlevels > 1 and "Sector" in features_df.index.names:
+            if features_df.index.nlevels > 1 and "Sector" in features_df.index.names and separate_by_sector:
                 sector_features = features_df[features_df.index.get_level_values('Sector') == sector]
             else:
                 sector_features = features_df
@@ -248,6 +272,16 @@ class ModelCollection:
             raise ValueError("発注価格情報が存在しません。set_order_price_for_all()を先に実行してください。")
         
         return pd.concat(result_dfs)
+
+    def set_params_all(self, params: BaseParams):
+        for model in self.models.values():
+            model.params = params
+
+    def get_params_all(self) -> list[BaseParams]:
+        params_list = []
+        for model in self.models.values():
+            params_list.append(model.params)
+        return params_list
 
     def save(self, path: Optional[str] = None) -> None:
         """

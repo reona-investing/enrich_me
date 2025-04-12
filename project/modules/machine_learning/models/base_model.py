@@ -36,6 +36,10 @@ class BaseModel(ABC):
         self.get_next_open_date_func = None  # 次の営業日を取得する関数（外部から設定）
         self.reuse_features_df = False  # デフォルトでは特徴量を再利用しない
 
+        # 追加する新しいプロパティ (PostProcessingData に相当)
+        self.raw_target_df = None  # 生の目的変数（処理前）
+        self.order_price_df = None  # 発注価格情報
+
         
     def load_dataset(self, 
                     target_df: pd.DataFrame, 
@@ -143,6 +147,46 @@ class BaseModel(ABC):
         self.target_test_df = DataProcessor.narrow_period(target_df, self.test_start_date, self.test_end_date)
         self.features_test_df = DataProcessor.narrow_period(features_df, self.test_start_date, self.test_end_date)
     
+    # 新規メソッド：生の目的変数を設定
+    def set_raw_target(self, raw_target_df: pd.DataFrame) -> None:
+        """
+        生の目的変数データフレームを設定する
+        
+        Args:
+            raw_target_df: 生の目的変数のデータフレーム
+        """
+        self.raw_target_df = raw_target_df.copy()
+    
+    # 新規メソッド：発注価格情報を設定
+    def set_order_price(self, order_price_df: pd.DataFrame) -> None:
+        """
+        発注価格情報を設定する
+        
+        Args:
+            order_price_df: 発注価格のデータフレーム
+        """
+        self.order_price_df = order_price_df.copy()
+    
+    # 新規メソッド：生の目的変数を取得
+    def get_raw_target(self) -> pd.DataFrame:
+        """生の目的変数データフレームを取得する"""
+        if self.raw_target_df is None:
+            raise ValueError("生の目的変数がセットされていません。set_raw_target()を先に実行してください。")
+        return self.raw_target_df
+    
+    # 新規メソッド：発注価格情報を取得
+    def get_order_price(self) -> pd.DataFrame:
+        """発注価格データフレームを取得する"""
+        if self.order_price_df is None:
+            raise ValueError("発注価格情報がセットされていません。set_order_price()を先に実行してください。")
+        return self.order_price_df
+    
+    def set_params(self, params: BaseParams):
+        self.params = params
+
+    def get_params(self) -> BaseParams:
+        return self.params
+
     @abstractmethod
     def train(self) -> None:
         """モデルを学習する"""

@@ -43,7 +43,7 @@ class LgbmModel(BaseModel):
             categorical_feature=categorical_features,
             feature_name=list(X_train.columns)
         )
-        
+
         # 学習の実行
         self.model = lgb.train(
             params_dict,
