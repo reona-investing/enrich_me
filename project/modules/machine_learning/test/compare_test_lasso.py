@@ -180,7 +180,7 @@ def train_and_predict_new_code(target_df: pd.DataFrame, features_df: pd.DataFram
     from machine_learning.factory import CollectionFactory, ModelFactory
     
     # コレクションの作成
-    lasso_collection = CollectionFactory().create_collection()
+    lasso_collection = CollectionFactory.get_collection()
     
     # セクターごとにモデルを生成、学習、予測
     sectors = target_df.index.get_level_values('Sector').unique().tolist()

@@ -29,7 +29,7 @@ features_df = FeaturesCalculator.calculate_features(sector_index_df, None, None,
 
 
 collection_path = 'C:/Users/ryosh/enrich_me/project/model_collection/test.pkl'
-lasso_collection = CollectionFactory().load_collection(collection_path)
+lasso_collection = CollectionFactory.get_collection(collection_path)
 
 for sector, single_model in lasso_collection.get_models():
     target_for_sector = target_df[target_df.index.get_level_values('Sector') == sector]
