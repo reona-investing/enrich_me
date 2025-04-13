@@ -177,46 +177,38 @@ def train_and_predict_new_code(target_df: pd.DataFrame, features_df: pd.DataFram
     Returns:
         pd.DataFrame: 予測結果のデータフレーム
     """
-    from machine_learning.factory import CollectionFactory, ModelFactory
+    from machine_learning.strategies.lasso_by_sector import LassoBySector
     
-    # コレクションの作成
-    lasso_collection = CollectionFactory().create_collection()
-    
-    # セクターごとにモデルを生成、学習、予測
-    sectors = target_df.index.get_level_values('Sector').unique().tolist()
-    
-    for sector in sectors:
-        target_for_sector = target_df[target_df.index.get_level_values('Sector') == sector]
-        features_for_sector = features_df[features_df.index.get_level_values('Sector') == sector]
-        
-        # モデル生成
-        lasso_collection.generate_model(name=sector, type='lasso')
-        single_model = lasso_collection.get_model(name=sector)
-        
-        # データセットの読み込み
-        single_model.load_dataset(
-            target_df=target_for_sector,
-            features_df=features_for_sector,
-            train_start_date=train_start_date,
-            train_end_date=train_end_date
-        )
-        
-        # モデルをコレクションに設定
-        lasso_collection.set_model(model=single_model)
-    
-    # 全モデルの学習
-    lasso_collection.train_all()
-    
-    # 全モデルの予測
-    lasso_collection.predict_all()
-    
-    # 予測結果の結合
-    pred_result_df = lasso_collection.get_result_df()
-    
-    # テスト用に一時保存
+    # テスト用のファイルパス
     collection_path = 'test_output/new_model.pkl'
     os.makedirs(os.path.dirname(collection_path), exist_ok=True)
-    lasso_collection.save(path=collection_path)
+    
+    # テスト用のダミーデータ（実際のプロジェクトでは意味のあるデータが入る）
+    # ここでは最小限の情報として空のDataFrameを作成
+    raw_target_df = pd.DataFrame(index=target_df.index)
+    order_price_df = pd.DataFrame(index=target_df.index)
+    
+    # テストの開始日と終了日
+    test_start_date = train_end_date
+    test_end_date = target_df.index.get_level_values('Date').max()
+    
+    # lasso_by_sectorの関数を直接呼び出し
+    LassoBySector.train_and_predict_new_code(
+        path=collection_path,
+        target_df=target_df, 
+        features_df=features_df, 
+        raw_target_df=raw_target_df,
+        order_price_df=order_price_df,
+        train_start_date=train_start_date, 
+        train_end_date=train_end_date,
+        test_start_date=test_start_date,
+        test_end_date=test_end_date
+    )
+    
+    # 保存されたコレクションを読み込んで予測結果を取得
+    from machine_learning.factory import CollectionFactory
+    lasso_collection = CollectionFactory.get_collection(collection_path)
+    pred_result_df = lasso_collection.get_result_df()
     
     return pred_result_df
 

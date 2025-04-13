@@ -1,2 +1,1 @@
-from .base_collection import BaseCollection
 from .model_collection import ModelCollection

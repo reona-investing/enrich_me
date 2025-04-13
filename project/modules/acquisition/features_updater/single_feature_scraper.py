@@ -127,10 +127,10 @@ class SingleFeatureScraper:
             url = f'https://www.tradingview.com/symbols/{code}/'
             named_tab = await self.browser_manager.new_tab(name=name, url=url)
             await named_tab.tab.utils.wait(10)
-            element = await named_tab.tab.utils.wait_for(
-                '#js-category-content > div.tv-react-category-header > div.js-symbol-page-header-root > div > div > div > div.quotesRow-pAUXADuj > div:nth-child(1) > div > div.lastContainer-JWoJqCpY > span.last-JWoJqCpY.js-symbol-last > span',
-                is_css = True)
-            value = float(element.text)
+            html = await named_tab.tab.utils.get_html_content()
+            s = soup(html, 'html.parser')
+            text_list = s.find_all('div', class_='js-symbol-header-ticker')[1].find_all('span')
+            value = float([x.text for x in text_list][0])
             await self.browser_manager.close_tab(name=name)
 
         return self._create_df_with_one_row(latest_day, value)
@@ -165,10 +165,12 @@ if __name__ == '__main__':
         import numpy as np
         browser_manager = BrowserManager()
         single_feature_scraper = SingleFeatureScraper(browser_manager)
-        df1 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/usd-jpy', additional_scrape = np.nan, additional_code = np.nan)
-        df2 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/eur-jpy', additional_scrape = np.nan, additional_code = np.nan)
-        df3 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/aud-jpy', additional_scrape = np.nan, additional_code = np.nan)
-        dfs = [df1, df2, df3]
+        #df1 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/usd-jpy', additional_scrape = np.nan, additional_code = np.nan)
+        #df2 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/eur-jpy', additional_scrape = np.nan, additional_code = np.nan)
+        #df3 = await single_feature_scraper.scrape_feature(investing_code = 'currencies/aud-jpy', additional_scrape = np.nan, additional_code = np.nan)
+        #dfs = [df1, df2, df3]
+        dfs = await single_feature_scraper.scrape_feature(investing_code = 'commodities/iron-ore-62-cfr-futures', 
+                                                          additional_scrape = 'Tradingview', additional_code = 'COMEX-TIO1!')
         return dfs
     
     @timekeeper
@@ -185,4 +187,4 @@ if __name__ == '__main__':
         return dfs
 
     dfs = asyncio.get_event_loop().run_until_complete(main())
-    dfs = asyncio.get_event_loop().run_until_complete(main_async())
+    #dfs = asyncio.get_event_loop().run_until_complete(main_async())

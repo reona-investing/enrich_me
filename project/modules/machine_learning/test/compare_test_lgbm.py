@@ -181,7 +181,7 @@ def train_and_predict_new_code_lgbm_single(target_df: pd.DataFrame, features_df:
     from machine_learning.params import LgbmParams
     
     # コレクションの作成
-    lgbm_collection = CollectionFactory().create_collection()
+    lgbm_collection = CollectionFactory.get_collection()
     
     # カスタムパラメータの設定
     custom_params = LgbmParams(
