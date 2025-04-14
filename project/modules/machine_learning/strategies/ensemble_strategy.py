@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from machine_learning.strategies.base_strategy import Strategy
 from machine_learning.core.collection import ModelCollection
@@ -33,8 +33,8 @@ class EnsembleStrategy(Strategy):
         self.weights.append(weight)
     
     def prepare_data(self, 
-                   train_start_date: datetime,
-                   train_end_date: datetime,
+                   train_start_date: datetime = None,
+                   train_end_date: datetime = None,
                    test_start_date: Optional[datetime] = None,
                    test_end_date: Optional[datetime] = None,
                    **kwargs) -> None:
@@ -42,11 +42,12 @@ class EnsembleStrategy(Strategy):
         データの前処理を行う
         
         Args:
-            train_start_date: 学習データの開始日
-            train_end_date: 学習データの終了日
-            test_start_date: テストデータの開始日（省略時はtrain_end_date）
-            test_end_date: テストデータの終了日（省略時はデータの最終日）
+            train_start_date: 学習データの開始日（アンサンブル戦略では不要）
+            train_end_date: 学習データの終了日（アンサンブル戦略では不要）
+            test_start_date: テストデータの開始日（アンサンブル戦略では不要）
+            test_end_date: テストデータの終了日（アンサンブル戦略では不要）
             **kwargs: その他のパラメータ
+                - ensemble_method: アンサンブル手法（"rank"または"average"）
         """
         # アンサンブル戦略の場合、各サブコレクションが既にデータを準備済みであることを前提とする
         if not self.sub_collections:
@@ -107,6 +108,59 @@ class EnsembleStrategy(Strategy):
         return result_df
     
     @classmethod
+    def create_ensemble(cls, 
+                       path: str,
+                       collection_paths: List[str], 
+                       weights: Optional[List[float]] = None,
+                       ensemble_method: str = "rank") -> 'EnsembleStrategy':
+        """
+        アンサンブル戦略を生成する専用ファクトリーメソッド
+        
+        Args:
+            path: 保存先パス
+            collection_paths: アンサンブル対象のコレクションのパスのリスト
+            weights: 各コレクションの重み（省略時は均等配分）
+            ensemble_method: アンサンブル手法（"rank"または"average"）
+            
+        Returns:
+            アンサンブル戦略
+        """
+        # コレクションパスのチェック
+        if not collection_paths:
+            raise ValueError("アンサンブル対象のコレクションパスが指定されていません。")
+        
+        # 重みのチェック
+        if weights is None:
+            weights = [1.0] * len(collection_paths)
+        elif len(weights) != len(collection_paths):
+            weights = [1.0] * len(collection_paths)
+        
+        # 戦略インスタンスを作成
+        strategy = cls(name="ensemble", save_path=path)
+        
+        # 各サブコレクションを読み込み
+        for collection_path, weight in zip(collection_paths, weights):
+            try:
+                collection = ModelCollection.load(collection_path)
+                strategy.add_collection(collection, weight)
+            except FileNotFoundError:
+                raise ValueError(f"コレクションファイルが見つかりません: {collection_path}")
+        
+        # データを準備
+        strategy.prepare_data(ensemble_method=ensemble_method)
+        
+        # モデルを学習（サブコレクションは既に学習済みと想定）
+        strategy.train()
+        
+        # 予測を実行
+        strategy.predict()
+        
+        # 保存
+        strategy.save()
+        
+        return strategy
+    
+    @classmethod
     def run(cls, 
            path: str,
            target_df: pd.DataFrame, 
@@ -122,19 +176,22 @@ class EnsembleStrategy(Strategy):
         """
         アンサンブル戦略を実行する
         
+        本メソッドは戦略クラスの一貫性のために維持していますが、
+        アンサンブル戦略ではcreate_ensemble()メソッドの使用を推奨します。
+        
         Args:
             path: モデルの保存/読み込み先パス
-            target_df: 目的変数のデータフレーム
-            features_df: 特徴量のデータフレーム
-            raw_target_df: 生の目的変数のデータフレーム
-            order_price_df: 発注価格のデータフレーム
-            train_start_date: 学習データの開始日
-            train_end_date: 学習データの終了日
-            test_start_date: テストデータの開始日（省略時はtrain_end_date）
-            test_end_date: テストデータの終了日（省略時はデータの最終日）
-            train: 学習を行うかどうか
+            target_df: 目的変数のデータフレーム（アンサンブル戦略では不要）
+            features_df: 特徴量のデータフレーム（アンサンブル戦略では不要）
+            raw_target_df: 生の目的変数のデータフレーム（アンサンブル戦略では不要）
+            order_price_df: 発注価格のデータフレーム（アンサンブル戦略では不要）
+            train_start_date: 学習データの開始日（アンサンブル戦略では不要）
+            train_end_date: 学習データの終了日（アンサンブル戦略では不要）
+            test_start_date: テストデータの開始日（アンサンブル戦略では不要）
+            test_end_date: テストデータの終了日（アンサンブル戦略では不要）
+            train: 学習を行うかどうか（アンサンブル戦略では常にTrue）
             **kwargs: その他のパラメータ
-                - collection_paths: アンサンブル対象のコレクションのパスのリスト
+                - collection_paths: アンサンブル対象のコレクションのパスのリスト（必須）
                 - weights: 各コレクションの重み
                 - ensemble_method: アンサンブル手法（"rank"または"average"）
             
@@ -145,41 +202,12 @@ class EnsembleStrategy(Strategy):
         weights = kwargs.get('weights', [1.0] * len(collection_paths))
         ensemble_method = kwargs.get('ensemble_method', 'rank')
         
-        # コレクションパスのチェック
-        if not collection_paths:
-            raise ValueError("アンサンブル対象のコレクションパスが指定されていません。")
-        
-        # 重みのチェック
-        if len(weights) != len(collection_paths):
-            weights = [1.0] * len(collection_paths)
-        
-        # 戦略インスタンスを作成
-        strategy = cls(name="ensemble", save_path=path)
-        
-        # 各サブコレクションを読み込み
-        for collection_path, weight in zip(collection_paths, weights):
-            try:
-                collection = ModelCollection.load(collection_path)
-                strategy.add_collection(collection, weight)
-            except FileNotFoundError:
-                raise ValueError(f"コレクションファイルが見つかりません: {collection_path}")
-        
-        # データを準備
-        strategy.prepare_data(
-            train_start_date=train_start_date,
-            train_end_date=train_end_date,
-            test_start_date=test_start_date,
-            test_end_date=test_end_date,
+        # create_ensemble()メソッドを利用
+        strategy = cls.create_ensemble(
+            path=path, 
+            collection_paths=collection_paths,
+            weights=weights,
             ensemble_method=ensemble_method
         )
-        
-        # モデルを学習（サブコレクションは既に学習済みと想定）
-        strategy.train()
-        
-        # 予測を実行
-        strategy.predict()
-        
-        # 保存
-        strategy.save()
         
         return strategy.collection

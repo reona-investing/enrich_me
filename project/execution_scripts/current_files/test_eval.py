@@ -6,22 +6,16 @@ ENSEMBLE_MODEL_PATH = r"C:\Users\ryosh\enrich_me\project\ml_datasets\48sectors_E
 from machine_learning.core.collection import ModelCollection
 import pandas as pd
 from datetime import datetime
+from machine_learning.ensemble import EnsembleUtility
 from machine_learning.strategies import EnsembleStrategy
 
 lasso_collection = ModelCollection.load(LASSO_MODEL_PATH)
 lgbm_collection = ModelCollection.load(LGBM_MODEL_PATH)
 
-EnsembleStrategy.run(ENSEMBLE_MODEL_PATH, target_df=None, features_df=None, 
-                     raw_target_df=lgbm_collection.get_raw_targets(),
-                     order_price_df=lgbm_collection.get_order_prices(),
-                     train_start_date=None, train_end_date=None,
-                     # 実際に使用するパラメータ
-                     collection_paths=[LASSO_MODEL_PATH, LGBM_MODEL_PATH],
-                     weights=[6.7, 1.3],
-                     ensemble_method='rank')
-
-ensemble_collection = ModelCollection.load(ENSEMBLE_MODEL_PATH)
-print(ensemble_collection.get_result_df())
+ensemble_collection = EnsembleUtility.ensemble_collections([[lasso_collection, 6.7], [lgbm_collection, 1.3]], method='rank',
+                                                           output_path = ENSEMBLE_MODEL_PATH)
+ensemble_collection.set_order_price_for_all(lgbm_collection.get_order_prices())
+ensemble_collection.set_raw_target_for_all(lgbm_collection.get_raw_targets(), separate_by_sector=False)
 test_start_date = datetime(2022, 1, 1)
 
 
