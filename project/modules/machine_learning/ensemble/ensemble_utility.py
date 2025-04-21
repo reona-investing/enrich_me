@@ -67,6 +67,20 @@ class EnsembleUtility:
         # コレクションにモデルを追加
         output_collection.add_model(ensemble_model)
         
+        # 元のコレクションから生の目的変数と発注価格を取得して設定
+        # raw_target_dfの設定
+        if hasattr(collections[0][0].models[next(iter(collections[0][0].models))], 'raw_target_df'):
+            output_collection.set_raw_target_for_all(
+                collections[0][0].get_raw_targets(), 
+                separate_by_sector=False  # アンサンブルモデルは単一のため分割しない
+            )
+        
+        # order_price_dfの設定
+        if hasattr(collections[0][0].models[next(iter(collections[0][0].models))], 'order_price_df'):
+            output_collection.set_order_price_for_all(
+                collections[0][0].get_order_prices()
+            )
+        
         # 保存パスが指定されていれば保存
         if output_path:
             output_collection.save()

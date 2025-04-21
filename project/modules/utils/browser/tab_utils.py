@@ -37,7 +37,8 @@ class TabUtils:
             t (int|float): 待機秒数
         """
         if isinstance(t, (int, float)) and t > 0:
-            await self._tab.wait(t)
+            await asyncio.sleep(t)
+            #await self._tab.wait(t)
 
     async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
         """
