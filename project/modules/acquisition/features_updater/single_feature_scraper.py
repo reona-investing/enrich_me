@@ -102,7 +102,8 @@ class SingleFeatureScraper:
 
             named_tab = await self.browser_manager.new_tab(name=name, url=url)
             await named_tab.tab.utils.wait(3)
-            element = await named_tab.tab.utils.wait_for('#ticker > div > div > div:nth-child(1) > span.value', is_css=True)
+            ticker_name_element = await named_tab.tab.utils.wait_for('BDI')
+            element = ticker_name_element.parent.children[1]
             value = float(element.text.replace(',', ''))
             await self.browser_manager.close_tab(name=name)
 
@@ -124,7 +125,7 @@ class SingleFeatureScraper:
         if chicago_time.hour >= 8:
             latest_day = chicago_time.date() #当日の日付
 
-            url = f'https://www.tradingview.com/symbols/{code}/'
+            url = f'https://jp.tradingview.com/symbols/{code}/'
             named_tab = await self.browser_manager.new_tab(name=name, url=url)
             await named_tab.tab.utils.wait(10)
             html = await named_tab.tab.utils.get_html_content()
@@ -142,7 +143,6 @@ class SingleFeatureScraper:
         '''ARCAからのスクレイピング'''
         url = f'https://www.nyse.com/quote/index/{code}'
         named_tab = await self.browser_manager.new_tab(name=name, url=url)
-        await named_tab.tab.utils.wait(10)
         html = await named_tab.tab.utils.get_html_content()
         await self.browser_manager.close_tab(name=name)
 
@@ -188,3 +188,4 @@ if __name__ == '__main__':
 
     dfs = asyncio.get_event_loop().run_until_complete(main())
     #dfs = asyncio.get_event_loop().run_until_complete(main_async())
+    print(dfs)

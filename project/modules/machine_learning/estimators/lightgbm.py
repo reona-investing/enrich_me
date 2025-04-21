@@ -1,27 +1,55 @@
 import pandas as pd
 import numpy as np
-from typing import Optional, List, Dict, Any, Tuple
 import lightgbm as lgb
+from typing import Optional, List, Dict, Any
 from scipy.stats import norm
-from machine_learning.params import LgbmParams
-from machine_learning.models import BaseModel
+
+from machine_learning.core.model_base import ModelBase
 
 
-class LgbmModel(BaseModel):
-    """LightGBM回帰モデル"""
+class LightGBMModel(ModelBase):
+    """LightGBMモデルの実装"""
     
-    def __init__(self, name: str, params: Optional[LgbmParams] = None):
+    def __init__(self, 
+                name: str, 
+                objective: str = 'regression',
+                metric: str = 'rmse',
+                boosting_type: str = 'gbdt',
+                learning_rate: float = 0.001,
+                num_leaves: int = 7,
+                num_boost_round: int = 100000,
+                lambda_l1: float = 0.5,
+                random_seed: int = 42,
+                categorical_features: List[str] = None,
+                **kwargs):
         """
         Args:
             name: モデル名
-            params: モデルパラメータ。指定しない場合はデフォルトパラメータが使用される。
+            objective: 目的関数
+            metric: 評価指標
+            boosting_type: ブースティング方法
+            learning_rate: 学習率
+            num_leaves: 葉の数
+            num_boost_round: ブースト回数
+            lambda_l1: L1正則化の強さ
+            random_seed: 乱数シード
+            categorical_features: カテゴリ特徴量のリスト
+            **kwargs: その他のLightGBMパラメータ
         """
-        super().__init__(name, params or LgbmParams())
-        self.model = None
-        self.feature_importances = None
+        super().__init__(name)
+        self.objective = objective
+        self.metric = metric
+        self.boosting_type = boosting_type
+        self.learning_rate = learning_rate
+        self.num_leaves = num_leaves
+        self.num_boost_round = num_boost_round
+        self.lambda_l1 = lambda_l1
+        self.random_seed = random_seed
+        self.categorical_features = categorical_features or []
+        self.extra_params = kwargs
     
     def train(self) -> None:
-        """モデルを学習する"""
+        """LightGBMモデルを学習する"""
         if self.target_train_df is None or self.features_train_df is None:
             raise ValueError("訓練データがセットされていません。load_dataset()を先に実行してください。")
         
@@ -29,37 +57,44 @@ class LgbmModel(BaseModel):
         X_train = self.features_train_df
         y_train = self.target_train_df['Target']
         
-        # パラメータの設定
-        params_dict = self.params.to_dict()
+        # LightGBMのパラメータ設定
+        params = {
+            'objective': self.objective,
+            'metric': self.metric,
+            'boosting_type': self.boosting_type,
+            'learning_rate': self.learning_rate,
+            'num_leaves': self.num_leaves,
+            'lambda_l1': self.lambda_l1,
+            'verbose': -1,
+            'random_seed': self.random_seed
+        }
+        params.update(self.extra_params)
         
-        # カテゴリカル特徴量の取得
-        categorical_features = params_dict.pop('categorical_features', None)
-        num_boost_round = params_dict.pop('num_boost_round', 100000)
-        
-        # LightGBMのデータセット作成
+        # LightGBMデータセットの作成
         train_data = lgb.Dataset(
             X_train, 
             label=y_train, 
-            categorical_feature=categorical_features,
+            categorical_feature=self.categorical_features,
             feature_name=list(X_train.columns)
         )
-
+        
         # 学習の実行
         self.model = lgb.train(
-            params_dict,
+            params,
             train_data,
-            num_boost_round=num_boost_round,
+            num_boost_round=self.num_boost_round,
             feval=self._numerai_corr_lgbm
         )
         
         # 特徴量重要度の計算
         self.feature_importances = self._get_feature_importances()
+        self.trained = True
         
         print(f"Model {self.name} trained with {self.model.best_iteration} iterations")
     
     def predict(self) -> pd.DataFrame:
-        """予測を実行する"""
-        if self.model is None:
+        """学習済みモデルで予測を実行する"""
+        if not self.trained or self.model is None:
             raise ValueError("モデルが学習されていません。train()を先に実行してください。")
         
         if self.target_test_df is None or self.features_test_df is None:
@@ -80,6 +115,13 @@ class LgbmModel(BaseModel):
     def _numerai_corr_lgbm(self, preds, data):
         """
         Numerai相関係数を計算するカスタム評価関数
+        
+        Args:
+            preds: モデルによる予測値
+            data: LightGBMのデータセット
+            
+        Returns:
+            (評価指標名, 評価値, 大きい方が良いかの真偽値)のタプル
         """
         # データセットからターゲットを取得
         target = data.get_label()
@@ -90,7 +132,7 @@ class LgbmModel(BaseModel):
         target_pow = np.sign(centered_target) * np.abs(centered_target) ** 1.5
         
         pred_array = np.array(preds)
-        scaled_pred = (pred_array - pred_array.min()) / (pred_array.max() - pred_array.min())
+        scaled_pred = (pred_array - pred_array.min()) / (pred_array.max() - pred_array.min() + 1e-8)
         scaled_pred = scaled_pred * 0.98 + 0.01  # [0.01, 0.99]の範囲に収める
         gauss_pred = norm.ppf(scaled_pred)
         pred_pow = np.sign(gauss_pred) * np.abs(gauss_pred) ** 1.5
@@ -108,6 +150,9 @@ class LgbmModel(BaseModel):
         Returns:
             特徴量とその重要度を格納したデータフレーム
         """
+        if self.model is None:
+            raise ValueError("モデルが学習されていません。")
+            
         importance_type = 'gain'
         feature_names = self.model.feature_name()
         

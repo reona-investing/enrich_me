@@ -1,19 +1,19 @@
 import pandas as pd
 from datetime import datetime
-from typing import Tuple, List
+from typing import Tuple, List, Callable
 
 
 class DataProcessor:
     """データ前処理を担当するユーティリティクラス"""
     
     @staticmethod
-    def append_next_business_day_row(df: pd.DataFrame, get_next_open_date_func) -> pd.DataFrame:
+    def append_next_business_day_row(df: pd.DataFrame, get_next_open_date_func: Callable) -> pd.DataFrame:
         """
         次の営業日の行を追加する
         
         Args:
             df: 処理対象のデータフレーム
-            get_next_open_date_func: 次の営業日を取得する関数（utils.jquants_api_utils.get_next_open_date を想定）
+            get_next_open_date_func: 次の営業日を取得する関数
             
         Returns:
             次の営業日の行を追加したデータフレーム
@@ -21,13 +21,28 @@ class DataProcessor:
         if df is None or len(df) == 0:
             return df
             
-        next_open_date = get_next_open_date_func(latest_date=df.index.get_level_values('Date')[-1])
+        # セクターレベルがあるかチェック
+        if 'Sector' not in df.index.names:
+            return df
+            
+        # 次の営業日を取得
+        latest_date = df.index.get_level_values('Date').max()
+        next_open_date = get_next_open_date_func(latest_date=latest_date)
+        
+        # セクターのリストを取得
         sectors = df.index.get_level_values('Sector').unique()
-        new_rows = [[next_open_date for _ in range(len(sectors))], [sector for sector in sectors]]
+        
+        # 新しい行のインデックスを作成
+        new_rows = [
+            [next_open_date for _ in range(len(sectors))],
+            [sector for sector in sectors]
+        ]
 
+        # 新しい行をデータフレームとして作成
         data_to_add = pd.DataFrame(index=new_rows, columns=df.columns).dropna(axis=1, how='all')
         data_to_add.index.names = ['Date', 'Sector']
 
+        # 既存のデータと結合
         df = pd.concat([df, data_to_add], axis=0).reset_index(drop=False)
         df['Date'] = pd.to_datetime(df['Date'])
         return df.set_index(['Date', 'Sector'], drop=True)
@@ -50,11 +65,17 @@ class DataProcessor:
         # コピーを作成して元のデータフレームを変更しないようにする
         features_df = features_df.copy()
         
-        # シフト対象の特徴量を選択
-        shift_features = [col for col in features_df.columns if col not in no_shift_features]
-        
-        # セクターごとにシフト
-        features_df[shift_features] = features_df.groupby('Sector')[shift_features].shift(1)
+        # インデックスにSectorがあるか確認
+        if features_df.index.nlevels > 1 and 'Sector' in features_df.index.names:
+            # シフト対象の特徴量を選択
+            shift_features = [col for col in features_df.columns if col not in no_shift_features]
+            
+            # セクターごとにシフト
+            features_df[shift_features] = features_df.groupby('Sector')[shift_features].shift(1)
+        else:
+            # Sectorがない場合は単純にシフト
+            shift_features = [col for col in features_df.columns if col not in no_shift_features]
+            features_df[shift_features] = features_df[shift_features].shift(1)
         
         return features_df
 
@@ -74,7 +95,8 @@ class DataProcessor:
             return features_df
             
         # インデックスを揃える
-        return features_df.loc[target_df.index, :]
+        common_indices = target_df.index.intersection(features_df.index)
+        return features_df.loc[common_indices, :]
 
     @staticmethod
     def narrow_period(df: pd.DataFrame, start_day: datetime, end_day: datetime) -> pd.DataFrame:
@@ -92,7 +114,18 @@ class DataProcessor:
         if df is None or len(df) == 0:
             return df
             
-        return df[(df.index.get_level_values('Date') >= start_day) & (df.index.get_level_values('Date') <= end_day)]
+        # Dateがインデックスにあるか確認
+        if df.index.nlevels > 1 and 'Date' in df.index.names:
+            date_index = df.index.get_level_values('Date')
+            return df[(date_index >= start_day) & (date_index <= end_day)]
+        elif df.index.nlevels == 1 and isinstance(df.index, pd.DatetimeIndex):
+            return df[(df.index >= start_day) & (df.index <= end_day)]
+        else:
+            # Dateがインデックスにない場合
+            if 'Date' in df.columns:
+                return df[(df['Date'] >= start_day) & (df['Date'] <= end_day)]
+            else:
+                return df  # 何もフィルタリングしない
 
     @staticmethod
     def remove_outliers(target_df: pd.DataFrame, features_df: pd.DataFrame, outlier_threshold: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -109,16 +142,22 @@ class DataProcessor:
         """
         if target_df is None or features_df is None or len(target_df) == 0 or len(features_df) == 0 or outlier_threshold == 0:
             return target_df, features_df
+        
+        # Sectorがインデックスにあるか確認
+        if target_df.index.nlevels > 1 and 'Sector' in target_df.index.names:
+            # 目的変数の外れ値を除去
+            target_df = target_df.groupby('Sector').apply(
+                DataProcessor._filter_outliers, column_name='Target', coef=outlier_threshold
+            ).droplevel(0, axis=0)
             
-        # 目的変数の外れ値を除去
-        target_df = target_df.groupby('Sector').apply(
-            DataProcessor._filter_outliers, column_name='Target', coef=outlier_threshold
-        ).droplevel(0, axis=0)
-        
-        target_df = target_df.sort_index()
-        
-        # 特徴量を目的変数と同じインデックスに制限
-        features_df = features_df.loc[features_df.index.isin(target_df.index), :]
+            target_df = target_df.sort_index()
+            
+            # 特徴量を目的変数と同じインデックスに制限
+            features_df = features_df.loc[features_df.index.isin(target_df.index), :]
+        else:
+            # Sectorがない場合は単純に外れ値除去
+            target_df = DataProcessor._filter_outliers(target_df, 'Target', outlier_threshold)
+            features_df = features_df.loc[features_df.index.isin(target_df.index), :]
         
         return target_df, features_df
 
