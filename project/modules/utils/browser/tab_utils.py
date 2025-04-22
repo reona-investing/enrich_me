@@ -53,10 +53,23 @@ class TabUtils:
             element: 要素
         """
         if is_css:
-            element = await self._tab.wait_for(selector=selector, timeout=timeout)
+            for i in range(timeout):
+                try:
+                    element = await self._tab.wait_for(selector=selector, timeout=1)
+                    return element
+                except:
+                    if i + 1 == timeout:
+                        raise
+                    await self.wait(1)
         else:
-            element = await self._tab.wait_for(text=selector, timeout=timeout)
-        return element
+            for i in range(timeout):
+                try:
+                    element = await self._tab.wait_for(text=selector, timeout=1)
+                    return element
+                except:
+                    if i + 1 == timeout:
+                        raise
+                    await self.wait(1)
 
     async def click_element(self, selector_text: str, is_css: bool = False, timeout: int | float | None = 60):
         """

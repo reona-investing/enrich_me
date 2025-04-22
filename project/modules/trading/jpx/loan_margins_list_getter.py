@@ -12,6 +12,7 @@ class _LoanMarginsFetcher:
         LINKED_PAGE = f'{HOME_PAGE}/listing/others/margin/index.html'
 
         named_tab = await self.browser_manager.new_tab(name='LoanMarginsFetcher', url=LINKED_PAGE)
+        await named_tab.tab.utils.wait(2)
         file_block = await named_tab.tab.utils.wait_for('div[class*=component-file]', is_css=True)
         file_element = await file_block.query_selector('a[href]')
 
