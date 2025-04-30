@@ -27,9 +27,14 @@ class FinUpdater:
 
     def _load_column_configs(self, cols_yaml_path: str):
         ccg = ColumnConfigsGetter(cols_yaml_path)
-        self.cols = {'日付': ccg.get_column_name('日付'),
+        assert ccg.get_column_name('日付') is not None '"日付"がyamlに定義されていません。'
+        cols = {'日付': ccg.get_column_name('日付'),
                      '開示番号': ccg.get_column_name('開示番号'),}
-        
+        # None チェック
+        for key, value in cols.items():
+            if value is None:
+                raise ValueError(f"列名 '{key}' に対応する値が None です。ccg.get_column_name('{key}') の戻り値を確認してください。")
+        self.cols = cols
 
     def _load_existing_data(self, path: str) -> pd.DataFrame:
         """既存データを読み込む。ファイルが存在しない場合は空のDataFrameを返す。"""
