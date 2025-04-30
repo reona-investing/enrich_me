@@ -86,10 +86,14 @@ class FeaturesCalculator:
         features_to_scrape_df['Path'] = Paths.SCRAPED_DATA_FOLDER + '/' + features_to_scrape_df['Group'] + '/' + features_to_scrape_df['Path']
         #グループごとに特徴量として採用するか？
         if groups_setting is not None:
-            features_to_scrape_df['is_adopted'] = features_to_scrape_df['Group'].map(groups_setting).fillna(features_to_scrape_df['is_adopted'])
+            mapped = features_to_scrape_df['Group'].map(groups_setting)
+            features_to_scrape_df['is_adopted'] = mapped.astype(bool).fillna(features_to_scrape_df['is_adopted'])
         if names_setting is not None:
-            features_to_scrape_df['is_adopted'] = features_to_scrape_df['Name'].map(names_setting).fillna(features_to_scrape_df['is_adopted'])
-        features_to_scrape_df['is_adopted'] = features_to_scrape_df['is_adopted'].replace({'TRUE': True, 'FALSE': False}).astype(bool)
+            mapped = features_to_scrape_df['Name'].map(names_setting)
+            features_to_scrape_df['is_adopted'] = \
+                mapped.astype(bool).fillna(features_to_scrape_df['is_adopted'])
+        else:
+            features_to_scrape_df['is_adopted'] = features_to_scrape_df['is_adopted'].replace({'TRUE': True, 'FALSE': False}).astype(bool)
         return features_to_scrape_df
 
     @staticmethod
