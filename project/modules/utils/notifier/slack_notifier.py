@@ -8,15 +8,15 @@ load_dotenv()
 
 class SlackNotifier:
 
-    def __init__(self, program_name: str = None):
+    def __init__(self, program_name: str = ''):
         # Slack APIのトークンを環境変数から取得
-        self.client = WebClient(token=os.getenv('SLACK_TOKEN'))
-        self.SLACK_GENERAL = os.getenv('SLACK_GENERAL')
-        self.SLACK_ERROR_LOG = os.getenv('SLACK_ERROR_LOG')
-        self.SLACK_RESULT = os.getenv('SLACK_RESULT')
+        self.client = WebClient(token=os.getenv('SLACK_TOKEN') or '')
+        self.SLACK_GENERAL = os.getenv('SLACK_GENERAL') or ''
+        self.SLACK_ERROR_LOG = os.getenv('SLACK_ERROR_LOG') or ''
+        self.SLACK_RESULT = os.getenv('SLACK_RESULT') or ''
         self.program_name = program_name
 
-    def send_message(self, message: str, channel: str = None):
+    def send_message(self, message: str, channel: str = ''):
         '''
         SLACKにメッセージを送ります。
         Args:
@@ -24,7 +24,7 @@ class SlackNotifier:
             channel (str): 送信先のチャンネルID (NoneのときはGeneralが指定される)
         '''
         try:
-            if channel is None:
+            if channel == '':
                 channel = self.SLACK_GENERAL
             # Slack APIを使用してメッセージを送信
             response = self.client.chat_postMessage(

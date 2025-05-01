@@ -1,5 +1,6 @@
-from nodriver import Tab
+from nodriver import Element, Tab
 from pathlib import Path
+from typing import Any
 import asyncio
 
 
@@ -40,38 +41,34 @@ class TabUtils:
             await asyncio.sleep(t)
             #await self._tab.wait(t)
 
-    async def wait_for(self, selector: str, is_css: bool = False, timeout: int | float | None = 60):
+    async def wait_for(self, selector: str, is_css: bool = False, timeout: int = 60) -> Element:
         """
         指定した要素の表示を待ちます。
 
         Args:
             selector (str): 表示を待ちたい文字列またはcssセレクタ
             is_css (bool): Trueならcssセレクタ、Falseなら文字列
-            timeout (int|float|None): タイムアウト秒数
+            timeout (int): タイムアウト秒数
 
         Returns:
             element: 要素
-        """
-        if is_css:
-            for i in range(timeout):
-                try:
-                    element = await self._tab.wait_for(selector=selector, timeout=0.5)
-                    return element
-                except:
-                    if i + 1 == timeout:
-                        raise
-                    await self.wait(0.5)
-        else:
-            for i in range(timeout):
-                try:
-                    element = await self._tab.wait_for(text=selector, timeout=0.5)
-                    return element
-                except:
-                    if i + 1 == timeout:
-                        raise
-                    await self.wait(0.5)
 
-    async def click_element(self, selector_text: str, is_css: bool = False, timeout: int | float | None = 60):
+        Raises:
+            ElementNotFoundError: 指定した要素がタイムアウトまでに見つからなかった場合
+        """
+        for i in range(timeout):
+            try:
+                if is_css:
+                    element = await self._tab.wait_for(selector=selector, timeout=0.5)
+                else:
+                    element = await self._tab.wait_for(text=selector, timeout=0.5)
+                return element
+            except Exception:
+                await self.wait(0.5)
+
+        raise Exception(f"要素が見つかりませんでした: selector={selector}, is_css={is_css}")
+
+    async def click_element(self, selector_text: str, is_css: bool = False, timeout: int = 60):
         """
         指定した要素の表示を待ってからクリックします。
 
@@ -123,7 +120,7 @@ class TabUtils:
         ''')
         await self._tab.wait(0.5)
 
-    async def query_selector(self, css_selector: str, is_all: bool = False) -> list:
+    async def query_selector(self, css_selector: str, is_all: bool = False) -> list | Any | None:
         """
         指定したcssセレクタを持つ要素を、1つまたは複数検索します。
 
@@ -164,8 +161,7 @@ if __name__ == '__main__':
     async def main():
         from utils.browser.browser_manager import BrowserManager
         bm = BrowserManager()
-        await bm.launch_browser()
-        tab = bm.get_tab('default')
+        tab = await bm.new_tab('default')
         tu = TabUtils(tab.tab._tab)
         await tu.open_url('https://www.google.co.jp/')
         await asyncio.sleep(5)
