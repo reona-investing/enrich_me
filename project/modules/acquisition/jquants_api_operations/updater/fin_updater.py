@@ -18,7 +18,10 @@ class FinUpdater:
         self._load_column_configs(cols_yaml_path)
         existing_data = self._load_existing_data(path)
         fetched_data = self._fetch_data(existing_data)
-        merged_data = self._merge(existing_data, fetched_data, key=self.cols['開示番号'])
+        key_col = self.cols['開示番号']
+        if key_col is None:
+            raise ValueError("開示番号の列名が設定されていません")
+        merged_data = self._merge(existing_data, fetched_data, key=key_col)
         formatted_data = self._format(merged_data)
         
         print(formatted_data.tail(2))
@@ -27,9 +30,8 @@ class FinUpdater:
 
     def _load_column_configs(self, cols_yaml_path: str):
         ccg = ColumnConfigsGetter(cols_yaml_path)
-        assert ccg.get_column_name('日付') is not None '"日付"がyamlに定義されていません。'
         cols = {'日付': ccg.get_column_name('日付'),
-                     '開示番号': ccg.get_column_name('開示番号'),}
+                '開示番号': ccg.get_column_name('開示番号'),}
         # None チェック
         for key, value in cols.items():
             if value is None:
@@ -54,6 +56,8 @@ class FinUpdater:
 
     def _merge(self, existing_data: pd.DataFrame, new_data: pd.DataFrame, key: str) -> pd.DataFrame:
         """既存データと新規データを結合し、重複を排除する。"""
+        if key is None:
+            raise ValueError("結合キーが設定されていません")
         if existing_data.empty:
             return new_data
         unique_existing = existing_data.loc[~existing_data[key].isin(new_data[key])]
@@ -62,7 +66,10 @@ class FinUpdater:
 
     def _format(self, data: pd.DataFrame) -> pd.DataFrame:
         """データを指定された形式に整形する。"""
-        return data.astype(str).sort_values(self.cols['開示番号']).reset_index(drop=True)
+        sort_col = self.cols['開示番号']
+        if sort_col is None:
+            raise ValueError("開示番号の列名が設定されていません")
+        return data.astype(str).sort_values(sort_col).reset_index(drop=True)
 
 
 if __name__ == '__main__':
