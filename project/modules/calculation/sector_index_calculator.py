@@ -414,17 +414,15 @@ class SectorIndexCalculator:
             sector_index.groupby(sector_col['セクター'])[sector_col['終値時価総額']].shift(1) + 
             sector_index[sector_col['指数算出用の補正値']]
         ) - 1
-        
+
         sector_index[sector_col['終値前日比']] = 1 + sector_index[sector_col['1日リターン']]
         
         # 終値、始値、高値、安値の計算
         sector_index[sector_col['終値']] = sector_index.groupby(sector_col['セクター'])[sector_col['終値前日比']].cumprod()
-        
+
         # 初日の終値を1に設定
-        first_days = sector_index.groupby(sector_col['セクター']).first().index.get_level_values(0)
-        for sector, first_day in zip(sector_index.index.get_level_values(1).unique(), first_days):
-            sector_index.loc[(first_day, sector), sector_col['終値']] = 1.0
-        
+        sector_index.loc[sector_index['Close'].isna(), 'Close'] = 1.0
+
         # NaNや無限大の値が生じる可能性があるので、それらを処理
         sector_index[sector_col['始値']] = (
             sector_index[sector_col['終値']] * 
