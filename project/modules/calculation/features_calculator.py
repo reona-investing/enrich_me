@@ -308,7 +308,7 @@ if __name__ == '__main__':
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     stock_dfs_dict = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()   
     new_sector_price_df, order_price_df = \
-        SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+        SectorIndexCalculator.calc_sector_index(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     
     new_sector_list = pd.read_csv(NEW_SECTOR_LIST_CSV)
 

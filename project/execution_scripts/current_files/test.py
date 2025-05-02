@@ -69,7 +69,7 @@ def prepare_test_data() -> Dict[str, pd.DataFrame]:
         
         # セクターインデックスの計算
         print("セクターインデックスを計算しています...")
-        sector_index_df, order_price_df = SectorIndexCalculator.calc_new_sector_price(
+        sector_index_df, order_price_df = SectorIndexCalculator.calc_sector_index(
             stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET
         )
         

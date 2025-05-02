@@ -25,7 +25,7 @@ class SectorIndexCalculator:
 
 
     @staticmethod
-    def calc_new_sector_price(stock_dfs_dict:dict, SECTOR_REDEFINITIONS_CSV:str, SECTOR_INDEX_PARQUET:str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def calc_sector_index(stock_dfs_dict:dict, SECTOR_REDEFINITIONS_CSV:str, SECTOR_INDEX_PARQUET:str) -> tuple[pd.DataFrame, pd.DataFrame]:
         '''
         セクターインデックスを算出します。
         Args:
@@ -370,7 +370,7 @@ class SectorIndexCalculator:
 
 
     @staticmethod
-    def calculate_sector_index(sector_stock_dict: dict, stock_price_data: pd.DataFrame) -> pd.DataFrame:
+    def calc_sector_index_by_dict(sector_stock_dict: dict, stock_price_data: pd.DataFrame) -> pd.DataFrame:
         """
         セクター名をキーとし、そのセクターに属する銘柄コードの配列を値とする辞書から
         セクターインデックスを算出します。同じ銘柄コードが複数のセクターに含まれる場合も対応します。
@@ -453,14 +453,14 @@ if __name__ == '__main__':
     stock_dfs = acq.get_stock_data_dict()
 
     sic = SectorIndexCalculator()
-    sector_price_df, order_price_df = sic.calc_new_sector_price(stock_dfs, 
+    sector_price_df, order_price_df = sic.calc_sector_index(stock_dfs, 
                                             f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/topix1000.csv', 
                                             f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/TOPIX1000_price.parquet')
     #print(sector_price_df.index.get_level_values('Sector').unique())
     print(sector_price_df)
 
     marketcap_df = sic.calc_marketcap(stock_dfs['price'], stock_dfs['fin'])
-    sector_index = sic.calculate_sector_index(sector_stock_dict={'JPY+': ['2413', '3141', '4587', '1835', '4684'],
+    sector_index = sic.calc_sector_index_by_dict(sector_stock_dict={'JPY+': ['2413', '3141', '4587', '1835', '4684'],
                                                                  'JPY-': ['7283', '7296', '5988', '8015', '7278']},
                                                                  stock_price_data=marketcap_df)
     
