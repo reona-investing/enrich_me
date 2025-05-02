@@ -83,10 +83,12 @@ class SingleFeatureScraper:
         df = df.iloc[:, :5].copy()
         df.columns = ['Date', 'Close', 'Open', 'High', 'Low']
         
-        try:
-            df['Date'] = pd.to_datetime(df['Date'], format='%Y年%m月%d日')
-        except:
-            df['Date'] = pd.to_datetime(df['Date'], format='%m月 %d, %Y')  # datetime型に変換
+        for fmt in ['%Y年%m月%d日', '%m月 %d, %Y', '%b %d, %Y']:
+            try:
+                df['Date'] = pd.to_datetime(df['Date'], format=fmt)
+                break
+            except:
+                continue
 
         return df[['Date', 'Open', 'Close', 'High', 'Low']].sort_values(by = 'Date', ascending = True)
 
