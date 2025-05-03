@@ -4,6 +4,7 @@ from typing import Tuple, List, Dict, Callable
 from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
 from utils.yaml_utils import ColumnConfigsGetter
+import numpy as np
 
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
@@ -63,7 +64,7 @@ class PriceProcessor:
     def _load_yearly_raw_data(self, raw_basic_path: str, year: int) -> pd.DataFrame:
         '''取得したままの年次株価データを読み込みます。'''
         raw_path = raw_basic_path.replace('0000', str(year))
-        usecols = self.raw_cols.values()
+        usecols = list(self.raw_cols.values())
         dict_for_rename = self._get_dict_for_rename()
         df = FileHandler.read_parquet(raw_path, usecols=usecols)
         return df.rename(columns=dict_for_rename)
@@ -73,7 +74,7 @@ class PriceProcessor:
         return {self.raw_cols[key]: self.cols[key] for key in self.raw_cols.keys()}
         
 
-    def _process_stock_price(self, stock_price: pd.DataFrame, temp_cumprod: dict[str, float], is_latest_file: bool) -> pd.DataFrame:
+    def _process_stock_price(self, stock_price: pd.DataFrame, temp_cumprod: dict[str, float], is_latest_file: bool) -> Tuple[pd.DataFrame, dict[str, float]]:
         """
         価格データを加工します。
         Args:
@@ -112,7 +113,7 @@ class PriceProcessor:
 
     def _get_missing_dates(self, stock_price: pd.DataFrame, code_replaced: str, date_list: List[str]) -> List[str]:
         """データが欠損している日付を取得します。"""
-        existing_dates = stock_price.loc[stock_price[self.cols['銘柄コード']] == code_replaced, self.cols['日付']].unique()
+        existing_dates = np.unique(stock_price.loc[stock_price[self.cols['銘柄コード']] == code_replaced, self.cols['日付']].values)
         return [x for x in date_list if x not in existing_dates]
 
     def _create_missing_rows(self, stock_price: pd.DataFrame, code: str, dates_to_fill: List[str]) -> List[pd.DataFrame]:
