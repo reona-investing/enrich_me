@@ -7,7 +7,7 @@ import pandas as pd
 
 class StockAcquisitionFacade:
     def __init__(self, update: bool = False, process: bool = False,
-                 filter: str = None, filtered_code_list: str = None):
+                 filter: str | None = None, filtered_code_list: list[str] | None = None):
         """
         インスタンス生成時に株式データの一括読み込みを行います。
         引数:
@@ -44,7 +44,7 @@ class StockAcquisitionFacade:
         if target == 'price':
             return self.price_df
 
-    def get_stock_data_dict(self) -> dict[pd.DataFrame]:
+    def get_stock_data_dict(self) -> dict[str, pd.DataFrame]:
         '''
         list, fin, priceを一つの辞書として返す。
         Returns:

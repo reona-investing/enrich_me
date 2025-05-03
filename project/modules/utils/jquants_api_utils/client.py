@@ -15,4 +15,4 @@ class Cli(metaclass=SingletonMeta):
 cli = Cli().cli
 
 if __name__ == '__main__':
-    cli
+    print(cli)

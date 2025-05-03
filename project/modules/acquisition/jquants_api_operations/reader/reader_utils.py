@@ -1,7 +1,8 @@
 import pandas as pd
   
 
-def filter_stocks(df:pd.DataFrame, list_df: pd.DataFrame, filter:str, filtered_code_list:list[str], code_col: str) -> pd.DataFrame: # 対象銘柄の抜き取り
+def filter_stocks(df:pd.DataFrame, list_df: pd.DataFrame, 
+                  filter:str | None, filtered_code_list:list[str] | None, code_col: str | None) -> pd.DataFrame: # 対象銘柄の抜き取り
     """
     対象銘柄を抜き取ります。filterとfiltered_code_listがどちらも設定されている場合、filterの条件が優先されます。
     Args:
@@ -19,10 +20,10 @@ def filter_stocks(df:pd.DataFrame, list_df: pd.DataFrame, filter:str, filtered_c
         return _apply_filter(df, filtered_code_list, code_col)
     return df
 
-def _get_filtered_code_list(filter: str, list_df: pd.DataFrame, code_col: str) -> list:
+def _get_filtered_code_list(filter: str, list_df: pd.DataFrame, code_col: str | None) -> list:
     '''絞り込み条件から、対象銘柄の銘柄コード一覧を取得します。'''
-    return list_df.query(filter)[code_col].astype(str).unique()
+    return list_df.query(filter)[code_col].astype(str).unique().tolist()
 
-def _apply_filter(df: pd.DataFrame, filtered_code_list: list[str], code_col: str) -> pd.DataFrame:
+def _apply_filter(df: pd.DataFrame, filtered_code_list: list[str], code_col: str | None) -> pd.DataFrame:
     '''絞り込みを適用します。'''
     return df[df[code_col].astype(str).isin(filtered_code_list)]

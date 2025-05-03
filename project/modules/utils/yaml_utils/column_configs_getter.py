@@ -24,22 +24,22 @@ class ColumnConfigsGetter:
         """
         return next((item[info_name] for item in self.column_config_info if item.get('key') == key), None)
 
-    def get_all_columns_info_asdict(self, info_name: str) -> list[str] | None:
+    def get_all_columns_info_asdict(self, info_name: str) -> dict:
         return {item['key']: item[info_name] for item in self.column_config_info}
     
     def get_column_name(self, key: str) -> str | None:
         return self.get_any_column_info(key, 'name')
 
-    def get_column_names(self, keys: list[str]) -> list[str] | None:
+    def get_column_names(self, keys: list[str]) -> list[str | None]:
         return [self.get_any_column_info(key, 'name') for key in keys]
 
-    def get_all_columns_name_asdict(self) -> list[str] | None:
+    def get_all_columns_name_asdict(self) -> dict[str, str]:
         return self.get_all_columns_info_asdict('name')    
     
     def get_column_dtype(self, key: str) -> str | None:
         return self.get_any_column_info(key, 'dtype')
 
-    def get_column_dtypes(self, keys: list[str]) -> list[str] | None:
+    def get_column_dtypes(self, keys: list[str]) -> list[str | None]:
         return [self.get_any_column_info(key, 'dtype') for key in keys]
 
 def column_name_getter(yaml_info: Dict[str, List[Dict[str, Any]]] | List[Dict[str, Any]], 

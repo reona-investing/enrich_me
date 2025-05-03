@@ -77,7 +77,7 @@ class FinProcessor:
         Returns:
             pd.DataFrame: 読み込んだ財務データ
         """
-        usecols = self.raw_cols.values()
+        usecols = list(self.raw_cols.values())
         fin_df =  FileHandler.read_parquet(raw_path, usecols = usecols)
         return fin_df.replace('', np.nan)
 
@@ -198,7 +198,7 @@ class FinProcessor:
         return fin_df
        
 
-    def _process_merger(self, stock_fin:pd.DataFrame) -> pd.DataFrame:
+    def _process_merger(self, stock_fin: pd.DataFrame) -> pd.DataFrame:
         """
         企業合併時の財務情報の合成を行います。
 
@@ -211,32 +211,49 @@ class FinProcessor:
         #合併前の各社のデータを足し合わせる項目
         plus_when_merging_mapping = {self.cols[k]: v for k, v in self.cols_plus_for_merger.items()}
         plus_when_merging = [k for k, v in plus_when_merging_mapping.items() if v]
+        
+        # 処理結果を格納するDataFrameを初期化
+        result_df = stock_fin.copy()
+        
         #合併リストの中身の分だけ処理を繰り返し
         for key, value in codes_to_merge_dict.items():
-            merger1 = stock_fin.loc[stock_fin[self.cols['銘柄コード']]==value['Code1']].sort_values(self.cols['日付']) #合併前1（存続）
-            merger2 = stock_fin.loc[stock_fin[self.cols['銘柄コード']]==value['Code2']].sort_values(self.cols['日付']) #合併前2（消滅）
+            # 現在の状態から合併する会社のデータを取得
+            merger1 = result_df.loc[result_df[self.cols['銘柄コード']]==value['Code1']].sort_values(self.cols['日付']) #合併前1（存続）
+            merger2 = result_df.loc[result_df[self.cols['銘柄コード']]==value['Code2']].sort_values(self.cols['日付']) #合併前2（消滅）
+            
             #存続会社のデータを、合併前後に分ける。
             merger1_before = merger1[merger1[self.cols['日付']]<=value['MergerDate']]
             merger1_after = merger1[merger1[self.cols['日付']]>value['MergerDate']]
+            
             #インデックスを揃える
             merger1_before = \
                 pd.merge(merger1_before, merger2[self.cols['日付']], how='outer', on=self.cols['日付']).sort_values(self.cols['日付']).reset_index(drop=True)
             merger2 = \
                 pd.merge(merger2, merger1_before[self.cols['日付']], how='outer', on=self.cols['日付']).sort_values(self.cols['日付']).reset_index(drop=True)
+            
             #NaN値を埋める
             merger1_before = merger1_before.ffill()
             merger1_before = merger1_before.bfill()
             merger2 = merger2.ffill()
             merger2 = merger2.bfill()
+            
             #merger1_beforeの値を書き換えていく。
             merger1_before[self.cols['銘柄コード']] = key
             merger1_before[self.cols['発行済み株式数']] = merger1_before[self.cols['発行済み株式数']] + \
                                                 merger2[self.cols['発行済み株式数']] * value['ExchangeRate']
             merger1_before[plus_when_merging] =  merger1_before[plus_when_merging] + merger2[plus_when_merging]
+            
             #合併前後のデータを結合する。
             merged = pd.concat([merger1_before, merger1_after], axis=0).sort_values(self.cols['日付'])
-            stock_fin = stock_fin[(stock_fin[self.cols['銘柄コード']]!=value['Code1'])&(stock_fin[self.cols['銘柄コード']]!=value['Code2'])]
-            return pd.concat([stock_fin, merged], axis=0).sort_values([self.cols['日付'], self.cols['銘柄コード']])
+            
+            # 処理済みのデータをresult_dfから削除
+            result_df = result_df[(result_df[self.cols['銘柄コード']]!=value['Code1'])&(result_df[self.cols['銘柄コード']]!=value['Code2'])]
+            
+            # 新しい合併データを追加
+            result_df = pd.concat([result_df, merged], axis=0)
+        
+        # 全ての処理が終わってからソートして返す
+        return result_df.sort_values([self.cols['日付'], self.cols['銘柄コード']])
 
     def _finalize_df(self, stock_fin: pd.DataFrame) -> pd.DataFrame:
         """

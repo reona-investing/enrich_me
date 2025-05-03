@@ -199,7 +199,7 @@ class NewOrderManager(OrderManagerBase):
         '''
         named_tab = self.browser_manager.get_tab('SBI')
         success_text = "ご注文を受け付けました。"
-        await named_tab.tab.utils.wait_for(success_text, timeout=1)
+        await named_tab.tab.utils.wait_for(success_text, timeout=2)
         print(f"{text_to_show} 注文が成功しました")
         await self._edit_position_manager_for_order(order_index)
         await self.browser_manager.close_popup()
@@ -218,7 +218,7 @@ class NewOrderManager(OrderManagerBase):
         '''
         named_tab = self.browser_manager.get_tab('SBI')
         failure_selector = '#MAINAREA02_780 > form > table:nth-child(22) > tbody > tr > td > b > p'
-        await named_tab.tab.utils.wait_for(failure_selector, is_css=True, timeout=1)
+        await named_tab.tab.utils.wait_for(failure_selector, is_css=True, timeout=2)
         print(f"{text_to_show} 注文が失敗しました")       
         self.error_tickers.append(trade_params.symbol_code)
         await self.browser_manager.close_popup()

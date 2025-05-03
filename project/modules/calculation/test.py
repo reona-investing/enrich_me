@@ -125,7 +125,7 @@ def test_features_calculator():
     NEW_SECTOR_PRICE_PKLGZ = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/sector_price/New48sectors_price.parquet'
     
     # セクター価格の計算（両方のテストで共通利用）
-    new_sector_price_df, _ = SectorIndexCalculator.calc_new_sector_price(
+    new_sector_price_df, _ = SectorIndexCalculator.calc_sector_index(
         stock_dfs, SECTOR_REDEFINITIONS_CSV, NEW_SECTOR_PRICE_PKLGZ)
     new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
 

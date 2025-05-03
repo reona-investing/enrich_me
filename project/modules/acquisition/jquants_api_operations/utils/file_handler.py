@@ -7,7 +7,7 @@ class FileHandler:
         return os.path.isfile(path)
 
     @staticmethod
-    def read_parquet(path: str, usecols:list = None) -> pd.DataFrame:
+    def read_parquet(path: str, usecols:list | None = None) -> pd.DataFrame:
         if usecols == None:
             return pd.read_parquet(path)
         return pd.read_parquet(path, columns = usecols)
