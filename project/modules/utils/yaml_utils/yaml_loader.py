@@ -1,6 +1,6 @@
 import yaml
 
-def yaml_loader(yaml_path: str) -> list:
+def yaml_loader(yaml_path: str) -> list[dict[str, str]]:
     '''
     yamlファイルを読み込み、中身をリストとして返します。
     Args:

@@ -80,7 +80,7 @@ def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end
         必要なデータフレームの辞書
     """
     # セクターインデックスの計算
-    new_sector_price_df, order_price_df = SectorIndexCalculator.calc_new_sector_price(
+    new_sector_price_df, order_price_df = SectorIndexCalculator.calc_sector_index(
         stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET
     )
     

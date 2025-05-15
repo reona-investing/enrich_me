@@ -149,6 +149,7 @@ class SettlementManager(OrderManagerBase):
         named_tab = self.browser_manager.get_tab('SBI')
         await named_tab.tab.utils.click_element('input[value="全株指定"]', is_css = True)
         await named_tab.tab.utils.click_element('input[value="注文入力へ"]', is_css = True)
+        await named_tab.tab.utils.wait_for('input[name="in_sasinari_kbn"]', is_css=True)
         await named_tab.tab.utils.wait(2)
         order_type_elements = await named_tab.tab.utils.select_all('input[name="in_sasinari_kbn"]')
         await order_type_elements[1].click()  # 成行

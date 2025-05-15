@@ -1,4 +1,4 @@
-from utils.browser.browser_manager import BrowserManager
+from utils.browser.browser_manager import BrowserManager, retry_on_connection_error
 from utils.browser.named_tab import NamedTab
 import os
 
@@ -14,7 +14,7 @@ class SBIBrowserManager(BrowserManager):
         self.browser = None
         super().__init__()
 
-    @BrowserManager.retry_on_connection_error
+    @retry_on_connection_error
     async def launch(self):
         """ SBI証券のWebサイトにサインインしてブラウザとタブを設定する """
         if not self.signed_in:
@@ -33,11 +33,19 @@ class SBIBrowserManager(BrowserManager):
         
 
     async def _input_credentials(self, named_tab: NamedTab):
-        username = await named_tab.tab.utils.wait_for('input[name="user_id"]')
-        await username.send_keys(os.getenv('SBI_USERNAME'))
+        username_col = await named_tab.tab.utils.wait_for('input[name="user_id"]')
+        username = os.getenv('SBI_USERNAME')
+        if username is None:
+            raise Exception('環境変数"SBI_USERNAME"が見つかりません。')
+        else:
+            await username_col.send_keys(username)
         
-        password = await named_tab.tab.utils.wait_for('input[name="user_password"]')
-        await password.send_keys(os.getenv('SBI_LOGINPASS'))
+        password_col = await named_tab.tab.utils.wait_for('input[name="user_password"]')
+        password = os.getenv('SBI_LOGINPASS')
+        if password is None:
+            raise Exception('環境変数"SBI_LOGINPASS"が見つかりません。')
+        else:
+            await password_col.send_keys(password)
         
         await named_tab.tab.utils.wait(1)
         login = await named_tab.tab.utils.wait_for('input[name="ACT_login"]')

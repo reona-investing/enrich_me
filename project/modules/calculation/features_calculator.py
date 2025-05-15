@@ -86,10 +86,14 @@ class FeaturesCalculator:
         features_to_scrape_df['Path'] = Paths.SCRAPED_DATA_FOLDER + '/' + features_to_scrape_df['Group'] + '/' + features_to_scrape_df['Path']
         #グループごとに特徴量として採用するか？
         if groups_setting is not None:
-            features_to_scrape_df['is_adopted'] = features_to_scrape_df['Group'].map(groups_setting).fillna(features_to_scrape_df['is_adopted'])
+            mapped = features_to_scrape_df['Group'].map(groups_setting)
+            features_to_scrape_df['is_adopted'] = mapped.astype(bool).fillna(features_to_scrape_df['is_adopted'])
         if names_setting is not None:
-            features_to_scrape_df['is_adopted'] = features_to_scrape_df['Name'].map(names_setting).fillna(features_to_scrape_df['is_adopted'])
-        features_to_scrape_df['is_adopted'] = features_to_scrape_df['is_adopted'].replace({'TRUE': True, 'FALSE': False}).astype(bool)
+            mapped = features_to_scrape_df['Name'].map(names_setting)
+            features_to_scrape_df['is_adopted'] = \
+                mapped.astype(bool).fillna(features_to_scrape_df['is_adopted'])
+        else:
+            features_to_scrape_df['is_adopted'] = features_to_scrape_df['is_adopted'].replace({'TRUE': True, 'FALSE': False}).astype(bool)
         return features_to_scrape_df
 
     @staticmethod
@@ -304,7 +308,7 @@ if __name__ == '__main__':
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     stock_dfs_dict = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()   
     new_sector_price_df, order_price_df = \
-        SectorIndexCalculator.calc_new_sector_price(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+        SectorIndexCalculator.calc_sector_index(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     
     new_sector_list = pd.read_csv(NEW_SECTOR_LIST_CSV)
 

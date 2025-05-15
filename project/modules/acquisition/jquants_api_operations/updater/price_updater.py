@@ -66,7 +66,7 @@ class PriceUpdater:
         return cleaned_data
 
 
-    def _update_yearly_price(self, year: int, existing_data: pd.DataFrame = None) -> pd.DataFrame:
+    def _update_yearly_price(self, year: int, existing_data: pd.DataFrame) -> pd.DataFrame:
         """
         年次データを取得し、既存データを更新します。
         :param year: 対象の年

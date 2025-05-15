@@ -1,3 +1,6 @@
+import shutil
+import tempfile
+import os
 import asyncio
 import nodriver as uc
 
@@ -5,7 +8,9 @@ class BrowserUtils:
     """
     ブラウザ全体の基本操作（起動、再利用、リセットなど）を提供するクラス
     """
-    BROWSER_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+    BROWSER_PATH = os.getenv('BROWSER_PATH')
+    USER_DATA_DIR = os.getenv('USER_DATA_DIR')
+    PROFILE_DIR = os.getenv('PROFILE_DIR', 'Default')
     browser_instance = None
     _lock = asyncio.Lock()
 
@@ -19,7 +24,7 @@ class BrowserUtils:
         """
         async with cls._lock:
             if cls.browser_instance is None:
-                cls.browser_instance = await uc.start(browser_executable_path=cls.BROWSER_PATH)
+                cls.browser_instance = await uc.start(browser_executable_path=cls.BROWSER_PATH, user_data_dir=cls.USER_DATA_DIR)
             return cls.browser_instance
 
     @classmethod
@@ -27,7 +32,9 @@ class BrowserUtils:
         """
         ブラウザインスタンスを削除します。
         """
-        cls.browser_instance = None
+        if cls.browser_instance is not None:
+            cls.browser_instance.stop()
+            cls.browser_instance = None
 
     @classmethod
     async def reset_browser(cls) -> uc.Browser:
@@ -48,6 +55,6 @@ if __name__ == '__main__':
         bu = BrowserUtils()
         await bu.launch_browser()
         await bu.reset_browser()
-        await asyncio.sleep(5)
+        await asyncio.sleep(240)
     
     asyncio.get_event_loop().run_until_complete(main())

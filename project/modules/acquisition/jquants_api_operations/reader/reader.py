@@ -8,8 +8,8 @@ from acquisition.jquants_api_operations.reader.reader_utils import filter_stocks
 
 class Reader:
     def __init__(self,
-                 filter: str = None, 
-                 filtered_code_list: list[str] = None):
+                 filter: str | None = None, 
+                 filtered_code_list: list[str] | None = None):
         """
         抽出条件を指定します。filterとfiltered_code_listを両方設定した場合、filterの条件が優先されます。
         Args:
@@ -71,12 +71,16 @@ class Reader:
         df = self._generate_price_df(basic_path, list_path, self.filter, self.filtered_code_list, end_date, cols_yaml_path)
         return self._recalc_adjustment_factors(df, cols_yaml_path)
 
-    def _generate_price_df(self, basic_path: str, list_path: str, filter: str, filtered_code_list: list[str], end_date: datetime, cols_yaml_path: str) -> pd.DataFrame:
+    def _generate_price_df(self, basic_path: str, list_path: str, 
+                           filter: str | None, filtered_code_list: list[str] | None, 
+                           end_date: datetime, cols_yaml_path: str) -> pd.DataFrame:
         """年次の株価データから、通期の価格データフレームを生成します。"""
         ccg = ColumnConfigsGetter(cols_yaml_path = cols_yaml_path)
         date_col = ccg.get_column_name('日付')
         code_col = ccg.get_column_name('銘柄コード')
         cols = ccg.get_column_names(['日付', '銘柄コード', '始値', '高値', '安値', '終値', '取引高', '調整係数', '取引代金'])
+        if cols is None:
+            cols = []
         cols.append('CumulativeAdjustmentFactor')
         list_df = FileHandler.read_parquet(list_path)
         dfs = []
