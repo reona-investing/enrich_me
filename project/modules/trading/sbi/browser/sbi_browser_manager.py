@@ -1,5 +1,6 @@
 from utils.browser.browser_manager import BrowserManager, retry_on_connection_error
 from utils.browser.named_tab import NamedTab
+from trading.gmail import auth_code_getter
 import os
 
 
@@ -29,9 +30,16 @@ class SBIBrowserManager(BrowserManager):
 
     async def _sign_in(self, named_tab: NamedTab):
         await self._input_credentials(named_tab=named_tab)
-        await named_tab.tab.utils.wait(3)
-        
+        try:
+            await named_tab.tab.utils.wait_for('ログアウト', timeout=10)
+        except:
+            device_code = await auth_code_getter()
+            await named_tab.tab.utils.send_keys_to_element('input[name="device_code"]', is_css=False, keys=device_code)
+            await named_tab.tab.utils.click_element('input[value="登録"]')
+            await named_tab.tab.utils.wait_for('ログアウト', timeout=10)
+            
 
+        
     async def _input_credentials(self, named_tab: NamedTab):
         username_col = await named_tab.tab.utils.wait_for('input[name="user_id"]')
         username = os.getenv('SBI_USERNAME')
@@ -50,8 +58,6 @@ class SBIBrowserManager(BrowserManager):
         await named_tab.tab.utils.wait(1)
         login = await named_tab.tab.utils.wait_for('input[name="ACT_login"]')
         await login.click()
-
-        await named_tab.tab.utils.wait_for(selector='ログイン履歴')
 
 
 
