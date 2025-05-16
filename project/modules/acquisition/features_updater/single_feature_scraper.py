@@ -53,7 +53,7 @@ class SingleFeatureScraper:
                 else:
                     named_tab = await self.browser_manager.new_tab(name=name, url=url)
                     
-                # テーブルの要素を取得し、BeautifulSoupで処理
+                # テーブル全体を読み込むのに時間がかかるようなので、要素の存在を確認した後待機時間を設ける
                 await named_tab.tab.utils.wait_for('日付け')
                 await named_tab.tab.utils.wait(1)
                 table_header_initial = await named_tab.tab.utils.wait_for('日付け')
@@ -148,7 +148,10 @@ class SingleFeatureScraper:
 
             url = f'https://jp.tradingview.com/symbols/{code}/'
             named_tab = await self.browser_manager.new_tab(name=name, url=url)
-            await named_tab.tab.utils.wait(13)
+            #TODO 動作確認後完全に置換する！
+            await named_tab.tab.utils.wait_for('USD / TNE')
+            await named_tab.tab.utils.wait(1)
+            #await named_tab.tab.utils.wait(13)
             html = await named_tab.tab.utils.get_html_content()
             s = soup(html, 'html.parser')
             text_list = s.select('div.js-symbol-header-ticker')[1].select('span')

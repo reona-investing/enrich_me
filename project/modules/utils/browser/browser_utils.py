@@ -55,6 +55,6 @@ if __name__ == '__main__':
         bu = BrowserUtils()
         await bu.launch_browser()
         await bu.reset_browser()
-        await asyncio.sleep(240)
+        await asyncio.sleep(6240)
     
     asyncio.get_event_loop().run_until_complete(main())
