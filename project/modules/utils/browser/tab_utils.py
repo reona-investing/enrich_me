@@ -103,6 +103,8 @@ class TabUtils:
         Returns:
             list: 指定したcssセレクタを持つ全ての要素を格納したリスト
         '''
+        await self.wait_for(css_selector, is_css=True)
+        await self.wait(2)
         return await self._tab.select_all(css_selector)
 
     async def select_pulldown(self, css_selector: str):
