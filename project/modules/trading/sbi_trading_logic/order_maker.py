@@ -144,6 +144,7 @@ class NewOrderMaker(OrderMakerBase):
             if '信新' in position_list:
                 return None
         orders_df = pd.concat([self.long_orders, self.short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
+        
         await self._make_orders(orders_df = orders_df, order_type = '成行', order_type_value = '寄成')
 
         return self.failed_orders

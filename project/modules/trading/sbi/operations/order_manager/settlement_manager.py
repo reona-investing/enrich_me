@@ -166,6 +166,12 @@ class SettlementManager(OrderManagerBase):
         if '信用返済売' in trade_type:
             trade_type = '信用新規買'
         order_id = await self._get_element('注文番号')
+        
+        # CSVに対応したPositionManagerのupdate_by_symbolメソッドを使用
+        # update_by_symbolメソッドの使用方法自体は変更なし
         self.position_manager.update_by_symbol(ticker, 'settlement_id', order_id)
         self.position_manager.update_by_symbol(ticker, 'settlement_status', self.position_manager.STATUS_ORDERED)
-        self.position_manager.update_status(order_id, status_type = 'settlement_order', new_status = self.position_manager.STATUS_ORDERED)
+        
+        # update_statusメソッドでstatus_typeには'settlement_status'を指定する必要がある
+        # 元の'settlement_order'は誤りと思われるため修正
+        self.position_manager.update_status(order_id, status_type='settlement_status', new_status=self.position_manager.STATUS_ORDERED)
