@@ -48,7 +48,14 @@ class NewOrderManager(OrderManagerBase):
         await self.page_navigator.trade()
         pending_positions = self.position_manager.get_pending_positions()
         for position in pending_positions:
-            trade_params = TradeParameters(**position['order_params'])
+            # CSV対応バージョンでは、TradeParametersの値が直接positionに格納されているため
+            # 直接Parametersオブジェクトを作成
+            trade_params = TradeParameters(
+                symbol_code=position['symbol_code'],
+                trade_type=position['trade_type'],
+                unit=position['unit'],
+                price=position['price']
+            )
             await self.place_new_order(trade_params)
 
 
@@ -231,8 +238,10 @@ class NewOrderManager(OrderManagerBase):
 
     def _append_trade_params_to_orders(self, trade_params: TradeParameters):
         '''発注情報を登録'''
+        # CSV対応バージョンではTradeParametersオブジェクトをそのまま渡す
         order_index = self.position_manager.find_unordered_position_by_params(trade_params)
         if order_index is None:
+            # TradeParametersオブジェクトをそのまま追加
             self.position_manager.add_position(trade_params)
             order_index = len(self.position_manager.positions) - 1
         return order_index

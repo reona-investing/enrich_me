@@ -5,7 +5,6 @@ from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
 import traceback
 import re
 from bs4 import BeautifulSoup as soup
-import asyncio
 
 
 class CancelManager(OrderManagerBase):
@@ -75,12 +74,23 @@ class CancelManager(OrderManagerBase):
         order_type_element = html.find("b", string=re.compile("取引"))
         order_type = order_type_element.find_parent("th").find_next_sibling("td").get_text(strip=True)
 
+        # 注文タイプに応じてステータスタイプを判定
         if any(order in order_type for order in ["信用新規買", "信用新規売", "現物買"]):
             status_type_to_update = 'order_status'
         if any(order in order_type for order in ["信用返済買", "信用返済売", "現物売"]):
             status_type_to_update = 'settlement_status'
-        for order in self.position_manager.positions:
-            if (order['order_id'] == order_id):
-                self.position_manager.update_status(order_id, status_type = status_type_to_update, new_status = self.position_manager.STATUS_UNORDERED)
-                if status_type_to_update == 'order_status':
-                    self.position_manager.remove_waiting_order(order_id)
+            
+        # 文字列型の注文IDを数値に変換（必要な場合）
+        if isinstance(order_id, str) and order_id.isdigit():
+            order_id = int(order_id)
+            
+        # PositionManagerのupdate_statusメソッドを呼び出し
+        success = self.position_manager.update_status(
+            order_id, 
+            status_type=status_type_to_update, 
+            new_status=self.position_manager.STATUS_UNORDERED
+        )
+        
+        # 注文の場合は、待機注文を削除
+        if status_type_to_update == 'order_status' and success:
+            self.position_manager.remove_waiting_order(order_id)
