@@ -167,7 +167,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
             turn_true.append(Flags.PREDICT)
         flag_manager.set_flags(turn_true=turn_true)
         print(flag_manager.get_flags())
-        flag_manager.set_flags(turn_true = [Flags.TAKE_ADDITIONAL_POSITIONS])
+        flag_manager.set_flags(turn_true = [Flags.TAKE_NEW_POSITIONS])
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:
             datasets, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2,ensembled_dataset_path=ML_DATASET_ENSEMBLED_PATH)

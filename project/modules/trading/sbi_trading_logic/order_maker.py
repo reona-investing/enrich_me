@@ -69,9 +69,6 @@ class OrderMakerBase:
         trade_type = '信用新規買'
         if (L_or_S == 'Short') and (symbol_code != '1356'):
             trade_type = '信用新規売'
-            #if unit > 5000: # 51単元以上のときは、空売り規制を回避。
-            #    print('51単元以上の信用売りは、指値注文で発注されます。')
-            #    order_type, order_type_value, limit_order_price = self._avoid_short_selling_restrictions(order_type_value, price)
             order_type, order_type_value, limit_order_price = self._avoid_short_selling_restrictions(order_type_value, price)
         order_params = TradeParameters(trade_type=trade_type, symbol_code=symbol_code, unit=unit, order_type=order_type, order_type_value=order_type_value,
                                     limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
