@@ -16,20 +16,32 @@ class NewOrderManager(OrderManagerBase):
         self.trade_possibility_manager = TradePossibilityManager(self.browser_manager)
         self.has_successfully_ordered = False
         self.error_tickers = []
+    
+    def add_position(self, trade_params: TradeParameters) -> int:
+        """
+        指定された注文情報をPositionManagerに追加する。
+        """
+        # 先にポジションを登録する
+        order_index = self.position_manager.add_position(trade_params)
+        return order_index    
 
     async def place_new_order(self, trade_params: TradeParameters) -> bool:
         """
         指定された取引パラメータを使用して新規注文を行う。
         """
+        # 先にポジションを登録する
+        order_index = self.add_position(trade_params)
+        
         try:
             await self.browser_manager.launch()
+
             await self.page_navigator.trade()
             await self._select_trade_type(trade_params)
             await self._input_stock_and_quantity(trade_params)
             await self._input_sashinari_params(trade_params)
             await self._get_duration_params(trade_params)
             await self._select_deposit_and_credit_type(trade_params)
-            has_successfully_ordered = await self._confirm_order(trade_params)
+            has_successfully_ordered = await self._confirm_order(trade_params, order_index)
             
         except Exception as e:
             print(f"注文中にエラーが発生しました: {e}")
@@ -38,7 +50,6 @@ class NewOrderManager(OrderManagerBase):
             has_successfully_ordered = False
         finally:
             return has_successfully_ordered
-
 
     async def reorder_pending(self) -> None:
         """
@@ -166,11 +177,10 @@ class NewOrderManager(OrderManagerBase):
         await named_tab.tab.utils.click_element(trade_params.trade_section)
         await named_tab.tab.utils.click_element(trade_params.margin_trade_section)
 
-    async def _confirm_order(self, trade_params: TradeParameters) -> bool:
+    async def _confirm_order(self, trade_params: TradeParameters, order_index: int) -> bool:
         '''注文を確定する。'''
         await self._send_order()
         text_to_show = f'{trade_params.symbol_code} {trade_params.trade_type} {trade_params.unit}株:'
-        order_index = self._append_trade_params_to_orders(trade_params)
 
         max_retry = 10
         for _ in range(max_retry):
@@ -191,7 +201,7 @@ class NewOrderManager(OrderManagerBase):
                 print(f"エラーが発生しました: {e}")
         print(f"{text_to_show} 注文が失敗しました")       
         self.error_tickers.append(trade_params.symbol_code)
-        return False                
+        return False           
 
     async def _order_success(self, text_to_show: str, order_index: int) -> bool:
         '''
@@ -208,7 +218,12 @@ class NewOrderManager(OrderManagerBase):
         success_text = "ご注文を受け付けました。"
         await named_tab.tab.utils.wait_for(success_text, timeout=2)
         print(f"{text_to_show} 注文が成功しました")
-        await self._edit_position_manager_for_order(order_index)
+        
+        # 注文ID取得と更新
+        order_id = await self._get_element('注文番号') 
+        self.position_manager.update_order_id(index=order_index, order_id=order_id)
+        self.position_manager.update_status(order_id, status_type='order_status', new_status=self.position_manager.STATUS_ORDERED)
+        
         await self.browser_manager.close_popup()
         return True
 
@@ -236,12 +251,3 @@ class NewOrderManager(OrderManagerBase):
         self.position_manager.update_order_id(index = order_index, order_id = order_id)
         self.position_manager.update_status(order_id, status_type = 'order_status', new_status = self.position_manager.STATUS_ORDERED)
 
-    def _append_trade_params_to_orders(self, trade_params: TradeParameters):
-        '''発注情報を登録'''
-        # CSV対応バージョンではTradeParametersオブジェクトをそのまま渡す
-        order_index = self.position_manager.find_unordered_position_by_params(trade_params)
-        if order_index is None:
-            # TradeParametersオブジェクトをそのまま追加
-            self.position_manager.add_position(trade_params)
-            order_index = len(self.position_manager.positions) - 1
-        return order_index

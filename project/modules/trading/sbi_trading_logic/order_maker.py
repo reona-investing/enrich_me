@@ -1,14 +1,18 @@
 import math
 import pandas as pd
 from typing import Literal
-from trading.sbi import TradeParameters
+from trading.sbi import TradeParameters, MarginManager
 from trading.sbi.operations.order_manager import NewOrderManager, SettlementManager, CancelManager
 from utils.paths import Paths
 from trading.sbi_trading_logic.stock_selector import StockSelector
 
 class OrderMakerBase:
     '''発注用の基底クラス'''
-    def __init__(self, new_order_manager: NewOrderManager = None, settlement_manager: SettlementManager = None, cancel_manager: CancelManager = None):
+    def __init__(self, 
+                 new_order_manager: NewOrderManager = None, 
+                 settlement_manager: SettlementManager = None, 
+                 cancel_manager: CancelManager = None,
+                 margin_manager: MarginManager = None):
         '''
         Args:
             order_manager (object): NewOrderManager, SettlementManager, CancelManagerのいずれかを選択
@@ -16,6 +20,8 @@ class OrderMakerBase:
         self.new_order_manager = new_order_manager
         self.settlement_manager = settlement_manager
         self.cancel_manager = cancel_manager
+        self.margin_manager = margin_manager
+        self.remaining_margin = None
         self.failed_orders = []
         self.failed_symbol_codes = []
 
@@ -30,27 +36,43 @@ class OrderMakerBase:
             order_type (Literal): 注文タイプ
             order_type_value(Literal): 注文タイプの詳細
         '''
-        for symbol_code, unit, L_or_S, price, is_borrowing_stock \
-                in zip(orders_df['Code'], orders_df['Unit'], orders_df['LorS'], orders_df['EstimatedCost'], orders_df['isBorrowingStock']):
+        await self.margin_manager.fetch()
+        self.remaining_margin = self.margin_manager.margin_power
+        
+        for symbol_code, unit, L_or_S, price, is_borrowing_stock, upper_limit_total \
+                in zip(orders_df['Code'], 
+                       orders_df['Unit'], 
+                       orders_df['LorS'], 
+                       orders_df['EstimatedCost'], 
+                       orders_df['isBorrowingStock'], 
+                       orders_df['UpperLimitTotal']):
             margin_trade_section = self._get_margin_trade_section(is_borrowing_stock)
-            await self.make_order(order_type, order_type_value, symbol_code, unit, L_or_S, price, margin_trade_section)
+            if upper_limit_total <= self.remaining_margin:
+                has_successfully_ordered = await self.make_order(order_type, order_type_value, symbol_code, unit, L_or_S, price, margin_trade_section)
+                if has_successfully_ordered:
+                    self.remaining_margin -= upper_limit_total
+            else:
+                trade_params = self.generate_trade_params(order_type, order_type_value, symbol_code, unit, L_or_S, price, margin_trade_section)
+                self.new_order_manager.add_position(trade_params)
+                print(f'{symbol_code} {int(unit * 100)}株 {L_or_S}: 信用建余力不足のため発注しませんでした。')
+                self.failed_symbol_codes.append(symbol_code)
+
         failed_orders_df = orders_df.loc[orders_df['Code'].isin(self.failed_symbol_codes), :]
         # 発注失敗した銘柄をdfとして保存
         failed_orders_df.to_csv(Paths.FAILED_ORDERS_CSV)
-        failed_orders_df.to_csv(Paths.FAILED_ORDERS_BACKUP)
 
     def _get_margin_trade_section(self, is_borrowing_stock: bool) -> str:
         if is_borrowing_stock == False:
             return "日計り"
         return "制度"
 
-    async def make_order(self, 
+    def generate_trade_params(self, 
                          order_type: Literal["指値", "成行", "逆指値"],
                          order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None], 
                          symbol_code: str, unit: int, L_or_S: Literal['Long', 'Short'], price: float,
-                         margin_trade_section: Literal["制度", "一般", "日計り"]) -> bool:
+                         margin_trade_section: Literal["制度", "一般", "日計り"]) -> TradeParameters:
         '''
-        単体注文を発注します。
+        TradeParametersインスタンスを作成します。
         Args:
             order_type (Literal): 注文タイプ
             order_type_value(Literal): 注文タイプの詳細
@@ -58,6 +80,9 @@ class OrderMakerBase:
             unit (int): 発注単位数
             L_or_S (Literal): "Long"か"Short"かの選択
             price (float): 前日終値
+        
+        Returns:
+            TradeParameters: 取引パラメータを格納したクラス
         '''
         unit = int(unit * 100)
         price /= 100
@@ -74,10 +99,33 @@ class OrderMakerBase:
                                     limit_order_price=limit_order_price, stop_order_trigger_price=None, stop_order_type="成行", stop_order_price=None,
                                     period_type="当日中", period_value=None, period_index=None, trade_section="特定預り",
                                     margin_trade_section=margin_trade_section)
+        return order_params  
+
+    async def make_order(self, 
+                         order_type: Literal["指値", "成行", "逆指値"],
+                         order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None], 
+                         symbol_code: str, unit: int, L_or_S: Literal['Long', 'Short'], price: float,
+                         margin_trade_section: Literal["制度", "一般", "日計り"]) -> bool:
+        '''
+        単体注文を発注します。
+        Args:
+            order_type (Literal): 注文タイプ
+            order_type_value(Literal): 注文タイプの詳細
+            symbol_code (str): 銘柄コード
+            unit (int): 発注単位数
+            L_or_S (Literal): "Long"か"Short"かの選択
+            price (float): 前日終値
+        
+        Returns:
+            bool: 注文の成否
+        '''
+        order_params = self.generate_trade_params(order_type, order_type_value, symbol_code, unit, L_or_S, price, margin_trade_section)
         has_successfully_ordered = await self.new_order_manager.place_new_order(order_params)
         if not has_successfully_ordered:
             self.failed_orders.append(f'{order_params.trade_type}: {order_params.symbol_code} {order_params.unit}株')
             self.failed_symbol_codes.append(symbol_code)
+        
+        return has_successfully_ordered
 
     def _avoid_short_selling_restrictions(self, 
                                           order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None],
@@ -119,11 +167,10 @@ class OrderMakerBase:
 
 
 class NewOrderMaker(OrderMakerBase):
-    def __init__(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame, new_order_manager: NewOrderManager):
+    def __init__(self, orders_df: pd.DataFrame, new_order_manager: NewOrderManager, margin_manager: MarginManager):
         '''新規発注用のクラス'''
-        super().__init__(new_order_manager = new_order_manager)
-        self.long_orders = long_orders
-        self.short_orders = short_orders
+        super().__init__(new_order_manager = new_order_manager, margin_manager = margin_manager)
+        self.orders_df = orders_df
         self.new_order_manager = new_order_manager
 
     async def run_new_orders(self) -> list[dict]:
@@ -140,17 +187,15 @@ class NewOrderMaker(OrderMakerBase):
             #信用新規がある場合のみ注文キャンセル
             if '信新' in position_list:
                 return None
-        orders_df = pd.concat([self.long_orders, self.short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
-        
-        await self._make_orders(orders_df = orders_df, order_type = '成行', order_type_value = '寄成')
+        await self._make_orders(orders_df = self.orders_df, order_type = '成行', order_type_value = '寄成')
 
         return self.failed_orders
 
 
 class AdditionalOrderMaker(OrderMakerBase):
-    def __init__(self, new_order_manager: NewOrderManager):
+    def __init__(self, new_order_manager: NewOrderManager, margin_manager: MarginManager):
         '''追加発注用のクラス'''
-        super().__init__(new_order_manager = new_order_manager)
+        super().__init__(new_order_manager = new_order_manager, margin_manager = margin_manager)
 
     async def run_additional_orders(self) -> list[dict]:
         '''
@@ -158,7 +203,7 @@ class AdditionalOrderMaker(OrderMakerBase):
         returns:
             list[dict]: 発注失敗銘柄のリスト
         '''
-        #現時点での注文リストをsbi_operations証券から取得
+        #現時点での注文リストをSBI証券から取得
         orders_df = pd.read_csv(Paths.FAILED_ORDERS_CSV)
         orders_df['Code'] = orders_df['Code'].astype(str)
         #ポジションの発注
@@ -185,9 +230,9 @@ if __name__ == '__main__':
         mm = MarginManager(bm)
         sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
         ss = StockSelector(ml.stock_selection_materials.order_price_df,ml.stock_selection_materials.pred_result_df, tpm, mm, sd)
-        long_orders, short_orders, _ = await ss.select(margin_power=6000000)
+        orders_df, _ = await ss.select(margin_power=6000000)
         om = NewOrderManager(bm)
-        nom = NewOrderMaker(long_orders, short_orders, om)
+        nom = NewOrderMaker(orders_df, om, mm)
         failed_list = await nom.run_new_orders()
     import asyncio
     asyncio.run(main())

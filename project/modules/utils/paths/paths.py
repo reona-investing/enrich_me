@@ -51,8 +51,7 @@ class Paths:
     STOCK_PRICE_PARQUET = f'{STOCK_PROCESSED_DATA_FOLDER}/stock_price_0000.parquet'
     STOCK_FIN_PARQUET = f'{STOCK_PROCESSED_DATA_FOLDER}/stock_fin.parquet'
 
-    LONG_ORDERS_CSV = f'{DEBUG_FILES_FOLDER}/long_list.csv'
-    SHORT_ORDERS_CSV = f'{DEBUG_FILES_FOLDER}/short_list.csv'
+    ORDERS_CSV = f'{DEBUG_FILES_FOLDER}/orders_list.csv'
     FAILED_ORDERS_CSV = f'{DEBUG_FILES_FOLDER}/failed_list.csv'
 
     TRADE_HISTORY_CSV = f'{TRADE_HISTORY_FOLDER}/trade_history.csv'
@@ -60,9 +59,6 @@ class Paths:
     DEPOSIT_HISTORY_CSV = f'{TRADE_HISTORY_FOLDER}/deposit_history.csv'
 
 
-    LONG_ORDERS_BACKUP = f'{ONLINE_STORAGE_FOLDER}/long_list.csv'
-    SHORT_ORDERS_BACKUP = f'{ONLINE_STORAGE_FOLDER}/short_list.csv'
-    FAILED_ORDERS_BACKUP = f'{ONLINE_STORAGE_FOLDER}/failed_list.csv'
     TRADE_HISTORY_BACKUP = f'{ONLINE_STORAGE_FOLDER}/trade_history.csv'
     BUYING_POWER_HISTORY_BACKUP = f'{ONLINE_STORAGE_FOLDER}/buying_power_history.csv'
     DEPOSIT_HISTORY_BACKUP = f'{ONLINE_STORAGE_FOLDER}/deposit_history.csv'
