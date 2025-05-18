@@ -11,14 +11,10 @@ class PageNavigator:
         browser_manager (SBIBrowserManager): ブラウザ及びタブの管理・操作を司ります。
         '''
         self.browser_manager = browser_manager
-        self.should_return_to_home = False #特殊なレイアウトのページの場合、操作終了後ホームに戻りたい
  
 
     async def _set_tab(self) -> NamedTab:
         named_tab = await self.browser_manager.launch()
-        if self.should_return_to_home:
-            await self._home(named_tab)
-            self.should_return_to_home = False
         return named_tab
 
 
@@ -33,6 +29,19 @@ class PageNavigator:
         named_tab = await self._set_tab()
         await self._home(named_tab)
         return named_tab
+    
+    async def click_menu(self, icon_text: str) -> NamedTab:
+        '''
+        メニューバーの任意のアイコンをクリックします。
+        Args:
+            icon_text (str): 表示されているアイコン名
+        '''
+        named_tab = await self._set_tab()
+        elements = await named_tab.tab.utils.select_all('div[class=slc-nav-menu-item]')
+        elements = [element for element in elements if icon_text in element.text]
+        elements = [element for element in elements[0].children if element.tag == 'a']
+        await elements[0].click()
+        return named_tab
 
 
     async def domestic_top(self) -> NamedTab:
@@ -45,16 +54,14 @@ class PageNavigator:
 
 
     async def trade(self) -> NamedTab:
-        named_tab = await self._set_tab()
-        await named_tab.tab.utils.click_element('img[title="取引"]', is_css=True)
+        named_tab = await self.click_menu('取引')
         await named_tab.tab.utils.wait_for('注文入力')
         return named_tab
         
 
     async def account_management(self) -> NamedTab:
         # 口座管理ページに遷移
-        named_tab = await self._set_tab()
-        await named_tab.tab.utils.click_element('img[title=口座管理]', is_css=True)
+        named_tab = await self.click_menu('口座管理')
         await named_tab.tab.utils.wait_for('口座サマリー')
         return named_tab
 
@@ -66,7 +73,6 @@ class PageNavigator:
         named_tab = await self._set_tab()
         await named_tab.tab.utils.click_element('入出金明細')
         await named_tab.tab.utils.wait_for('入出金･振替')
-        self.should_return_to_home = True
         return named_tab
 
 
@@ -165,7 +171,6 @@ if __name__ == '__main__':
     async def main():
         browser_manager = SBIBrowserManager()
         page_navigator = PageNavigator(browser_manager)
-        '''
         await page_navigator.account_management()
         await asyncio.sleep(2)
         await page_navigator.cashflow_transactions()
@@ -184,15 +189,16 @@ if __name__ == '__main__':
         await asyncio.sleep(2)
         await page_navigator.fetch_past_margin_trades_csv(mydate=datetime(2025,3,10))
         await asyncio.sleep(2)
-        #await page_navigator.order_cancel()
-        #await asyncio.sleep(2)
-        '''
         await page_navigator.order_inquiry()
         await asyncio.sleep(2)
         await page_navigator.trade()
         await asyncio.sleep(2)
         await page_navigator.trade_history()
         await asyncio.sleep(2)
+        await page_navigator.order_cancel()
+        await asyncio.sleep(2)
+        
+
     
     asyncio.get_event_loop().run_until_complete(main())
 

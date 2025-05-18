@@ -4,6 +4,7 @@ from typing import Tuple
 from IPython.display import display
 from utils.jquants_api_utils import cli
 from trading.sbi import MarginManager, TradePossibilityManager
+from trading.sbi_trading_logic.price_limit_calculator import PriceLimitCalculator
 from utils.paths import Paths
 
 class StockSelector:
@@ -28,14 +29,13 @@ class StockSelector:
         self.buy_sectors = []
         self.sell_sectors = []
 
-    async def select(self, margin_power: int | None = None) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    async def select(self, margin_power: int | None = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
         '''
         当日の売買銘柄を選択する。
         Args:
             margin_power (int | None): 信用建余力を外部から注入するための変数。Noneの場合SBI証券のWebページから自動取得。
         Returns:
-            pd.DataFrame: Longの選択銘柄
-            pd.DataFrame: Shortの選択銘柄
+            pd.DataFrame: 選択銘柄
             pd.DataFrame: 今日の予測業種
         '''
         weight_df = self._get_weight_df(self.order_price_df, self.new_sectors_df)
@@ -49,15 +49,14 @@ class StockSelector:
         self.sell_sectors = sell_sectors_df['Sector'].unique().tolist()
         long_orders, short_orders = await self._get_ls_orders_df(weight_df, buy_sectors_df, buyable_symbol_codes_df,
                                                            sell_sectors_df, sellable_symbol_codes_df, self.top_slope, margin_power)
+        long_orders, short_orders = self._calc_upper_limits(long_orders, short_orders)
         long_orders, short_orders = self._calc_cumcost_by_ls(long_orders, short_orders)
-        # Long, Shortの選択銘柄をCSVとして出力しておく
-        long_orders.to_csv(Paths.LONG_ORDERS_CSV, index=False)
-        short_orders.to_csv(Paths.SHORT_ORDERS_CSV, index=False)
-        # Google Drive上にバックアップ
-        shutil.copy(Paths.LONG_ORDERS_CSV, Paths.LONG_ORDERS_BACKUP)
-        shutil.copy(Paths.SHORT_ORDERS_CSV, Paths.SHORT_ORDERS_BACKUP)
 
-        return long_orders, short_orders, todays_pred_df
+        orders_df = pd.concat([long_orders, short_orders], axis=0).sort_values('CumCost_byLS', ascending=True)
+        # Long, Shortの選択銘柄をCSVとして出力しておく
+        orders_df.to_csv(Paths.ORDERS_CSV, index=False)
+
+        return orders_df, todays_pred_df
 
     def _get_weight_df(self, order_price_df: pd.DataFrame, new_sectors_df: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -406,6 +405,17 @@ class StockSelector:
                     df.loc[min_rate_row, 'isMaxUnit'] = True
         return df
 
+    def _calc_upper_limits(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame):
+        '''Long, Shortそれぞれの累積コストを算出します。'''
+        plc = PriceLimitCalculator()
+        long_orders['UpperLimitCost'] = long_orders['EstimatedCost'] / 100
+        long_orders['UpperLimitCost'] = long_orders['UpperLimitCost'].apply(plc.calculate_upper_limit) * 100
+        long_orders['UpperLimitTotal'] = long_orders['UpperLimitCost'] * long_orders['Unit']
+        short_orders['UpperLimitCost'] = short_orders['EstimatedCost'] / 100
+        short_orders['UpperLimitCost'] = short_orders['UpperLimitCost'].apply(plc.calculate_upper_limit) * 100
+        short_orders['UpperLimitTotal'] = short_orders['UpperLimitCost'] * short_orders['Unit']
+        return long_orders, short_orders
+
     def _calc_cumcost_by_ls(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame):
         '''Long, Shortそれぞれの累積コストを算出します。'''
         long_orders = long_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[True, False])
@@ -413,22 +423,11 @@ class StockSelector:
         short_orders = short_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[False, False])
         short_orders['CumCost_byLS'] = short_orders['TotalCost'].cumsum()
         return long_orders, short_orders
-    
 
-if __name__  == '__main__':
-    async def main():
-        from trading.sbi.session import LoginHandler
-        from models import MLDataset
-        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
-        lh = LoginHandler()
-        tpm = TradePossibilityManager(lh)
-        mm = MarginManager(lh)
-        sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
-        ss = StockSelector(ml.stock_selection_materials.order_price_df, 
-                           ml.stock_selection_materials.pred_result_df, 
-                           tpm, mm, sd)
-        long, short, today = await ss.select()
-        print(short)
-    
-    import asyncio
-    asyncio.run(main())
+
+if __name__ == '__main__':
+    long_orders = pd.read_csv(r"H:\マイドライブ\enrich_me\long_list.csv")
+    short_orders = pd.read_csv(r"H:\マイドライブ\enrich_me\short_list.csv")
+    ss = StockSelector(None, None, None, None, None)
+    long, short = ss._calc_upper_limits(long_orders, short_orders)
+    print(long)

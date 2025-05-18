@@ -25,7 +25,7 @@ class FeaturesUpdater:
         merger = ScrapedDataMerger()
         tasks = [self._process_feature(scraper, merger, semaphore, row, features_num) for _, row in config_df.iterrows()]
         await asyncio.gather(*tasks)
-        await browser_manager.reset_session()
+        #await browser_manager.reset_session()
         
         print('---------------------------------------')
         print('全データのスクレイピングが完了しました。')

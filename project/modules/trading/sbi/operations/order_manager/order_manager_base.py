@@ -65,11 +65,13 @@ class OrderManagerBase:
         named_tab = self.browser_manager.get_tab('SBI')
         await self._input_trade_pass()
         await named_tab.tab.utils.click_element('input[id="shouryaku"]', is_css = True)
+        await named_tab.tab.utils.wait_for('img[title="注文発注"]', is_css = True)
         await named_tab.tab.utils.click_element('img[title="注文発注"]', is_css = True)
 
     async def _input_trade_pass(self):
         '''取引パスワードを入力する。'''
         named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.wait_for('input[id="pwd3"]', is_css = True)
         await named_tab.tab.utils.send_keys_to_element('input[id="pwd3"]',
                                                       is_css = True,
                                                       keys = os.getenv('SBI_TRADEPASS'))
