@@ -4,6 +4,7 @@ from typing import Tuple
 from IPython.display import display
 from utils.jquants_api_utils import cli
 from trading.sbi import MarginManager, TradePossibilityManager
+from trading.sbi_trading_logic.price_limit_calculator import PriceLimitCalculator
 from utils.paths import Paths
 
 class StockSelector:
@@ -49,6 +50,7 @@ class StockSelector:
         self.sell_sectors = sell_sectors_df['Sector'].unique().tolist()
         long_orders, short_orders = await self._get_ls_orders_df(weight_df, buy_sectors_df, buyable_symbol_codes_df,
                                                            sell_sectors_df, sellable_symbol_codes_df, self.top_slope, margin_power)
+        long_orders, short_orders = self._calc_upper_limits(long_orders, short_orders)
         long_orders, short_orders = self._calc_cumcost_by_ls(long_orders, short_orders)
         # Long, Shortの選択銘柄をCSVとして出力しておく
         long_orders.to_csv(Paths.LONG_ORDERS_CSV, index=False)
@@ -406,6 +408,15 @@ class StockSelector:
                     df.loc[min_rate_row, 'isMaxUnit'] = True
         return df
 
+    def _calc_upper_limits(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame):
+        '''Long, Shortそれぞれの累積コストを算出します。'''
+        plc = PriceLimitCalculator()
+        long_orders['UpperLimit'] = long_orders['EstimatedCost'] / 100
+        long_orders['UpperLimit'] = long_orders['UpperLimit'].apply(plc.calculate_upper_limit)
+        short_orders['UpperLimit'] = short_orders['EstimatedCost'] / 100
+        short_orders['UpperLimit'] = short_orders['UpperLimit'].apply(plc.calculate_upper_limit)
+        return long_orders, short_orders
+
     def _calc_cumcost_by_ls(self, long_orders: pd.DataFrame, short_orders: pd.DataFrame):
         '''Long, Shortそれぞれの累積コストを算出します。'''
         long_orders = long_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[True, False])
@@ -413,22 +424,11 @@ class StockSelector:
         short_orders = short_orders.sort_values(by=['Rank', 'TotalCost'], ascending=[False, False])
         short_orders['CumCost_byLS'] = short_orders['TotalCost'].cumsum()
         return long_orders, short_orders
-    
 
-if __name__  == '__main__':
-    async def main():
-        from trading.sbi.session import LoginHandler
-        from models import MLDataset
-        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
-        lh = LoginHandler()
-        tpm = TradePossibilityManager(lh)
-        mm = MarginManager(lh)
-        sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
-        ss = StockSelector(ml.stock_selection_materials.order_price_df, 
-                           ml.stock_selection_materials.pred_result_df, 
-                           tpm, mm, sd)
-        long, short, today = await ss.select()
-        print(short)
-    
-    import asyncio
-    asyncio.run(main())
+
+if __name__ == '__main__':
+    long_orders = pd.read_csv(r"H:\マイドライブ\enrich_me\long_list.csv")
+    short_orders = pd.read_csv(r"H:\マイドライブ\enrich_me\short_list.csv")
+    ss = StockSelector(None, None, None, None, None)
+    long, short = ss._calc_upper_limits(long_orders, short_orders)
+    print(long)
