@@ -94,8 +94,16 @@ class PositionManager:
             "unit": trade_params.unit,
         }
 
-    def add_position(self, order_params: TradeParameters):
-        """新しいポジションを追加"""
+    def add_position(self, order_params: TradeParameters) -> int:
+        """
+        新しいポジションを追加し、追加したポジションのインデックスを返す
+        
+        Args:
+            order_params (TradeParameters): 注文パラメータ
+            
+        Returns:
+            int: 追加したポジションのインデックス
+        """
         position = {
             "order_id": None,
             "order_status": self.STATUS_UNORDERED,
@@ -108,6 +116,7 @@ class PositionManager:
         }
         self.positions.append(position)
         self._save_data()
+        return len(self.positions) - 1  # 追加したポジションのインデックスを返す
 
     def update_status(self, order_id: int, status_type: str, new_status: str) -> bool:
         """
