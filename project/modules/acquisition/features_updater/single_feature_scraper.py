@@ -151,7 +151,9 @@ class SingleFeatureScraper:
             #TODO 動作確認後完全に置換する！
             await named_tab.tab.utils.wait_for('USD / TNE')
             await named_tab.tab.utils.wait(1)
-            #await named_tab.tab.utils.wait(13)
+            await named_tab.tab._tab.save_screenshot('a.png')
+            await named_tab.tab.utils.wait(13)
+            await named_tab.tab._tab.save_screenshot('b.png')
             html = await named_tab.tab.utils.get_html_content()
             s = soup(html, 'html.parser')
             text_list = s.select('div.js-symbol-header-ticker')[1].select('span')
