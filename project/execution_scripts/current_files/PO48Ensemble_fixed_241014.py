@@ -12,13 +12,12 @@ from datetime import datetime
 import pandas as pd
 from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
-from acquisition.features_updater import FeaturesUpdater
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models.dataset import MLDataset
 from models.loader import load_datasets
 from models.machine_learning import LassoModel, LgbmModel
 import models.ensemble as ensemble
-from facades import TradingFacade, StockAcquisitionFacade
+from facades import TradingFacade, StockAcquisitionFacade, FeaturesUpdateFacade
 from utils.error_handler import error_handler
 import asyncio
 
@@ -30,7 +29,7 @@ async def read_and_update_data(filter: str) -> dict:
     stock_dfs_dict = StockAcquisitionFacade(update=update, process=process, filter = filter).get_stock_data_dict()
     if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.FETCH_DATA]:    
         '''各種金融データ取得or読み込み'''
-        fu = FeaturesUpdater()
+        fu = FeaturesUpdateFacade()
         await fu.update_all()
         Slack.send_message(message = 'データの更新が完了しました。')
     return stock_dfs_dict
