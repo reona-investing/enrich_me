@@ -42,7 +42,7 @@ class OrderMakerBase:
         for symbol_code, unit, L_or_S, price, is_borrowing_stock, upper_limit_total \
                 in zip(orders_df['Code'], 
                        orders_df['Unit'], 
-                       orders_df['LorS'], 
+                       orders_df['Direction'], 
                        orders_df['EstimatedCost'], 
                        orders_df['isBorrowingStock'], 
                        orders_df['UpperLimitTotal']):
@@ -218,21 +218,3 @@ class PositionSettler(OrderMakerBase):
     async def settle_all_margins(self):
         '''決済注文を発注する'''
         await self.settlement_manager.settle_all_margins()
-
-if __name__ == '__main__':
-    async def main():
-        from models import MLDataset
-        from trading.sbi.operations import TradePossibilityManager, MarginManager
-        from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
-        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
-        bm = SBIBrowserManager()
-        tpm = TradePossibilityManager(bm)
-        mm = MarginManager(bm)
-        sd = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
-        ss = StockSelector(ml.stock_selection_materials.order_price_df,ml.stock_selection_materials.pred_result_df, tpm, mm, sd)
-        orders_df, _ = await ss.select(margin_power=6000000)
-        om = NewOrderManager(bm)
-        nom = NewOrderMaker(orders_df, om, mm)
-        failed_list = await nom.run_new_orders()
-    import asyncio
-    asyncio.run(main())

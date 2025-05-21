@@ -2,13 +2,17 @@ import os
 from utils.paths import Paths
 from utils.notifier import SlackNotifier
 from trading.sbi.browser import SBIBrowserManager
-from trading.sbi.orders.interface import IOrderExecutor, IMarginProvider
+# 銘柄選択
+from trading.sbi.selection import OneStopStockSelector
+# 発注関係
+from trading.sbi.interface.orders import IOrderExecutor, IMarginProvider
 from trading.sbi.orders.manager.margin_provider import SBIMarginProvider
 from trading.sbi.orders.manager.order_executor import SBIOrderExecutor
 from trading.sbi.orders.ordermaker.batch_order_maker import BatchOrderMaker
 from trading.sbi.orders.ordermaker.position_settler import PositionSettler
-from trading.sbi import HistoryManager, TradePossibilityManager
-from trading.sbi_trading_logic import StockSelector, HistoryUpdater
+from trading.sbi import HistoryManager
+from trading.sbi_trading_logic import HistoryUpdater
+
 from models import MLDataset
 
 class TradingFacade:
@@ -25,7 +29,6 @@ class TradingFacade:
         
         # その他のマネージャー群の初期化
         self.history_manager = HistoryManager(self.browser_manager)
-        self.trade_possibility_manager = TradePossibilityManager(self.browser_manager)
         
         # 注文関連のクラスの初期化
         self.batch_order_maker = BatchOrderMaker(self.order_executor, self.margin_provider)
@@ -50,18 +53,18 @@ class TradingFacade:
             top_slope (float): 最上位・最下位業種に傾斜をつける場合指定します。
                 ※ 1.0のとき傾斜なし
         '''
-        # 利用可能な証拠金を取得
-        await self.margin_provider.refresh()
-        available_margin = await self.margin_provider.get_available_margin()
         
         # 銘柄選択処理
         materials = ml_dataset.stock_selection_materials
-        stock_selector = StockSelector(materials.order_price_df, materials.pred_result_df,
-                                       self.trade_possibility_manager, self.margin_provider,
-                                       SECTOR_REDEFINITIONS_CSV, num_sectors_to_trade, 
-                                       num_candidate_sectors, top_slope)
+        stock_selector = OneStopStockSelector(order_price_df = materials.order_price_df,
+                                              pred_result_df = materials.pred_result_df,
+                                              browser_manager = self.browser_manager,
+                                              sector_definitions_path = SECTOR_REDEFINITIONS_CSV,
+                                              num_sectors_to_trade = num_sectors_to_trade,
+                                              num_candidate_sectors = num_candidate_sectors,
+                                              top_slope = top_slope)
         
-        orders_df, _ = await stock_selector.select(available_margin)
+        orders_df, _ = await stock_selector.select_stocks()
         
         # 注文一括発注
         results = await self.batch_order_maker.place_batch_orders(orders_df)

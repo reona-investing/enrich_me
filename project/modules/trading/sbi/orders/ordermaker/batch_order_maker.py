@@ -2,7 +2,7 @@ import pandas as pd
 from typing import List
 
 from trading.sbi.orders.ordermaker.order_maker import OrderMaker
-from trading.sbi.orders.interface import OrderResult
+from trading.sbi.interface.orders import OrderResult
 
 class BatchOrderMaker(OrderMaker):
     """一括注文を行うクラス"""
@@ -49,7 +49,7 @@ class BatchOrderMaker(OrderMaker):
             order_request = self.create_order_request(
                 symbol_code=symbol_code,
                 unit=row['Unit'] * 100,
-                direction=row['LorS'],
+                direction=row['Direction'],
                 estimated_price=row['EstimatedCost'] / 100,
                 is_borrowing_stock=row['isBorrowingStock'],
                 order_type='成行',

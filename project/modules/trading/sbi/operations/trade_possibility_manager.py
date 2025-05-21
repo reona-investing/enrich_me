@@ -30,12 +30,13 @@ class TradePossibilityManager:
             (self.trade_data["信用区分（HYPER）"] == "")
 
         # 結果の辞書化
+        map_dict = {"貸借銘柄":True, "制度信用銘柄":False}
         self.data_dict = {
             "buyable_limits": dict(zip(self.trade_data["コード"], self.trade_data["一人あたり建玉上限数"])),
             "sellable_limits": dict(zip(self.trade_data.loc[sellable_condition, "コード"], 
                                         self.trade_data.loc[sellable_condition, "一人あたり建玉上限数"])),
             "borrowing_stocks": dict(zip(self.trade_data.loc[sellable_condition, "コード"], 
-                                         self.trade_data.loc[sellable_condition, "信用区分"].replace({"貸借銘柄":True, "制度信用銘柄":False})))
+                                         self.trade_data.loc[sellable_condition, "信用区分"].map(map_dict)))
         }
 
     async def _fetch_trade_possibility(self):
@@ -56,7 +57,10 @@ class TradePossibilityManager:
             #await named_tab.tab.utils.wait_for('#csvDownload', is_css = True)
             #await named_tab.tab.utils.wait(1)
             await named_tab.tab.utils.set_download_path(Path(self.download_path))
-            await named_tab.tab.utils.click_element('#csvDownload', is_css = True)
+            await named_tab.tab.utils.wait(1)
+            element = await named_tab.tab.utils.wait_for('a[id="csvDownload"]', is_css = True, timeout = 10)
+            await element.click()
+            #await named_tab.tab.utils.click_element('#csvDownload', is_css = True)
             await named_tab.tab.utils.wait(10)
             # CSVファイルの読み込み
             csv_file = await self._get_latest_csv()
@@ -91,7 +95,6 @@ class TradePossibilityManager:
         """
         named_tab = self.sbi_browser_manager.get_tab('SBI')
         for i in range(60):
-            print(i)
             files = list(Path(self.download_path).glob("*.csv"))
             if files:
                 return max(files, key=os.path.getmtime)

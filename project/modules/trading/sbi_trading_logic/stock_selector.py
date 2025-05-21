@@ -181,8 +181,8 @@ class StockSelector:
         sectors_to_trade_num, buy_adjuster_num, sell_adjuster_num = self._determine_whether_ordering_ETF(buy_sectors_df, sell_sectors_df)
         # ETFの必要注文数を算出
         long_df, short_df = self._calculate_ETF_orders(long_df, short_df, buy_adjuster_num, sell_adjuster_num)
-        long_df['LorS'] = 'Long'
-        short_df['LorS'] = 'Short'
+        long_df['Direction'] = 'Long'
+        short_df['Direction'] = 'Short'
         # 注文する銘柄と注文単位数を算出
         return await self._determine_orders(long_df, short_df, sectors_to_trade_num, top_slope, self.margin_manager, margin_power)
 
