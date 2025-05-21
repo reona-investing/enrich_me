@@ -1,13 +1,14 @@
 import pandas as pd
-from trading.sbi import MarginManager, TradePossibilityManager
-from trading.sbi.interface.selection import ITradeLimitProvider
+from trading.sbi import TradePossibilityManager
+from trading.sbi.common.interface import IMarginProvider
+from trading.sbi.selection.interface import ITradeLimitProvider
 
 class TradeLimitProvider(ITradeLimitProvider):
     """取引制限情報提供クラス"""
     
-    def __init__(self, trade_possibility_manager: TradePossibilityManager, margin_manager: MarginManager):
+    def __init__(self, trade_possibility_manager: TradePossibilityManager, margin_provider: IMarginProvider):
         self.trade_possibility_manager = trade_possibility_manager
-        self.margin_manager = margin_manager
+        self.margin_provider = margin_provider
         self._cache = {
             'buyable_symbols': None,
             'sellable_symbols': None,
@@ -21,8 +22,7 @@ class TradeLimitProvider(ITradeLimitProvider):
         if not self._fetched:
             print("[INFO] TradePossibilityManager.fetch() を実行します")
             await self.trade_possibility_manager.fetch()
-            # margin_manager.fetch() も必要ならここで実行
-            await self.margin_manager.fetch()
+            await self.margin_provider.refresh()
             self._fetched = True
             self._cache['last_fetch_time'] = pd.Timestamp.now()
     
@@ -57,7 +57,7 @@ class TradeLimitProvider(ITradeLimitProvider):
         await self._ensure_fetched()
         
         if self._cache['margin_power'] is None:
-            self._cache['margin_power'] = self.margin_manager.margin_power
+            self._cache['margin_power'] = await self.margin_provider.get_available_margin()
         
         return self._cache['margin_power']
     

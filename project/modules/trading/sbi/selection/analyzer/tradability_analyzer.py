@@ -1,5 +1,5 @@
 import pandas as pd
-from trading.sbi.interface.selection import ISectorProvider, ITradeLimitProvider
+from trading.sbi.selection.interface import ISectorProvider, ITradeLimitProvider
 
 class TradabilityAnalyzer:
     """取引可能性分析クラス"""

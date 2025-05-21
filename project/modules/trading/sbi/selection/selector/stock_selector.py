@@ -2,7 +2,7 @@ import pandas as pd
 from typing import List, Tuple, Optional
 import os
 from utils.paths import Paths
-from trading.sbi.interface.selection import (
+from trading.sbi.selection.interface import (
     IStockSelector, ISectorProvider, IPriceProvider, ITradeLimitProvider,
     ISectorAnalyzer, IWeightCalculator, IOrderAllocator, OrderUnit
 )

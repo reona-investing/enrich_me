@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Tuple
-from trading.sbi.interface.selection import IPriceProvider
+from trading.sbi.selection.interface import IPriceProvider
 
 class ETFAllocator:
     """ETF配分クラス"""

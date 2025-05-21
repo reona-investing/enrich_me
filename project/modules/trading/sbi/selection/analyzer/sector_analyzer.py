@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List, Tuple
-from trading.sbi.interface.selection import ISectorAnalyzer, SectorPrediction
+from trading.sbi.selection.interface import ISectorAnalyzer, SectorPrediction
 
 class SectorAnalyzer(ISectorAnalyzer):
     """セクター分析クラス"""

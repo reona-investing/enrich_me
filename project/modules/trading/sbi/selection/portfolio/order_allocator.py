@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List, Tuple, Literal
-from trading.sbi.interface.selection import IOrderAllocator, StockWeight, OrderUnit
+from trading.sbi.selection.interface import IOrderAllocator, StockWeight, OrderUnit
 from trading.sbi.selection.portfolio.unit_calculator import UnitCalculator
 from trading.sbi.selection.portfolio.etf_allocator import ETFAllocator
 

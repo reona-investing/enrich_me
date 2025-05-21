@@ -1,7 +1,6 @@
 #%% モジュールのインポート
 #パスを通す
 #モジュールのインポート
-from trading.sbi.operations.order_manager import CancelManager
 from trading.sbi.orders.manager.order_executor import SBIOrderExecutor
 from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
 import asyncio

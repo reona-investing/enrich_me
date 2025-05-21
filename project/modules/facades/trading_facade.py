@@ -5,8 +5,9 @@ from trading.sbi.browser import SBIBrowserManager
 # 銘柄選択
 from trading.sbi.selection import OneStopStockSelector
 # 発注関係
-from trading.sbi.interface.orders import IOrderExecutor, IMarginProvider
-from trading.sbi.orders.manager.margin_provider import SBIMarginProvider
+from trading.sbi.orders.interface.order_executor import IOrderExecutor
+from trading.sbi.common.interface import IMarginProvider
+from trading.sbi.common.provider import SBIMarginProvider
 from trading.sbi.orders.manager.order_executor import SBIOrderExecutor
 from trading.sbi.orders.ordermaker.batch_order_maker import BatchOrderMaker
 from trading.sbi.orders.ordermaker.position_settler import PositionSettler

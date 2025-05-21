@@ -5,12 +5,12 @@ from typing import Tuple
 from datetime import datetime
 from IPython.display import display
 from trading.sbi import HistoryManager
-from trading.sbi.orders.manager.margin_provider import SBIMarginProvider
+from trading.sbi.common.interface import IMarginProvider
 from utils.paths import Paths
 
 
 class HistoryUpdater:
-    def __init__(self, history_manager:HistoryManager, margin_provider: SBIMarginProvider,
+    def __init__(self, history_manager:HistoryManager, margin_provider: IMarginProvider,
                  sector_list_path: str, 
                  trade_history_path: str = Paths.TRADE_HISTORY_CSV, 
                  buying_power_history_path: str = Paths.BUYING_POWER_HISTORY_CSV, 
@@ -88,7 +88,7 @@ class HistoryUpdater:
 
     async def _update_buying_power_history(self,
                                         buying_power_history_path: str, trade_history: pd.DataFrame, 
-                                        history_manager: HistoryManager, margin_provider: SBIMarginProvider) -> pd.DataFrame:
+                                        history_manager: HistoryManager, margin_provider: IMarginProvider) -> pd.DataFrame:
         '''
         実行時点での買付余力を取得し、dfに反映します。
         buying_power_history_path：買付余力の推移を記録したdfのファイルパス
@@ -172,6 +172,7 @@ class HistoryUpdater:
 
 if __name__ == '__main__':
     from trading.sbi import LoginHandler
+    from trading.sbi.common.provider import SBIMarginProvider
     import asyncio
     sector_path = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
     lh = LoginHandler()

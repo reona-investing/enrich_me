@@ -2,7 +2,7 @@ import pandas as pd
 from typing import List
 
 from trading.sbi.orders.ordermaker.order_maker import OrderMaker
-from trading.sbi.interface.orders import OrderResult
+from trading.sbi.orders.interface.order_executor import OrderResult
 
 class BatchOrderMaker(OrderMaker):
     """一括注文を行うクラス"""

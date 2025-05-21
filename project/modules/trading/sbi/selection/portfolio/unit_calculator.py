@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List
-from trading.sbi.interface.selection import OrderUnit
+from trading.sbi.selection.interface import OrderUnit
 from trading.sbi_trading_logic.price_limit_calculator import PriceLimitCalculator
 
 class UnitCalculator:

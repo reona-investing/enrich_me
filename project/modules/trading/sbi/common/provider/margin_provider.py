@@ -1,4 +1,4 @@
-from trading.sbi.interface.orders import IMarginProvider
+from trading.sbi.common.interface import IMarginProvider
 from trading.sbi.browser import SBIBrowserManager, PageNavigator
 from bs4 import BeautifulSoup as soup
 import re

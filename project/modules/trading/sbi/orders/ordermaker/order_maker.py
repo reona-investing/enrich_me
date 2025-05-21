@@ -1,5 +1,6 @@
 from typing import Literal
-from trading.sbi.interface.orders import IOrderExecutor, IMarginProvider, OrderRequest
+from trading.sbi.common.interface import IMarginProvider
+from trading.sbi.orders.interface.order_executor import IOrderExecutor, OrderRequest
 
 class OrderMaker:
     """注文組立の基底クラス"""

@@ -1,6 +1,6 @@
 from typing import List
 
-from trading.sbi.interface.orders import OrderResult
+from trading.sbi.orders.interface.order_executor import OrderResult
 from trading.sbi.orders.ordermaker.order_maker import OrderMaker
 
 class PositionSettler(OrderMaker):

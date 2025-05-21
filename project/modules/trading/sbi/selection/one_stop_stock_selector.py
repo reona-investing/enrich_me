@@ -2,8 +2,10 @@
 from typing import Optional, Tuple
 import pandas as pd
 
-from trading.sbi import MarginManager, TradePossibilityManager
+from trading.sbi import TradePossibilityManager
 from utils.paths import Paths
+from trading.sbi.common.interface import IMarginProvider
+from trading.sbi.common.provider import SBIMarginProvider
 
 from trading.sbi.selection.provider import SectorProvider, PriceProvider, TradeLimitProvider
 from trading.sbi.selection.analyzer import WeightCalculator, SectorAnalyzer
@@ -41,14 +43,14 @@ class OneStopStockSelector:
         # SBI関連のマネージャー
         self.browser_manager = browser_manager
         self.trade_possibility_manager = TradePossibilityManager(browser_manager)
-        self.margin_manager = MarginManager(browser_manager)
-        
+
         # プロバイダー
+        self.margin_provider: IMarginProvider = SBIMarginProvider(browser_manager)
         self.sector_provider = SectorProvider(sector_definitions_path)
         self.price_provider = PriceProvider(order_price_df)
         self.trade_limit_provider = TradeLimitProvider(
             self.trade_possibility_manager, 
-            self.margin_manager
+            self.margin_provider
         )
         
         # アナライザー
@@ -102,8 +104,7 @@ class OneStopStockSelector:
             
             # モンキーパッチ適用
             self.trade_possibility_manager.fetch = fetch_with_counter
-            
-            # 銘柄選択を実行
+
             result = await self.stock_selector.select_stocks(margin_power)
             
             # モンキーパッチを戻す
@@ -129,37 +130,36 @@ class OneStopStockSelector:
         return self.stock_selector.sell_sectors
 
 
-
-import asyncio
-from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
-
-async def main():
-    # MLデータの読み込み（以前のコードと同様）
-    from models import MLDataset
-    from utils.paths import Paths
-    
-    ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
-    
-    # ブラウザマネージャーの作成
-    browser_manager = SBIBrowserManager()
-    
-    # ファサードの作成（設定パラメータはここに渡す）
-    stock_selection = OneStopStockSelector(
-        order_price_df=ml.stock_selection_materials.order_price_df,
-        pred_result_df=ml.stock_selection_materials.pred_result_df,
-        browser_manager=browser_manager,
-        num_sectors_to_trade=3,
-        num_candidate_sectors=5,
-        top_slope=1.0
-    )
-    
-    # 銘柄選択の実行
-    orders_df, todays_pred_df = await stock_selection.select_stocks()
-    
-    print("選択された買いセクター:", stock_selection.buy_sectors)
-    print("選択された売りセクター:", stock_selection.sell_sectors)
-    print("選択された銘柄:")
-    print(orders_df)
-
 if __name__ == "__main__":
+    import asyncio
+    from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
+
+    async def main():
+        # MLデータの読み込み（以前のコードと同様）
+        from models import MLDataset
+        from utils.paths import Paths
+        
+        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
+        
+        # ブラウザマネージャーの作成
+        browser_manager = SBIBrowserManager()
+        
+        # ファサードの作成（設定パラメータはここに渡す）
+        stock_selection = OneStopStockSelector(
+            order_price_df=ml.stock_selection_materials.order_price_df,
+            pred_result_df=ml.stock_selection_materials.pred_result_df,
+            browser_manager=browser_manager,
+            num_sectors_to_trade=3,
+            num_candidate_sectors=5,
+            top_slope=1.0
+        )
+        
+        # 銘柄選択の実行
+        orders_df, todays_pred_df = await stock_selection.select_stocks()
+        
+        print("選択された買いセクター:", stock_selection.buy_sectors)
+        print("選択された売りセクター:", stock_selection.sell_sectors)
+        print("選択された銘柄:")
+        print(orders_df)
+
     asyncio.run(main())

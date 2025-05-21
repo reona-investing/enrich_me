@@ -1,6 +1,6 @@
 import pandas as pd
 from utils.jquants_api_utils import cli
-from trading.sbi.interface.selection import IPriceProvider
+from trading.sbi.selection.interface import IPriceProvider
 
 class PriceProvider(IPriceProvider):
     """価格情報提供クラス"""

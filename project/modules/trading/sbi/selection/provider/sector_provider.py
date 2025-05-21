@@ -1,5 +1,5 @@
 import pandas as pd
-from trading.sbi.interface.selection import ISectorProvider
+from trading.sbi.selection.interface import ISectorProvider
 
 class SectorProvider(ISectorProvider):
     """セクター情報提供クラス"""

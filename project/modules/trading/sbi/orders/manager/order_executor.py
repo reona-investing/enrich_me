@@ -5,9 +5,8 @@ import traceback
 from typing import List, Optional
 from bs4 import BeautifulSoup as soup
 
-from trading.sbi.interface.orders import IOrderExecutor, OrderRequest, OrderResult
+from trading.sbi.orders.interface import IOrderExecutor, OrderRequest, OrderResult
 from trading.sbi.browser import SBIBrowserManager, PageNavigator
-from utils.browser.named_tab import NamedTab
 
 
 class SBIOrderExecutor(IOrderExecutor):

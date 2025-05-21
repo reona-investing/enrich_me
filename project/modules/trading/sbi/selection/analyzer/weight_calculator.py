@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List
-from trading.sbi.interface.selection import IWeightCalculator, StockWeight
+from trading.sbi.selection.interface import IWeightCalculator, StockWeight
 
 class WeightCalculator(IWeightCalculator):
     """ウェイト計算クラス"""

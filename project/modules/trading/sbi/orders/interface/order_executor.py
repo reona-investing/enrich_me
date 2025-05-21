@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, Optional, List, Dict, Any, Tuple, Union
+from typing import Literal, Optional
 import pandas as pd
 
 @dataclass
@@ -52,18 +52,4 @@ class IOrderExecutor(ABC):
     @abstractmethod
     async def get_positions(self) -> pd.DataFrame:
         """現在のポジション一覧を取得する"""
-        pass
-
-
-class IMarginProvider(ABC):
-    """証拠金情報提供のインターフェース"""
-    
-    @abstractmethod
-    async def get_available_margin(self) -> float:
-        """利用可能な証拠金を取得する"""
-        pass
-    
-    @abstractmethod
-    async def refresh(self) -> None:
-        """証拠金情報を更新する"""
         pass
