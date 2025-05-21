@@ -89,7 +89,7 @@ class TradePossibilityManager:
         Returns:
             Path: 最新のCSVファイルパス
         """
-        named_tab = self.browser_manager.get_tab('SBI')
+        named_tab = self.sbi_browser_manager.get_tab('SBI')
         for i in range(60):
             print(i)
             files = list(Path(self.download_path).glob("*.csv"))
