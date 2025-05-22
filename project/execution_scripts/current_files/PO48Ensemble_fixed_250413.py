@@ -19,9 +19,10 @@ from utils.paths import Paths
 from utils.error_handler import error_handler
 
 # データ取得・計算モジュール
-from acquisition.features_updater import FeaturesUpdater
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
-from facades import TradingFacade, StockAcquisitionFacade
+from facades import TradingFacade
+from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
+from acquisition.features_updater import FeaturesUpdateFacade
 
 # リファクタリング後の新しいモデルモジュール
 from machine_learning.strategies import SectorLassoStrategy, SingleLgbmStrategy, EnsembleStrategy
@@ -58,7 +59,7 @@ async def read_and_update_data(filter: str) -> dict:
     
     if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.FETCH_DATA]:
         '''各種金融データ取得or読み込み'''
-        fu = FeaturesUpdater()
+        fu = FeaturesUpdateFacade()
         await fu.update_all()
     
     return stock_dfs_dict

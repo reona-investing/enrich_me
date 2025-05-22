@@ -17,7 +17,9 @@ from models.dataset import MLDataset
 from models.loader import load_datasets
 from models.machine_learning import LassoModel, LgbmModel
 import models.ensemble as ensemble
-from facades import TradingFacade, StockAcquisitionFacade, FeaturesUpdateFacade
+from facades import TradingFacade
+from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
+from acquisition.features_updater import FeaturesUpdateFacade
 from utils.error_handler import error_handler
 import asyncio
 
