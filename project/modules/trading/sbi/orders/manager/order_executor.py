@@ -12,7 +12,7 @@ from trading.sbi.browser import SBIBrowserManager, PageNavigator
 class SBIOrderExecutor(IOrderExecutor):
     """SBI証券での注文実行を管理するクラス"""
     
-    # 注文パラメータ用の定数
+    # 注文パラメータ用の定数（完全版）
     ORDER_PARAM_DICT = {
         '取引': {
             "現物買": "genK",
@@ -36,6 +36,10 @@ class SBIOrderExecutor(IOrderExecutor):
             "引成": 'H',
             "IOC成": 'I'
         },
+        '逆指値タイプ': {
+            "指値": 1,
+            "成行": 2,
+        },
         '期間': {
             "当日中": 0,
             "今週中": 1,
@@ -44,7 +48,8 @@ class SBIOrderExecutor(IOrderExecutor):
         '預り区分': {
             "一般預り": 0,
             "特定預り": 1,
-            "NISA預り": 2
+            "NISA預り": 2,
+            "旧NISA預り": 3
         },
         '信用取引区分': {
             "制度": 0,
@@ -76,7 +81,7 @@ class SBIOrderExecutor(IOrderExecutor):
             await self.browser_manager.launch()
             await self.page_navigator.trade()
             
-            # 取引タイプを選択
+            # 取引タイプを選択（OrderRequestから取得）
             await self._select_trade_type(order_request)
             
             # 銘柄コードと数量を入力
@@ -85,7 +90,10 @@ class SBIOrderExecutor(IOrderExecutor):
             # 注文条件を設定（指値/成行/逆指値）
             await self._input_order_conditions(order_request)
             
-            # 預り区分と信用取引区分を選択
+            # 期間設定を追加
+            await self._input_period_conditions(order_request)
+            
+            # 預り区分と信用取引区分を選択（OrderRequestから取得）
             await self._select_deposit_and_credit_type(order_request)
             
             # 注文を確定
@@ -307,15 +315,18 @@ class SBIOrderExecutor(IOrderExecutor):
         return self.ORDER_PARAM_DICT.get(category, {}).get(key, "")
     
     async def _select_trade_type(self, order_request: OrderRequest) -> None:
-        """取引タイプを選択する"""
+        """取引タイプを選択する（OrderRequestから取得）"""
         named_tab = self.browser_manager.get_tab('SBI')
         
-        # 取引タイプを決定
-        if order_request.direction == "Long":
-            trade_type = "信用新規買" if order_request.is_borrowing_stock else "現物買"
-        else:  # Short
-            trade_type = "信用新規売"
-            
+        # OrderRequestから取引タイプを取得
+        trade_type = order_request.trade_type
+        if not trade_type:
+            # フォールバック：従来のロジック
+            if order_request.direction == "Long":
+                trade_type = "信用新規買"
+            else:  # Short
+                trade_type = "信用新規売"
+        
         # セレクタを使用して取引タイプを選択
         selector_id = self._get_selector("取引", trade_type)
         await named_tab.tab.utils.click_element(f'#{selector_id}', is_css=True)
@@ -338,36 +349,92 @@ class SBIOrderExecutor(IOrderExecutor):
         await named_tab.tab.utils.click_element(order_request.order_type)
         
         if order_request.order_type == "成行":
-            # 成行注文の詳細設定
-            if order_request.order_type_value:
-                selector = f'select[name="nariyuki_condition"] option[value="{self.ORDER_PARAM_DICT["成行タイプ"][order_request.order_type_value]}"]'
-                await named_tab.tab.utils.select_pulldown(selector)
-                
+            await self._input_nariyuki_params(order_request)
         elif order_request.order_type == "指値":
-            # 指値注文の詳細設定
-            if order_request.limit_price:
-                await named_tab.tab.utils.send_keys_to_element('#gsn0 > input[type=text]',
-                                                              is_css=True,
-                                                              keys=str(order_request.limit_price))
-            
-            if order_request.order_type_value:
-                selector = f'select[name="sasine_condition"] option[value="{self.ORDER_PARAM_DICT["指値タイプ"][order_request.order_type_value]}"]'
-                await named_tab.tab.utils.select_pulldown(selector)
-                
+            await self._input_sashine_params(order_request)
         elif order_request.order_type == "逆指値":
-            # 逆指値注文の詳細設定（実装は省略）
-            pass
+            await self._input_gyakusashine_params(order_request)
+    
+    async def _input_nariyuki_params(self, order_request: OrderRequest) -> None:
+        """成行注文の各パラメータを入力"""
+        named_tab = self.browser_manager.get_tab('SBI')
+        if order_request.order_type_value:
+            selector = f'select[name="nariyuki_condition"] option[value="{self.ORDER_PARAM_DICT["成行タイプ"][order_request.order_type_value]}"]'
+            await named_tab.tab.utils.select_pulldown(selector)
+    
+    async def _input_sashine_params(self, order_request: OrderRequest) -> None:
+        """指値注文の各パラメータを入力"""
+        named_tab = self.browser_manager.get_tab('SBI')
+        
+        # 指値価格を入力
+        if order_request.limit_price:
+            await named_tab.tab.utils.send_keys_to_element('#gsn0 > input[type=text]',
+                                                          is_css=True,
+                                                          keys=str(order_request.limit_price))
+        
+        # 指値条件を選択
+        if order_request.order_type_value:
+            selector = f'select[name="sasine_condition"] option[value="{self.ORDER_PARAM_DICT["指値タイプ"][order_request.order_type_value]}"]'
+            await named_tab.tab.utils.select_pulldown(selector)
+    
+    async def _input_gyakusashine_params(self, order_request: OrderRequest) -> None:
+        """逆指値注文の各パラメータを入力"""
+        named_tab = self.browser_manager.get_tab('SBI')
+        
+        if order_request.trigger_price:
+            # 逆指値条件を選択
+            await named_tab.tab.utils.click_element(
+                '#gsn2 > table > tbody > tr > td:nth-child(2) > label:nth-child(5) > input[type=radio]',
+                is_css=True)
+            
+            # 逆指値タイプを選択
+            if order_request.stop_order_type:
+                stop_order_type_value = self.ORDER_PARAM_DICT["逆指値タイプ"][order_request.stop_order_type]
+                selector = f'#gsn2 > table > tbody > tr > td:nth-child(2) > select:nth-child(6) > option:nth-child({stop_order_type_value})'
+                await named_tab.tab.utils.click_element(selector, is_css=True)
+            
+            # トリガー価格を入力
+            await named_tab.tab.utils.send_keys_to_element(
+                '#gsn2 > table > tbody > tr > td:nth-child(2) > input[type=text]',
+                is_css=True,
+                keys=str(order_request.trigger_price))
+            
+            # 逆指値が指値の場合、執行価格を入力
+            if order_request.stop_order_type == "指値" and order_request.stop_order_price:
+                await named_tab.tab.utils.send_keys_to_element(
+                    '#gsn2 > table > tbody > tr > td:nth-child(2) > input[type=text]:nth-child(7)',
+                    is_css=True,
+                    keys=str(order_request.stop_order_price))
+    
+    async def _input_period_conditions(self, order_request: OrderRequest) -> None:
+        """期間条件を設定する"""
+        named_tab = self.browser_manager.get_tab('SBI')
+        
+        # 期間タイプを選択
+        await named_tab.tab.utils.click_element(order_request.period_type)
+        
+        # 期間指定の場合の詳細設定
+        if order_request.period_type == "期間指定":
+            if order_request.period_value:
+                selector = f'select[name="limit_in"] option[value="{order_request.period_value}"]'
+                await named_tab.tab.utils.select_pulldown(selector)
+            elif order_request.period_index is not None:
+                period_option_div = await named_tab.tab.utils.select_element('select[name="limit_in"]', is_css=True)
+                period_options = await period_option_div.select('option')
+                if order_request.period_index < len(period_options):
+                    await period_options[order_request.period_index].click()
     
     async def _select_deposit_and_credit_type(self, order_request: OrderRequest) -> None:
         """預り区分と信用取引区分を選択する"""
         named_tab = self.browser_manager.get_tab('SBI')
         
-        # 預り区分の選択（固定で「特定預り」を使用）
-        await named_tab.tab.utils.click_element("特定預り")
+        # 預り区分の選択
+        trade_section = order_request.trade_section or "特定預り"
+        await named_tab.tab.utils.click_element(trade_section)
         
         # 信用取引区分の選択
-        credit_type = "制度" if order_request.is_borrowing_stock else "日計り"
-        await named_tab.tab.utils.click_element(credit_type)
+        margin_trade_section = order_request.margin_trade_section or "日計り"
+        await named_tab.tab.utils.click_element(margin_trade_section)
     
     async def _confirm_order(self, order_request: OrderRequest) -> tuple[bool, Optional[str], str]:
         """注文を確定する"""
@@ -533,75 +600,104 @@ class SBIOrderExecutor(IOrderExecutor):
         )
     
     def _parse_positions_table(self, html_content: str) -> pd.DataFrame:
-            """建玉一覧のHTMLをパースしてデータフレームに変換する
-            
-            Args:
-                html_content (str): 建玉一覧のHTML
-                
-            Returns:
-                pd.DataFrame: 建玉情報のデータフレーム
-            """
-            import unicodedata
-            
-            html = soup(html_content, "html.parser")
-            table = html.find("td", string=re.compile("銘柄"))
-            
-            if table is None:
-                print('保有建玉はありません。')
-                return pd.DataFrame()
-                
-            table = table.findParent("table")
-            data = []
-            
-            for tr in table.find("tbody").findAll("tr"):
-                if tr.find("td").find("a"):
-                    row = []
-                    
-                    # 証券コードと銘柄名
-                    text = unicodedata.normalize("NFKC", tr.findAll("td")[0].getText().strip())
-                    row.append(text[-4:])  # 証券コード
-                    row.append(text[:-4])  # 銘柄名
-                    
-                    # 売・買建
-                    row.append(tr.findAll("td")[1].getText().strip())
-                    
-                    # 建株数
-                    text = unicodedata.normalize("NFKC", tr.findAll("td")[5].getText().strip())
-                    row.append(text.splitlines()[0].strip().split(" ")[0])
-                    
-                    # 建単価と現在値
-                    text = unicodedata.normalize("NFKC", tr.findAll("td")[6].getText().strip())
-                    numbers = text.split("\n")
-                    row.append(numbers[0])  # 建単価
-                    row.append(numbers[1])  # 現在値
-                    
-                    data.append(row)
-            
-            if not data:
-                return pd.DataFrame()
-                
-            columns = ["証券コード", "銘柄", "売・買建", "建株数", "建単価", "現在値"]
-            df = pd.DataFrame(data, columns=columns)
-            
-            # データ型の変換
-            df["証券コード"] = df["証券コード"].astype(str)
-            df["建株数"] = df["建株数"].str.replace(',', '').astype(int)
-            df["建単価"] = df["建単価"].str.replace(',', '').astype(float)
-            df["現在値"] = df["現在値"].str.replace(',', '').astype(float)
-            
-            # 追加の計算項目
-            df["建価格"] = df["建株数"] * df["建単価"]
-            df["評価額"] = df["建株数"] * df["現在値"]
-            df['評価損益'] = df["評価額"] - df["建価格"]
-            df.loc[df['売・買建'] == '売建', '評価損益'] = df["建価格"] - df["評価額"]
-            
-            return df
-
-
-    # テスト用コード
-    if __name__ == '__main__':
-        import asyncio
+        """建玉一覧のHTMLをパースしてデータフレームに変換する
         
-        async def main():
-            browser_manager = SBIBrowserManager()
-            order_executor = SBIOrderExecutor(browser_manager)
+        Args:
+            html_content (str): 建玉一覧のHTML
+            
+        Returns:
+            pd.DataFrame: 建玉情報のデータフレーム
+        """
+        import unicodedata
+        
+        html = soup(html_content, "html.parser")
+        table = html.find("td", string=re.compile("銘柄"))
+        
+        if table is None:
+            print('保有建玉はありません。')
+            return pd.DataFrame()
+            
+        table = table.findParent("table")
+        data = []
+        
+        for tr in table.find("tbody").findAll("tr"):
+            if tr.find("td").find("a"):
+                row = []
+                
+                # 証券コードと銘柄名
+                text = unicodedata.normalize("NFKC", tr.findAll("td")[0].getText().strip())
+                row.append(text[-4:])  # 証券コード
+                row.append(text[:-4])  # 銘柄名
+                
+                # 売・買建
+                row.append(tr.findAll("td")[1].getText().strip())
+                
+                # 建株数
+                text = unicodedata.normalize("NFKC", tr.findAll("td")[5].getText().strip())
+                row.append(text.splitlines()[0].strip().split(" ")[0])
+                
+                # 建単価と現在値
+                text = unicodedata.normalize("NFKC", tr.findAll("td")[6].getText().strip())
+                numbers = text.split("\n")
+                row.append(numbers[0])  # 建単価
+                row.append(numbers[1])  # 現在値
+                
+                data.append(row)
+        
+        if not data:
+            return pd.DataFrame()
+            
+        columns = ["証券コード", "銘柄", "売・買建", "建株数", "建単価", "現在値"]
+        df = pd.DataFrame(data, columns=columns)
+        
+        # データ型の変換
+        df["証券コード"] = df["証券コード"].astype(str)
+        df["建株数"] = df["建株数"].str.replace(',', '').astype(int)
+        df["建単価"] = df["建単価"].str.replace(',', '').astype(float)
+        df["現在値"] = df["現在値"].str.replace(',', '').astype(float)
+        
+        # 追加の計算項目
+        df["建価格"] = df["建株数"] * df["建単価"]
+        df["評価額"] = df["建株数"] * df["現在値"]
+        df['評価損益'] = df["評価額"] - df["建価格"]
+        df.loc[df['売・買建'] == '売建', '評価損益'] = df["建価格"] - df["評価額"]
+        
+        return df
+
+
+# テスト用コード
+if __name__ == '__main__':
+    import asyncio
+    
+    async def main():
+        browser_manager = SBIBrowserManager()
+        order_executor = SBIOrderExecutor(browser_manager)
+        
+        # テスト用の注文リクエスト
+        test_order = OrderRequest(
+            symbol_code="9984",
+            unit=1,
+            direction="Long",
+            estimated_price=3000.0,
+            is_borrowing_stock=False,
+            order_type="成行",
+            order_type_value="寄成",
+            trade_type="信用新規買",
+            margin_trade_section="日計り",
+            period_type="当日中",
+            trade_section="特定預り"
+        )
+        
+        # 注文実行のテスト
+        result = await order_executor.place_order(test_order)
+        print(f"注文結果: {result}")
+        
+        # 注文一覧取得のテスト
+        orders = await order_executor.get_active_orders()
+        print(f"注文一覧: {orders}")
+        
+        # ポジション一覧取得のテスト
+        positions = await order_executor.get_positions()
+        print(f"ポジション一覧: {positions}")
+    
+    asyncio.run(main())

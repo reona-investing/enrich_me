@@ -45,15 +45,17 @@ class BatchOrderMaker(OrderMaker):
                 self.failed_orders.append(symbol_code)
                 continue
             
-            # 注文リクエストを作成
             order_request = self.create_order_request(
                 symbol_code=symbol_code,
                 unit=row['Unit'] * 100,
                 direction=row['Direction'],
-                estimated_price=row['EstimatedCost'] / 100,
-                is_borrowing_stock=row['isBorrowingStock'],
+                estimated_price=row['EstimatedCost'] / row['Unit'] / 100,  # 単価を計算
+                is_borrowing_stock=row.get('isBorrowingStock', False),
                 order_type='成行',
-                order_type_value='寄成'
+                order_type_value='寄成',
+                # 追加パラメータ
+                period_type="当日中",
+                trade_section="特定預り"
             )
             
             # 注文を発注

@@ -15,6 +15,17 @@ class OrderRequest:
     order_type_value: Optional[Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成"]] = None
     limit_price: Optional[float] = None
     trigger_price: Optional[float] = None
+    # 新たに追加するパラメータ
+    trade_type: Optional[Literal["現物買", "現物売", "信用新規買", "信用新規売"]] = None
+    margin_trade_section: Optional[Literal["制度", "一般", "日計り"]] = None
+    # リファクタリング前から落ちているパラメータ
+    stop_order_type: Literal["指値", "成行"] = "成行"
+    stop_order_price: Optional[float] = None
+    period_type: Literal["当日中", "今週中", "期間指定"] = "当日中"
+    period_value: Optional[str] = None
+    period_index: Optional[int] = None
+    trade_section: Literal["特定預り", "一般預り", "NISA預り", "旧NISA預り"] = "特定預り"
+
 
 
 @dataclass
