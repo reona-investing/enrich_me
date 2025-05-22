@@ -298,7 +298,7 @@ class FeaturesCalculator:
 #%% デバッグ
 if __name__ == '__main__':
 
-    from facades.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
 
     '''パス類'''
     NEW_SECTOR_LIST_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' # 別でファイルを作っておく

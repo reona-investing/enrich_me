@@ -49,7 +49,7 @@ class BatchOrderMaker(OrderMaker):
                 symbol_code=symbol_code,
                 unit=row['Unit'] * 100,
                 direction=row['Direction'],
-                estimated_price=row['EstimatedCost'] / row['Unit'] / 100,  # 単価を計算
+                estimated_price=row['EstimatedCost'] / 100,  # 単価を計算
                 is_borrowing_stock=row.get('isBorrowingStock', False),
                 order_type='成行',
                 order_type_value='寄成',
