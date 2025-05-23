@@ -20,8 +20,8 @@ from utils.error_handler import error_handler
 
 # データ取得・計算モジュール
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
-from facades import TradingFacade
-from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
+from trading import TradingFacade
+from acquisition.jquants_api_operations import StockAcquisitionFacade
 from acquisition.features_updater import FeaturesUpdateFacade
 
 # リファクタリング後の新しいモデルモジュール

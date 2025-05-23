@@ -47,7 +47,7 @@ def prepare_test_data() -> Dict[str, pd.DataFrame]:
     print("テストデータを準備しています...")
     
     # プロジェクト内のモジュールをインポート
-    from facades.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
     from calculation.sector_index_calculator import SectorIndexCalculator
     from calculation.target_calculator import TargetCalculator
     from calculation.features_calculator import FeaturesCalculator

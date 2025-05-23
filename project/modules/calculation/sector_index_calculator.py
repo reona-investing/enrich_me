@@ -446,7 +446,7 @@ class SectorIndexCalculator:
 
 
 if __name__ == '__main__':
-    from facades.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))")
     stock_dfs = acq.get_stock_data_dict()
 
