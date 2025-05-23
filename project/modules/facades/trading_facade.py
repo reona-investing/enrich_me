@@ -142,7 +142,7 @@ if __name__ == '__main__':
         ml_dataset = MLDataset(ML_DATASET_PATH)
         trade_facade = TradingFacade()
 
-        '''
+        '''  
         await trade_facade.take_positions(
             ml_dataset= ml_dataset,
             SECTOR_REDEFINITIONS_CSV = SECTOR_REDEFINITIONS_CSV,
@@ -151,7 +151,7 @@ if __name__ == '__main__':
             top_slope = 1)
         '''
         await trade_facade.take_additionals()
-        
+      
 
         
     

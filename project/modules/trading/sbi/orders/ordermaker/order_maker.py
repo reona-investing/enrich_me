@@ -39,16 +39,12 @@ class OrderMaker:
             order_type = "指値"
             if order_type_value:
                 order_type_value = order_type_value.replace('成', '指')
-            else:
-                order_type_value = "寄指"  # デフォルトを寄指に
             limit_price = self._calculate_short_selling_limit_price(estimated_price)
         
         return OrderRequest(
             symbol_code=symbol_code,
             unit=int(unit),
             direction=direction,
-            estimated_price=estimated_price,
-            is_borrowing_stock=is_borrowing_stock,
             order_type=order_type,
             order_type_value=order_type_value,
             limit_price=limit_price,

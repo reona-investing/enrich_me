@@ -7,7 +7,7 @@ from trading.sbi.orders.interface.order_executor import OrderResult
 class BatchOrderMaker(OrderMaker):
     """一括注文を行うクラス"""
     
-    async def place_batch_orders(self, orders_df: pd.DataFrame) -> List[OrderResult]:
+    async def place_batch_orders(self, orders_df: pd.DataFrame, is_reorder: bool = False) -> List[OrderResult]:
         """一括で注文を発注する"""
         
         # 証拠金を更新
@@ -45,12 +45,15 @@ class BatchOrderMaker(OrderMaker):
                 self.failed_orders.append(symbol_code)
                 continue
             
+            order_type = '成行'
+            if is_reorder:
+                order_type_value = None
+            
             order_request = self.create_order_request(
                 symbol_code=symbol_code,
                 unit=row['Unit'] * 100,
                 direction=row['Direction'],
                 estimated_price=row['EstimatedCost'] / 100,  # 単価を計算
-                is_borrowing_stock=row.get('isBorrowingStock', False),
                 order_type='成行',
                 order_type_value='寄成',
                 # 追加パラメータ
@@ -78,6 +81,6 @@ class BatchOrderMaker(OrderMaker):
         
         if not self.failed_orders:
             return
-        
-        failed_orders_df = orders_df.loc[orders_df['Code'].isin(self.failed_orders), :]
+        self.failed_orders = list(map(str, self.failed_orders))
+        failed_orders_df = orders_df.loc[orders_df['Code'].astype(str).isin(self.failed_orders), :]
         failed_orders_df.to_csv(Paths.FAILED_ORDERS_CSV)

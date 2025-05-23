@@ -194,14 +194,11 @@ class SBIOrderExecutor(IOrderExecutor):
         try:
             await self.browser_manager.launch()
             
-            # 信用建玉一覧ページに遷移
             named_tab = await self.page_navigator.credit_position_close()
-            
-            # 旧コードと同じCSSセレクタを使用
+
             table_body_css = '#MAINAREA02_780 > form > table:nth-child(18) > tbody > tr > td > ' \
                         'table > tbody > tr > td > table > tbody'
             
-            # 全建玉の要素番号リストを取得
             positions = await self._get_position_elements(table_body_css)
             
             # 指定された銘柄コードの建玉がない場合
@@ -248,21 +245,26 @@ class SBIOrderExecutor(IOrderExecutor):
             try:
                 await named_tab.tab.utils.wait_for('ご注文を受け付けました。')
                 order_id = await self._get_element('注文番号')
+                message = f"{symbol_code}：正常に決済注文が完了しました"
+                print(message)
                 
                 return OrderResult(
                     success=True,
                     order_id=order_id,
-                    message=f"{symbol_code}：正常に決済注文が完了しました"
+                    message=message
                 )
             except Exception:
+                message = f"{symbol_code}：決済注文に失敗しました"
+                print(message)
+
                 return OrderResult(
                     success=False,
-                    message=f"{symbol_code}：決済注文に失敗しました",
+                    message=message,
                     error_code="SETTLEMENT_ERROR"
                 )
                 
         except Exception as e:
-            error_message = f"ポジション決済中にエラーが発生しました: {str(e)}"
+            error_message = f"{symbol_code}: ポジション決済中にエラーが発生しました: {str(e)}"
             print(error_message)
             import traceback
             traceback.print_exc()
@@ -336,6 +338,7 @@ class SBIOrderExecutor(IOrderExecutor):
     async def _input_stock_and_quantity(self, order_request: OrderRequest) -> None:
         """銘柄コードと数量を入力する"""
         named_tab = self.browser_manager.get_tab('SBI')
+        await named_tab.tab.utils.wait_for('input[name="stock_sec_code"]', is_css=True)
         await named_tab.tab.utils.send_keys_to_element('input[name="stock_sec_code"]', 
                                                       is_css=True, 
                                                       keys=order_request.symbol_code)
@@ -712,8 +715,6 @@ if __name__ == '__main__':
             symbol_code="9984",
             unit=1,
             direction="Long",
-            estimated_price=3000.0,
-            is_borrowing_stock=False,
             order_type="成行",
             order_type_value="寄成",
             trade_type="信用新規買",

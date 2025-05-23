@@ -2,29 +2,27 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal, Optional
 import pandas as pd
+from pydantic import BaseModel, Field
 
-@dataclass
-class OrderRequest:
+
+class OrderRequest(BaseModel):
     """注文リクエストのデータコンテナ"""
-    symbol_code: str
-    unit: int  # 単位数（100株単位）
     direction: Literal['Long', 'Short']
-    estimated_price: float
-    is_borrowing_stock: bool = False
-    order_type: Literal["指値", "成行", "逆指値"] = "成行"
-    order_type_value: Optional[Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成"]] = None
-    limit_price: Optional[float] = None
-    trigger_price: Optional[float] = None
-    # 新たに追加するパラメータ
-    trade_type: Optional[Literal["現物買", "現物売", "信用新規買", "信用新規売"]] = None
-    margin_trade_section: Optional[Literal["制度", "一般", "日計り"]] = None
-    # リファクタリング前から落ちているパラメータ
-    stop_order_type: Literal["指値", "成行"] = "成行"
-    stop_order_price: Optional[float] = None
-    period_type: Literal["当日中", "今週中", "期間指定"] = "当日中"
-    period_value: Optional[str] = None
-    period_index: Optional[int] = None
-    trade_section: Literal["特定預り", "一般預り", "NISA預り", "旧NISA預り"] = "特定預り"
+    # 以下、SBI証券の発注データ
+    symbol_code: str = Field(..., description="銘柄コード")
+    trade_type: Literal["現物買", "現物売", "信用新規買", "信用新規売"] = Field("信用新規買", description="取引タイプ")
+    unit: int = Field(100, gt=0, description="取引単位（正の整数）")
+    order_type: Literal["指値", "成行", "逆指値"] = Field("成行", description="注文タイプ")
+    order_type_value: Literal["寄指", "引指", "不成", "IOC指", "寄成", "引成", "IOC成", None] = Field("寄成", description="注文詳細")
+    limit_price: Optional[float] = Field(None, gt=0, description="指値注文の価格")
+    trigger_price: Optional[float] = Field(None, gt=0, description="逆指値のトリガー価格")
+    stop_order_type: Literal["指値", "成行"] = Field("成行", description="逆指値のタイプ")
+    stop_order_price: Optional[float] = Field(None, gt=0, description="逆指値注文の価格")
+    period_type: Literal["当日中", "今週中", "期間指定"] = Field("当日中", description="注文期間のタイプ")
+    period_value: Optional[str] = Field(None, description="期間指定時の日付")
+    period_index: Optional[int] = Field(None, description="期間指定時のインデックス")
+    trade_section: Literal["特定預り", "一般預り", "NISA預り", "旧NISA預り"] = Field("特定預り", description="取引区分")
+    margin_trade_section: Literal["制度", "一般", "日計り"] = Field("制度", description="信用取引区分")
 
 
 
