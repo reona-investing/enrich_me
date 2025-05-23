@@ -555,3 +555,17 @@ def compare_legacy_vs_new_system(new_sector_price: pd.DataFrame,
         "comparison_results": facade.get_comparison_results(),
         "coverage_report": facade.get_feature_coverage_report()
     }
+
+if __name__ == "__main__":
+    from utils.paths import Paths
+    from acquisition.jquants_api_operations import StockAcquisitionFacade
+    universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
+    saf = StockAcquisitionFacade(filter=universe_filter)
+    stock_dfs_dict = saf.get_stock_data_dict()
+    SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
+    SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
+    new_sector_price = pd.read_parquet(SECTOR_INDEX_PARQUET)
+    new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
+    print(new_sector_price.head())
+    mydict = compare_legacy_vs_new_system(new_sector_price, new_sector_list, stock_dfs_dict)
+    print(mydict)
