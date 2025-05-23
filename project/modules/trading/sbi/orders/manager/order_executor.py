@@ -197,27 +197,23 @@ class SBIOrderExecutor(IOrderExecutor):
             # 信用建玉一覧ページに遷移
             named_tab = await self.page_navigator.credit_position_close()
             
-            # 適切なCSSセレクタを設定（旧コードと同じ）
+            # 旧コードと同じCSSセレクタを使用
             table_body_css = '#MAINAREA02_780 > form > table:nth-child(18) > tbody > tr > td > ' \
                         'table > tbody > tr > td > table > tbody'
             
-            print(f"[DEBUG] 決済対象銘柄: {symbol_code}")
-            
             # 全建玉の要素番号リストを取得
             positions = await self._get_position_elements(table_body_css)
-            print(f"[DEBUG] 取得されたポジション一覧: {positions}")
             
             # 指定された銘柄コードの建玉がない場合
             if not positions or symbol_code not in positions:
                 return OrderResult(
                     success=False,
-                    message=f"{symbol_code}: 該当する建玉が見つかりません（取得されたポジション: {list(positions.keys()) if positions else 'なし'}）",
+                    message=f"{symbol_code}: 該当する建玉が見つかりません",
                     error_code="POSITION_NOT_FOUND"
                 )
             
             # 指定された銘柄の建玉の要素番号を取得
             element_num = positions[symbol_code]
-            print(f"[DEBUG] {symbol_code}の要素番号: {element_num}")
             
             # 決済画面に遷移
             await self._navigate_to_position_settlement(element_num, table_body_css)
@@ -226,6 +222,7 @@ class SBIOrderExecutor(IOrderExecutor):
             if unit is None:
                 await named_tab.tab.utils.click_element('input[value="全株指定"]', is_css=True)
             else:
+                # 特定の株数を指定する場合の処理
                 await named_tab.tab.utils.send_keys_to_element('input[name="input_settlement_quantity"]',
                                                             is_css=True, 
                                                             keys=str(unit))
@@ -570,23 +567,15 @@ class SBIOrderExecutor(IOrderExecutor):
         element = element.parent.parent.children[1]
         return re.sub(r'\s+', '', element.text)
     
-    #TODO デバッグ処理の結果をclaudeに投げる
     async def _get_position_elements(self, table_body_css: str) -> dict:
-        """建玉一覧の要素番号を取得（デバッグ強化版）"""
+        """建玉一覧の要素番号を取得"""
         named_tab = self.browser_manager.get_tab('SBI')
         positions = {}
         
         try:
-            print(f"[DEBUG] 使用するCSSセレクタ: {table_body_css}")
-            
-            # 待機時間を追加
-            await named_tab.tab.utils.wait(3)
-            
             rows = await named_tab.tab.utils.query_selector(f'{table_body_css} > tr', is_all=True)
-            print(f"[DEBUG] 取得した行数: {len(rows) if rows else 0}")
             
             if not rows:
-                print("[DEBUG] 行が見つかりません。別のセレクタを試します...")
                 # 代替セレクタを試す
                 alternative_selectors = [
                     'table tbody tr',
@@ -597,22 +586,18 @@ class SBIOrderExecutor(IOrderExecutor):
                 for alt_selector in alternative_selectors:
                     rows = await named_tab.tab.utils.query_selector(alt_selector, is_all=True)
                     if rows:
-                        print(f"[DEBUG] 代替セレクタで成功: {alt_selector}, 行数: {len(rows)}")
                         break
             
             if rows:
                 for idx, row in enumerate(rows):
-                    # 旧方式と同様の方法でテキストを取得
                     try:
+                        # text_allプロパティを優先的に使用、なければget_text()を使用
                         row_text = row.text_all if hasattr(row, 'text_all') else await row.get_text()
-                        print(f"[DEBUG] 行{idx}: {row_text[:100]}...")  # 最初の100文字のみ表示
                         
                         if '返買' in row_text or '返売' in row_text:
-                            print(f"[DEBUG] 決済対象行を発見: 行{idx}")
-                            
-                            # 銘柄コードを抽出（複数パターンを試す）
+                            # 複数のパターンで銘柄コードを抽出
                             code_patterns = [
-                                r'(\d{4})',  # 4桁数字
+                                r'(\d{4})',  # 基本的な4桁数字
                                 r'([0-9]{4})',  # 4桁数字（別表現）
                                 r'(\d{4})\s*[^\d]',  # 4桁数字の後に非数字
                             ]
@@ -622,22 +607,17 @@ class SBIOrderExecutor(IOrderExecutor):
                                 code_match = re.search(pattern, row_text)
                                 if code_match:
                                     code = code_match.group(1)
-                                    print(f"[DEBUG] 銘柄コード抽出成功: {code}")
                                     break
                             
                             if code:
                                 positions[code] = idx + 1
-                            else:
-                                print(f"[DEBUG] 銘柄コードが抽出できませんでした: {row_text}")
                                 
                     except Exception as e:
-                        print(f"[DEBUG] 行{idx}の処理でエラー: {e}")
+                        # 個別の行で問題があっても処理を継続
                         continue
-            
-            print(f"[DEBUG] 最終的に抽出されたポジション: {positions}")
-            
+                        
         except Exception as e:
-            print(f"[DEBUG] _get_position_elements全体でエラー: {e}")
+            print(f"建玉要素の取得中にエラーが発生しました: {e}")
             import traceback
             traceback.print_exc()
             
