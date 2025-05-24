@@ -567,5 +567,7 @@ if __name__ == "__main__":
     new_sector_price = pd.read_parquet(SECTOR_INDEX_PARQUET)
     new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
     print(new_sector_price.head())
-    mydict = compare_legacy_vs_new_system(new_sector_price, new_sector_list, stock_dfs_dict)
+    myfacade = create_legacy_facade(use_new_system=True, validate_consistency=False)
+    mydict = myfacade.calculate_features(new_sector_price, new_sector_list, stock_dfs_dict)
     print(mydict)
+    #TODO ランク特徴量がおかしい。修正しよう。

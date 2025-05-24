@@ -75,6 +75,10 @@ class FlagManager(metaclass=SingletonMeta):
         self.flags[Flags.UPDATE_MODELS] = \
             any(self.flags[flag] for flag in [Flags.LEARN, Flags.PREDICT, Flags.TAKE_NEW_POSITIONS])
   
+    def get_flag(self, flag: Flags):
+        """現在のフラグ状態を取得"""
+        return self.flags[flag]
+
     def get_flags(self):
         """現在のフラグ状態を取得"""
         return self.flags
