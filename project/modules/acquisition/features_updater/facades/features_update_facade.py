@@ -379,7 +379,7 @@ if __name__ == '__main__':
         # 全特徴量更新（ドライラン）
         
         print("\n=== 全特徴量更新（ドライラン） ===")
-        summary = await facade.update_all(dry_run=False)
+        summary = await facade.update_all(dry_run=True)
         print(f"ドライラン結果: {summary}")
         
         '''

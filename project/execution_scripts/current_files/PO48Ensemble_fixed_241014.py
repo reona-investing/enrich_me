@@ -20,7 +20,7 @@ import models.ensemble as ensembles
 
 from trading import TradingFacade
 from acquisition.jquants_api_operations import StockAcquisitionFacade
-from acquisition.features_updater import FeaturesUpdateFacade
+from acquisition.features_updater.facades import FeaturesUpdateFacade
 
 from utils.error_handler import error_handler
 import asyncio
