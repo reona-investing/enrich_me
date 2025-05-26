@@ -47,7 +47,7 @@ def prepare_test_data() -> Dict[str, pd.DataFrame]:
     print("テストデータを準備しています...")
     
     # プロジェクト内のモジュールをインポート
-    from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.facades.stock_acquisition_facade import StockAcquisitionFacade
     from calculation.sector_index_calculator import SectorIndexCalculator
     from calculation.target_calculator import TargetCalculator
     from calculation.features_calculator import FeaturesCalculator
@@ -135,7 +135,7 @@ def run_original_ensemble(test_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
     # 元のモジュールをインポート
     from models import MLDataset
     from models.machine_learning import LassoModel, LgbmModel
-    import models.ensemble as ensemble
+    import models.ensemble as ensembles
     from models.loader import load_datasets
     
     # テスト用のパス
@@ -233,7 +233,7 @@ def run_original_ensemble(test_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
     print("アンサンブルを実行しています...")
     ensemble_weights = [6.7, 1.3]
     ensemble_inputs = [(pred_result_df1, ensemble_weights[0]), (pred_result_df2, ensemble_weights[1])]
-    ensembled_pred_df = ensemble.by_rank(inputs=ensemble_inputs)
+    ensembled_pred_df = ensembles.by_rank(inputs=ensemble_inputs)
     
     # ターゲット列を追加
     ensembled_result_df = test_data['target_df'].loc[ensembled_pred_df.index, ['Target']].copy()

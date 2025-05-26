@@ -35,20 +35,20 @@ class SBIBrowserManager(BrowserManager):
         except:
             device_code = await auth_code_getter()
             await named_tab.tab.utils.send_keys_to_element('input[name="device_code"]', is_css=False, keys=device_code)
-            await named_tab.tab.utils.click_element('input[value="登録"]')
+            await named_tab.tab.utils.click_element('input[value="登録"]', is_css=True)
             await named_tab.tab.utils.wait_for('ログアウト', timeout=10)
             
 
         
     async def _input_credentials(self, named_tab: NamedTab):
-        username_col = await named_tab.tab.utils.wait_for('input[name="user_id"]')
+        username_col = await named_tab.tab.utils.wait_for('input[name="user_id"]', is_css=True)
         username = os.getenv('SBI_USERNAME')
         if username is None:
             raise Exception('環境変数"SBI_USERNAME"が見つかりません。')
         else:
             await username_col.send_keys(username)
         
-        password_col = await named_tab.tab.utils.wait_for('input[name="user_password"]')
+        password_col = await named_tab.tab.utils.wait_for('input[name="user_password"]', is_css=True)
         password = os.getenv('SBI_LOGINPASS')
         if password is None:
             raise Exception('環境変数"SBI_LOGINPASS"が見つかりません。')

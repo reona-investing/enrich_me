@@ -13,10 +13,10 @@ import pandas as pd
 from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
-from models.dataset import MLDataset
+from models import MLDataset
 from models.loader import load_datasets
 from models.machine_learning import LassoModel, LgbmModel
-import models.ensemble as ensemble
+import models.ensemble as ensembles
 
 from trading import TradingFacade
 from acquisition.jquants_api_operations import StockAcquisitionFacade
@@ -126,7 +126,7 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
 
 def ensemble_pred_results(ensemble_inputs: list[pd.DataFrame, float]) -> pd.DataFrame:
     ensembled_pred_df = ensemble_inputs[0][0][['Target']]
-    ensembled_pred_df['Pred'] = ensemble.by_rank(inputs = ensemble_inputs)
+    ensembled_pred_df['Pred'] = ensembles.by_rank(inputs = ensemble_inputs)
     return ensembled_pred_df
 
 
