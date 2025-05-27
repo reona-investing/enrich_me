@@ -12,13 +12,16 @@ from datetime import datetime
 import pandas as pd
 from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
-from acquisition.features_updater import FeaturesUpdater
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
-from models.dataset import MLDataset
+from models import MLDataset
 from models.loader import load_datasets
 from models.machine_learning import LassoModel, LgbmModel
-import models.ensemble as ensemble
-from facades import TradingFacade, StockAcquisitionFacade
+import models.ensemble as ensembles
+
+from trading import TradingFacade
+from acquisition.jquants_api_operations import StockAcquisitionFacade
+from acquisition.features_updater.facades import FeaturesUpdateFacade
+
 from utils.error_handler import error_handler
 import asyncio
 
@@ -30,7 +33,7 @@ async def read_and_update_data(filter: str) -> dict:
     stock_dfs_dict = StockAcquisitionFacade(update=update, process=process, filter = filter).get_stock_data_dict()
     if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.FETCH_DATA]:    
         '''各種金融データ取得or読み込み'''
-        fu = FeaturesUpdater()
+        fu = FeaturesUpdateFacade()
         await fu.update_all()
         Slack.send_message(message = 'データの更新が完了しました。')
     return stock_dfs_dict
@@ -123,7 +126,7 @@ def update_2nd_model(ml_dataset1: MLDataset, ml_dataset2: MLDataset,
 
 def ensemble_pred_results(ensemble_inputs: list[pd.DataFrame, float]) -> pd.DataFrame:
     ensembled_pred_df = ensemble_inputs[0][0][['Target']]
-    ensembled_pred_df['Pred'] = ensemble.by_rank(inputs = ensemble_inputs)
+    ensembled_pred_df['Pred'] = ensembles.by_rank(inputs = ensemble_inputs)
     return ensembled_pred_df
 
 

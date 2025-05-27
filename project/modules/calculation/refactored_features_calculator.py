@@ -861,7 +861,7 @@ def main(price_df: pd.DataFrame, fin_df: pd.DataFrame, is_sector: bool, code_col
 
 # セクターを設定しない場合の使用方法
 if __name__ == '__main__':
-    from facades.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.facades.stock_acquisition_facade import StockAcquisitionFacade
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
     stock_dfs = acq.get_stock_data_dict()
 
@@ -872,7 +872,7 @@ if __name__ == '__main__':
 
 # セクターを設定する場合の使用方法
 if __name__ == '__main__':
-    from facades.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.facades.stock_acquisition_facade import StockAcquisitionFacade
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
     stock_dfs = acq.get_stock_data_dict()
 

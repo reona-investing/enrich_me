@@ -4,19 +4,19 @@ import pandas as pd
 from typing import Tuple
 from datetime import datetime
 from IPython.display import display
-from trading.sbi import MarginManager, HistoryManager
+from trading.sbi import HistoryManager
+from trading.sbi.common.interface import IMarginProvider
 from utils.paths import Paths
-#from sbi_trading_logic.order_maker import NewOrderMaker
 
 
 class HistoryUpdater:
-    def __init__(self, history_manager:HistoryManager, margin_manager: MarginManager,
+    def __init__(self, history_manager:HistoryManager, margin_provider: IMarginProvider,
                  sector_list_path: str, 
                  trade_history_path: str = Paths.TRADE_HISTORY_CSV, 
                  buying_power_history_path: str = Paths.BUYING_POWER_HISTORY_CSV, 
                  deposit_history_path: str = Paths.DEPOSIT_HISTORY_CSV):
         self.history_manager = history_manager
-        self.margin_manager = margin_manager
+        self.margin_provider = margin_provider
         self.sector_list_path = sector_list_path
         self.trade_history_path = trade_history_path
         self.buying_power_history_path = buying_power_history_path
@@ -33,7 +33,7 @@ class HistoryUpdater:
             str: 直近の損益率
         '''
         trade_history = await self._update_trade_history(self.trade_history_path, self.sector_list_path, self.history_manager)
-        buying_power_history = await self._update_buying_power_history(self.buying_power_history_path, trade_history, self.history_manager, self.margin_manager)
+        buying_power_history = await self._update_buying_power_history(self.buying_power_history_path, trade_history, self.history_manager, self.margin_provider)
         deposit_history = await self._update_deposit_history(self.deposit_history_path, buying_power_history, self.history_manager)
 
         amount, rate = self._show_latest_result(trade_history)
@@ -88,7 +88,7 @@ class HistoryUpdater:
 
     async def _update_buying_power_history(self,
                                         buying_power_history_path: str, trade_history: pd.DataFrame, 
-                                        history_manager: HistoryManager, margin_manager: MarginManager) -> pd.DataFrame:
+                                        history_manager: HistoryManager, margin_provider: IMarginProvider) -> pd.DataFrame:
         '''
         実行時点での買付余力を取得し、dfに反映します。
         buying_power_history_path：買付余力の推移を記録したdfのファイルパス
@@ -97,14 +97,15 @@ class HistoryUpdater:
         buying_power_history['日付'] = pd.to_datetime(buying_power_history['日付']).dt.date
 
         # 買付余力の取得
-        await margin_manager.fetch()
+        buying_power = await margin_provider.get_available_margin()
+
         # 今日の日付の行がなければ追加、あれば更新
         today = datetime.today().date()
         if buying_power_history[buying_power_history['日付'] == today].empty:
-            new_row = pd.DataFrame([[today, margin_manager.buying_power]], columns=['日付', '買付余力'])
+            new_row = pd.DataFrame([[today, buying_power]], columns=['日付', '買付余力'])
             buying_power_history = pd.concat([buying_power_history, new_row], axis=0).reset_index(drop=True)
         else:
-            buying_power_history.loc[buying_power_history['日付']==today, '買付余力'] = margin_manager.buying_power
+            buying_power_history.loc[buying_power_history['日付']==today, '買付余力'] = buying_power
 
         # 取引がなかった日の行を除去する。
         days_traded = trade_history['日付'].unique()
@@ -171,10 +172,11 @@ class HistoryUpdater:
 
 if __name__ == '__main__':
     from trading.sbi import LoginHandler
+    from trading.sbi.common.provider import SBIMarginProvider
     import asyncio
     sector_path = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
     lh = LoginHandler()
     hm = HistoryManager(lh)
-    mm = MarginManager(lh)
+    mm = SBIMarginProvider(lh)
     hu = HistoryUpdater(hm, mm, sector_path)
     _, _, _, _, _ = asyncio.run(hu.update_information())

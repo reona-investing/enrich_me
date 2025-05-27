@@ -23,9 +23,12 @@ class SectorIndexCalculator:
             SectorIndexCalculator._col_names = (fin_cols, price_cols, sector_cols)
         return SectorIndexCalculator._col_names
 
+    # ========================================
+    # パブリックメソッド（外部から呼び出し可能）
+    # ========================================
 
     @staticmethod
-    def calc_sector_index(stock_dfs_dict:dict, SECTOR_REDEFINITIONS_CSV:str, SECTOR_INDEX_PARQUET:str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def calc_sector_index(stock_dfs_dict: dict, SECTOR_REDEFINITIONS_CSV: str, SECTOR_INDEX_PARQUET: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         '''
         セクターインデックスを算出します。
         Args:
@@ -39,21 +42,51 @@ class SectorIndexCalculator:
         _, price_col, sector_col = SectorIndexCalculator._get_column_names()
         stock_price = stock_dfs_dict['price']
         stock_fin = stock_dfs_dict['fin']
-        #価格情報に発行済み株式数の情報を結合
+        
+        # 価格情報に発行済み株式数の情報を結合
         stock_price_for_order = SectorIndexCalculator.calc_marketcap(stock_price, stock_fin)
-        #インデックス値の算出
-        new_sector_price = SectorIndexCalculator._calc_index_value(stock_price_for_order, SECTOR_REDEFINITIONS_CSV)
-        #データフレームを保存して、インデックスを設定
+        
+        # セクター定義を読み込み、株価データと結合
+        sector_price_data = SectorIndexCalculator._prepare_sector_data_from_csv(stock_price_for_order, SECTOR_REDEFINITIONS_CSV)
+        
+        # 共通のインデックス計算処理
+        new_sector_price = SectorIndexCalculator._calculate_sector_aggregation(sector_price_data)
+        
+        # データフレームを保存して、インデックスを設定
         new_sector_price = new_sector_price.reset_index()
         new_sector_price.to_parquet(SECTOR_INDEX_PARQUET)
-        new_sector_price = new_sector_price.set_index([sector_col['日付'],  sector_col['セクター']])
+        new_sector_price = new_sector_price.set_index([sector_col['日付'], sector_col['セクター']])
 
-        stock_price_for_order = \
-            stock_price_for_order[[sector_col['日付'],  sector_col['銘柄コード'],  sector_col['終値時価総額'], sector_col['終値'], price_col['取引高']]]
+        stock_price_for_order = stock_price_for_order[[
+            sector_col['日付'], sector_col['銘柄コード'], sector_col['終値時価総額'], 
+            sector_col['終値'], price_col['取引高']
+        ]]
         print('セクターのインデックス値の算出が完了しました。')
-        #TODO 2つのデータフレームを返す関数は分けたほうがよさそう。
-
+        
         return new_sector_price, stock_price_for_order
+
+    @staticmethod
+    def calc_sector_index_by_dict(sector_stock_dict: dict, stock_price_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        セクター名をキーとし、そのセクターに属する銘柄コードの配列を値とする辞書から
+        セクターインデックスを算出します。同じ銘柄コードが複数のセクターに含まれる場合も対応します。
+        
+        Args:
+            sector_stock_dict (dict): セクター名をキー、銘柄コード配列を値とする辞書
+                                    例: {'JPY感応株': ['6758', '6501', '6702'], 
+                                        'JPbond感応株': ['6751', '8306', '8316', '8411']}
+            stock_price_data (pd.DataFrame): 株価データ（SectorIndexCalculator.calc_marketcapの出力と同じ構造）
+            
+        Returns:
+            pd.DataFrame: セクターインデックスのデータフレーム
+        """
+        # セクター定義を辞書から作成し、株価データと結合
+        sector_price_data = SectorIndexCalculator._prepare_sector_data_from_dict(stock_price_data, sector_stock_dict)
+        
+        # 共通のインデックス計算処理
+        sector_index = SectorIndexCalculator._calculate_sector_aggregation(sector_price_data)
+        
+        return sector_index
 
     @staticmethod
     def calc_marketcap(stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
@@ -75,6 +108,135 @@ class SectorIndexCalculator:
         stock_price_cap = SectorIndexCalculator._calc_correction_value(stock_price_cap)
         
         return stock_price_cap
+
+    # ========================================
+    # セクターインデックス計算の共通処理
+    # ========================================
+
+    @staticmethod
+    def _calculate_sector_aggregation(sector_price_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        セクターごとの集計とインデックス計算を行う共通処理
+        
+        Args:
+            sector_price_data (pd.DataFrame): セクター情報が付与された株価データ
+            
+        Returns:
+            pd.DataFrame: セクターインデックス
+        """
+        _, _, sector_col = SectorIndexCalculator._get_column_names()
+        
+        # セクターごとに集計
+        columns_to_sum = [
+            sector_col['始値時価総額'], sector_col['終値時価総額'], sector_col['高値時価総額'], 
+            sector_col['安値時価総額'], sector_col['発行済み株式数'], sector_col['指数算出用の補正値']
+        ]
+        
+        sector_index = sector_price_data.groupby([sector_col['日付'], sector_col['セクター']])[columns_to_sum].sum()
+        
+        # 1日リターンの計算
+        sector_index[sector_col['1日リターン']] = sector_index[sector_col['終値時価総額']] / (
+            sector_index.groupby(sector_col['セクター'])[sector_col['終値時価総額']].shift(1) + 
+            sector_index[sector_col['指数算出用の補正値']]
+        ) - 1
+
+        sector_index[sector_col['終値前日比']] = 1 + sector_index[sector_col['1日リターン']]
+        
+        # 終値の計算（累積積）
+        sector_index[sector_col['終値']] = sector_index.groupby(sector_col['セクター'])[sector_col['終値前日比']].cumprod()
+        
+        # OHLC計算の共通処理
+        sector_index = SectorIndexCalculator._calculate_ohlc(sector_index)
+        
+        return sector_index
+
+    @staticmethod
+    def _calculate_ohlc(sector_index: pd.DataFrame) -> pd.DataFrame:
+        """
+        始値、高値、安値の計算を行う共通処理
+        
+        Args:
+            sector_index (pd.DataFrame): 終値が計算済みのセクターインデックス
+            
+        Returns:
+            pd.DataFrame: OHLC計算済みのセクターインデックス
+        """
+        _, _, sector_col = SectorIndexCalculator._get_column_names()
+        
+        # 始値、高値、安値の計算
+        sector_index[sector_col['始値']] = (
+            sector_index[sector_col['終値']] * 
+            sector_index[sector_col['始値時価総額']] / 
+            sector_index[sector_col['終値時価総額']]
+        ).replace([np.inf, -np.inf], np.nan).fillna(1.0)
+        
+        sector_index[sector_col['高値']] = (
+            sector_index[sector_col['終値']] * 
+            sector_index[sector_col['高値時価総額']] / 
+            sector_index[sector_col['終値時価総額']]
+        ).replace([np.inf, -np.inf], np.nan).fillna(1.0)
+        
+        sector_index[sector_col['安値']] = (
+            sector_index[sector_col['終値']] * 
+            sector_index[sector_col['安値時価総額']] / 
+            sector_index[sector_col['終値時価総額']]
+        ).replace([np.inf, -np.inf], np.nan).fillna(1.0)
+        
+        return sector_index
+
+    @staticmethod
+    def _prepare_sector_data_from_csv(stock_price_data: pd.DataFrame, SECTOR_REDEFINITIONS_CSV: str) -> pd.DataFrame:
+        """
+        CSVファイルからセクター定義を読み込み、株価データと結合する
+        
+        Args:
+            stock_price_data (pd.DataFrame): 株価データ
+            SECTOR_REDEFINITIONS_CSV (str): セクター定義CSVファイルのパス
+            
+        Returns:
+            pd.DataFrame: セクター情報が付与された株価データ
+        """
+        _, _, sector_col = SectorIndexCalculator._get_column_names()
+        
+        new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV).dropna(how='any', axis=1)
+        new_sector_list[sector_col['銘柄コード']] = new_sector_list[sector_col['銘柄コード']].astype(str)
+        sector_price_data = pd.merge(new_sector_list, stock_price_data, how='right', on=sector_col['銘柄コード'])
+        
+        return sector_price_data
+
+    @staticmethod
+    def _prepare_sector_data_from_dict(stock_price_data: pd.DataFrame, sector_stock_dict: dict) -> pd.DataFrame:
+        """
+        辞書からセクター定義を作成し、株価データと結合する
+        
+        Args:
+            stock_price_data (pd.DataFrame): 株価データ
+            sector_stock_dict (dict): セクター定義辞書
+            
+        Returns:
+            pd.DataFrame: セクター情報が付与された株価データ
+        """
+        _, _, sector_col = SectorIndexCalculator._get_column_names()
+        
+        # セクター定義を一時的なデータフレームに変換
+        sector_definitions = []
+        for sector_name, stock_codes in sector_stock_dict.items():
+            for code in stock_codes:
+                sector_definitions.append({
+                    sector_col['銘柄コード']: str(code),
+                    sector_col['セクター']: sector_name
+                })
+        
+        sector_df = pd.DataFrame(sector_definitions)
+        
+        # 株価データとセクター定義を結合
+        sector_price_data = pd.merge(sector_df, stock_price_data, how='inner', on=sector_col['銘柄コード'])
+        
+        return sector_price_data
+
+    # ========================================
+    # 時価総額計算関連のプライベートメソッド
+    # ========================================
 
     @staticmethod
     def _merge_stock_price_and_shares(stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
@@ -167,6 +329,10 @@ class SectorIndexCalculator:
                                   price_col['安値']: sector_col['安値']})
         merged_df['isSettlementDay'] = merged_df['isSettlementDay'].astype(bool).fillna(False)
         return merged_df
+
+    # ========================================
+    # 株式分割・併合調整関連のプライベートメソッド
+    # ========================================
 
     @staticmethod
     def _calc_adjustment_factor(stock_price_with_shares: pd.DataFrame, stock_price: pd.DataFrame) -> pd.DataFrame:
@@ -300,6 +466,10 @@ class SectorIndexCalculator:
         #不要行の削除
         return df.drop(['SharesRate', 'CumulativeSharesRate'], axis=1)
 
+    # ========================================
+    # 時価総額・補正値計算関連のプライベートメソッド
+    # ========================================
+
     @staticmethod
     def _calc_marketcap(df: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -333,120 +503,9 @@ class SectorIndexCalculator:
         df[sector_col['指数算出用の補正値']] = df[ sector_col['終値時価総額']] - df['MarketCapClose_forCorrection']
         return df
 
-    @staticmethod
-    def _calc_index_value(stock_price: pd.DataFrame, SECTOR_REDEFINITIONS_CSV:str) -> pd.DataFrame:
-        '''
-        指標を算出します。
-        Args:
-            stock_price (pd.DataFrame): 価格情報に時価総額と指数算出補正値を併記
-            SECTOR_REDEFINITIONS_CSV (str): セクター定義の設定ファイルのパス
-        Returns:
-            pd.DataFrame: セクターインデックス
-        '''
-        _, _, sector_col = SectorIndexCalculator._get_column_names()
-        new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV).dropna(how='any', axis=1)
-        new_sector_list[sector_col['銘柄コード']] = new_sector_list[sector_col['銘柄コード']].astype(str)
-        new_sector_price = pd.merge(new_sector_list, stock_price, how='right', on= sector_col['銘柄コード'])
-        # TODO SECTOR_REDEFINITIONS_CSVのyamlデータも作らないといけない。
-
-        #必要列を抜き出したデータフレームを作る。
-        new_sector_price = new_sector_price.groupby([sector_col['日付'],  sector_col['セクター']])\
-        [[sector_col['始値時価総額'], sector_col['終値時価総額'], sector_col['高値時価総額'], sector_col['安値時価総額'], sector_col['発行済み株式数'], sector_col['指数算出用の補正値']]].sum()
-        new_sector_price[sector_col['1日リターン']] = new_sector_price[ sector_col['終値時価総額']] \
-                                        / (new_sector_price.groupby( sector_col['セクター'])[ sector_col['終値時価総額']].shift(1) \
-                                        + new_sector_price[sector_col['指数算出用の補正値']]) - 1
-        new_sector_price[sector_col['終値前日比']] = 1 + new_sector_price[sector_col['1日リターン']]
-
-        #初日の終値を1とすると、各日の終値は1d_rateのcumprodで求められる。→OHLは、Cとの比率で求められる。
-        new_sector_price[sector_col['終値']] = new_sector_price.groupby( sector_col['セクター'])[sector_col['終値前日比']].cumprod()
-        new_sector_price[sector_col['始値']] = \
-            new_sector_price[sector_col['終値']] * new_sector_price[sector_col['始値時価総額']] / new_sector_price[sector_col['終値時価総額']]
-        new_sector_price[sector_col['高値']] = \
-            new_sector_price[sector_col['終値']] * new_sector_price[sector_col['高値時価総額']] / new_sector_price[sector_col['終値時価総額']]
-        new_sector_price[sector_col['安値']] = \
-            new_sector_price[sector_col['終値']] * new_sector_price[sector_col['安値時価総額']] / new_sector_price[sector_col['終値時価総額']]
-
-        return new_sector_price
-
-
-    @staticmethod
-    def calc_sector_index_by_dict(sector_stock_dict: dict, stock_price_data: pd.DataFrame) -> pd.DataFrame:
-        """
-        セクター名をキーとし、そのセクターに属する銘柄コードの配列を値とする辞書から
-        セクターインデックスを算出します。同じ銘柄コードが複数のセクターに含まれる場合も対応します。
-        
-        Args:
-            sector_stock_dict (dict): セクター名をキー、銘柄コード配列を値とする辞書
-                                    例: {'JPY感応株': ['6758', '6501', '6702'], 
-                                        'JPbond感応株': ['6751', '8306', '8316', '8411']}
-            stock_price_data (pd.DataFrame): 株価データ（SectorIndexCalculator.calc_marketcapの出力と同じ構造）
-            
-        Returns:
-            pd.DataFrame: セクターインデックスのデータフレーム
-        """
-        _, _, sector_col = SectorIndexCalculator._get_column_names()
-        
-        # セクター定義を一時的なデータフレームに変換
-        sector_definitions = []
-        for sector_name, stock_codes in sector_stock_dict.items():
-            for code in stock_codes:
-                sector_definitions.append({
-                    sector_col['銘柄コード']: str(code),
-                    sector_col['セクター']: sector_name
-                })
-        
-        sector_df = pd.DataFrame(sector_definitions)
-        
-        # 株価データとセクター定義を結合
-        # 同じ銘柄コードが複数のセクターに属する場合、そのデータが複製される
-        sector_price = pd.merge(sector_df, stock_price_data, how='inner', on=sector_col['銘柄コード'])
-        
-        # セクターごとに集計
-        columns_to_sum = [
-            sector_col['始値時価総額'], sector_col['終値時価総額'], sector_col['高値時価総額'], sector_col['安値時価総額'], 
-            sector_col['発行済み株式数'], sector_col['指数算出用の補正値']
-        ]
-        
-        sector_index = sector_price.groupby([sector_col['日付'], sector_col['セクター']])[columns_to_sum].sum()
-        
-        # 1日リターンの計算
-        sector_index[sector_col['1日リターン']] = sector_index[sector_col['終値時価総額']] / (
-            sector_index.groupby(sector_col['セクター'])[sector_col['終値時価総額']].shift(1) + 
-            sector_index[sector_col['指数算出用の補正値']]
-        ) - 1
-
-        sector_index[sector_col['終値前日比']] = 1 + sector_index[sector_col['1日リターン']]
-        
-        # 終値、始値、高値、安値の計算
-        sector_index[sector_col['終値']] = sector_index.groupby(sector_col['セクター'])[sector_col['終値前日比']].cumprod()
-
-        # 初日の終値を1に設定
-        sector_index.loc[sector_index['Close'].isna(), 'Close'] = 1.0
-
-        # NaNや無限大の値が生じる可能性があるので、それらを処理
-        sector_index[sector_col['始値']] = (
-            sector_index[sector_col['終値']] * 
-            sector_index[sector_col['始値時価総額']] / 
-            sector_index[sector_col['終値時価総額']]
-        ).replace([np.inf, -np.inf], np.nan).fillna(1.0)
-        
-        sector_index[sector_col['高値']] = (
-            sector_index[sector_col['終値']] * 
-            sector_index[sector_col['高値時価総額']] / 
-            sector_index[sector_col['終値時価総額']]
-        ).replace([np.inf, -np.inf], np.nan).fillna(1.0)
-        
-        sector_index[sector_col['安値']] = (
-            sector_index[sector_col['終値']] * 
-            sector_index[sector_col['安値時価総額']] / 
-            sector_index[sector_col['終値時価総額']]
-        ).replace([np.inf, -np.inf], np.nan).fillna(1.0)
-        
-        return sector_index
-
 
 if __name__ == '__main__':
-    from facades.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.facades import StockAcquisitionFacade
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))")
     stock_dfs = acq.get_stock_data_dict()
 
