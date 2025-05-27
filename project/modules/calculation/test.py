@@ -13,7 +13,7 @@ if module_path not in sys.path:
 # リファクタリング前後のモジュールをインポート
 from calculation.features_calculator import FeaturesCalculator as OldFeaturesCalculator
 from calculation.refactored_features_calculator import main as new_features_calculator_main
-from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
+from acquisition.jquants_api_operations.facades import StockAcquisitionFacade
 from utils.paths import Paths
 from calculation.sector_index_calculator import SectorIndexCalculator
 

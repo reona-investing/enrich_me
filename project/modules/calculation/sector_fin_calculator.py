@@ -89,7 +89,7 @@ class SectorFinCalculator:
 
 
 if __name__ == '__main__':
-    from acquisition.jquants_api_operations.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.facades import StockAcquisitionFacade
     sector_dif_info = pd.read_csv(f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv')
 
     saf = StockAcquisitionFacade(filtered_code_list=sector_dif_info['Code'].astype(str))
