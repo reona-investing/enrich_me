@@ -88,4 +88,8 @@ class FeatureHistoricalScraper:
             except:
                 continue
 
+        # 4桁以上の値にカンマが入っているため、そのままだとstr型になってしまう。
+        df[['Open', 'Close', 'High', 'Low']] =df[['Open', 'Close', 'High', 'Low']].replace(',', '', regex=True).astype(float)
+        
+
         return df[['Date', 'Open', 'Close', 'High', 'Low']].sort_values(by='Date', ascending=True)

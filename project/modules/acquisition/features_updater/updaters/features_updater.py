@@ -7,52 +7,30 @@ from utils.browser.browser_manager import BrowserManager
 from utils.paths import Paths
 from acquisition.features_updater.scrapers import FeatureScraper
 from acquisition.features_updater.mergers import FeatureDataMerger
+from acquisition.features_updater.validators import FeatureDataValidator
 
 
 class FeatureUpdater:
     """特徴量データ更新の一連のフローを統合管理するクラス"""
     
     def __init__(self, browser_manager: BrowserManager, base_data_folder: str = None):
-        """
-        Args:
-            browser_manager (BrowserManager): ブラウザ管理インスタンス
-            base_data_folder (str, optional): データ保存基底フォルダ。Noneの場合はPathsを使用
-        """
         self.browser_manager = browser_manager
         self.feature_scraper = FeatureScraper(browser_manager)
         self.feature_merger = FeatureDataMerger()
+        self.feature_validator = FeatureDataValidator()  # バリデーターを追加
         self.base_data_folder = base_data_folder or Paths.SCRAPED_DATA_FOLDER
-        
-        # ログ設定
         self.logger = logging.getLogger(__name__)
         
     async def update_single_feature(self, 
                                     feature_config: Dict[str, Any],
                                     save_data: bool = True,
                                     validate_data: bool = True) -> pd.DataFrame:
-        """
-        単一特徴量のデータを更新
-        
-        Args:
-            feature_config (Dict): 特徴量設定
-                - name (str): 特徴量名
-                - investing_code (str): investing.comのコード
-                - additional_scrape (str): 追加データソース ('None', 'Baltic', 'Tradingview', 'ARCA')
-                - additional_code (str): 追加データソースのコード
-                - category (str): データカテゴリ (e.g., 'currency', 'commodity')
-                - file_name (str): 保存ファイル名
-            save_data (bool): データを保存するかどうか
-            validate_data (bool): データ整合性を検証するかどうか
-            
-        Returns:
-            pd.DataFrame: 更新された特徴量データ
-        """
+        """単一特徴量のデータを更新"""
         try:
             feature_name = feature_config['name']
             self.logger.info(f"特徴量 '{feature_name}' の更新を開始")
             
             # 新しいデータをスクレイピング
-            self.logger.info(f"'{feature_name}' のスクレイピング開始")
             new_scraped_df = await self.feature_scraper.scrape_feature(
                 investing_code=feature_config['investing_code'],
                 additional_scrape=feature_config.get('additional_scrape', 'None'),
@@ -63,20 +41,28 @@ class FeatureUpdater:
                 self.logger.warning(f"'{feature_name}' のスクレイピングでデータが取得できませんでした")
                 return pd.DataFrame()
             
-            self.logger.info(f"'{feature_name}' のスクレイピング完了: {len(new_scraped_df)} 行取得")
+            # スクレイピング直後のデータバリデーション
+            if validate_data:
+                is_valid, errors = self.feature_validator.validate_data_integrity(new_scraped_df)
+                if not is_valid:
+                    raise ValueError(f"スクレイピングデータが無効: {'; '.join(errors)}")
             
             # 既存データの読み込み
             existing_df = self._load_existing_data(feature_config)
             
             # データの結合
-            self.logger.info(f"'{feature_name}' のデータ結合開始")
             merged_df = self.feature_merger.merge_feature_data(existing_df, new_scraped_df)
             
-            # データ整合性の検証
+            # 結合後のデータバリデーション
             if validate_data:
-                if not self.feature_merger.validate_data_integrity(merged_df):
-                    raise ValueError(f"'{feature_name}' のデータ整合性検証に失敗")
-                self.logger.info(f"'{feature_name}' のデータ整合性検証成功")
+                is_valid, errors = self.feature_validator.validate_data_integrity(merged_df)
+                if not is_valid:
+                    raise ValueError(f"結合後データが無効: {'; '.join(errors)}")
+                
+                # 追加的な検証（日付連続性など）
+                is_continuous, continuity_errors = self.feature_validator.validate_date_continuity(merged_df)
+                if not is_continuous:
+                    self.logger.warning(f"日付連続性の警告: {'; '.join(continuity_errors)}")
             
             # データの保存
             if save_data:
