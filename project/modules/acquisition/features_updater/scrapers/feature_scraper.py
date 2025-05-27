@@ -2,8 +2,8 @@ from utils.browser.browser_manager import BrowserManager
 import pandas as pd
 from typing import Literal
 
-from acquisition.features_updater.scrapers._feature_historical_scraper import FeatureHistoricalScraper
-from acquisition.features_updater.scrapers._feature_latest_value_scraper import FeatureLatestValueScraper
+from acquisition.features_updater.scrapers.feature_historical import FeatureHistoricalScraper
+from acquisition.features_updater.scrapers.feature_latest_value import FeatureLatestValueScraper
 
 class FeatureScraper:
     """ヒストリカルデータと最新値データを統合するクラス"""
