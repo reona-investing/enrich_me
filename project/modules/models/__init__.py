@@ -1,10 +1,10 @@
 from .dataset import MLDataset
 from .machine_learning import LassoModel, LgbmModel
-from .ensemble import by_rank
+from .machine_learning.ensembles import EnsembleMethodFactory
 
 __all__ = [
     'MLDataset',
     'LassoModel',
     'LgbmModel',
-    'by_rank'
+    'EnsembleMethodFactory',
 ]
