@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import pandas as pd
-from models.machine_learning.trainers.outputs import TrainerOutputs
+from models.machine_learning.outputs import TrainerOutputs
 
 
 class BaseTrainer(ABC):

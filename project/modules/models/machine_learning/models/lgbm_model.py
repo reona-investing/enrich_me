@@ -1,7 +1,7 @@
 import pandas as pd
 import lightgbm as lgb
 from typing import List, Optional
-from models.machine_learning.trainers.outputs import TrainerOutputs
+from models.machine_learning.outputs import TrainerOutputs
 from models.machine_learning.models.base_model import BaseModel
 from models.machine_learning.trainers.lgbm_trainer import LgbmTrainer
 from models.machine_learning.predictors.lgbm_predictor import LgbmPredictor

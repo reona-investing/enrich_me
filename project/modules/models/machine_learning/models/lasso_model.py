@@ -2,7 +2,7 @@ import pandas as pd
 from typing import List
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
-from models.machine_learning.trainers.outputs import TrainerOutputs
+from models.machine_learning.outputs import TrainerOutputs
 from models.machine_learning.models import BaseModel
 from models.machine_learning.trainers import LassoTrainer
 from models.machine_learning.predictors import LassoPredictor

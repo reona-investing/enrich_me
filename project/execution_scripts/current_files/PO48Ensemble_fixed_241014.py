@@ -190,8 +190,7 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
                                                                          (pred_result_df2, ensemble_weights[1]),] )
             ml_dataset_ensembled = update_ensembled_model(ENSEMBLED_DATASET_PATH = ML_DATASET_ENSEMBLED_PATH, 
                                                           ensembled_pred_df = ensembled_pred_df,
-                                                          
-                                                          copy_from = ml_dataset1)  
+                                                          copy_from = ml_dataset1)
             Slack.send_message(message = f'予測が完了しました。')
         trade_facade = TradingFacade()
         '''新規建'''

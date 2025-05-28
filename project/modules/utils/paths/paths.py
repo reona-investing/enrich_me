@@ -1,7 +1,5 @@
 #%%
-import os
 from pathlib import Path
-from enum import Enum
 
 class Paths:
     # 設定ファイル・モジュール・実行ファイルはGitHubで管理するためローカルに保存

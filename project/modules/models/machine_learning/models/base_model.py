@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import pandas as pd
 from typing import Any, List, Optional
-from models.machine_learning.trainers.outputs import TrainerOutputs
+from models.machine_learning.outputs import TrainerOutputs
 
 class BaseModel(ABC):
     """機械学習モデルの抽象基底クラス"""

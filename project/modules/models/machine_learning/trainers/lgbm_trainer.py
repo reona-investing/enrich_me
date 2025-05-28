@@ -3,7 +3,7 @@ import numpy as np
 import lightgbm as lgb
 from typing import List, Optional
 from scipy.stats import norm
-from models.machine_learning.trainers.outputs import TrainerOutputs
+from models.machine_learning.outputs import TrainerOutputs
 from models.machine_learning.trainers.base_trainer import BaseTrainer
 
 

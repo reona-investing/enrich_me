@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from models.dataset import MLDataset
+from models import MLDataset
 
 def load_datasets(*dataset_paths: str, ensembled_dataset_path: str, should_learn: bool = False) -> Tuple[List[MLDataset], MLDataset]:
     """

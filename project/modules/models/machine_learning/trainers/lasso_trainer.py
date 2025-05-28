@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV
 import scipy
 from IPython.display import display
-from models.machine_learning.trainers.outputs import TrainerOutputs
+from models.machine_learning.outputs import TrainerOutputs
 from models.machine_learning.trainers.base_trainer import BaseTrainer
 
 

@@ -1,6 +1,6 @@
-from .dataset import MLDataset
-from .machine_learning import LassoModel, LgbmModel
-from .machine_learning.ensembles import EnsembleMethodFactory
+from .machine_learning import (
+    LassoModel, LgbmModel, EnsembleMethodFactory, MLDataset
+    )
 
 __all__ = [
     'MLDataset',
