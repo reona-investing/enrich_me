@@ -14,7 +14,6 @@ from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
 from models import MLDataset, EnsembleMethodFactory
-from models.loader import load_datasets
 from models.machine_learning import LassoModel, LgbmModel
 
 from trading import TradingFacade
@@ -171,9 +170,9 @@ async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_
         print(flag_manager.get_flags())
         # データセットの読み込み
         if flag_manager.flags[Flags.UPDATE_DATASET] or flag_manager.flags[Flags.UPDATE_MODELS]:
-            datasets, ml_dataset_ensembled = load_datasets(ML_DATASET_PATH1, ML_DATASET_PATH2,ensembled_dataset_path=ML_DATASET_ENSEMBLED_PATH)
-            ml_dataset1 = datasets[0]
-            ml_dataset2 = datasets[1]
+            ml_dataset1 = MLDataset(ML_DATASET_PATH1)
+            ml_dataset2 = MLDataset(ML_DATASET_PATH2)
+            ml_dataset_ensembled = MLDataset(ML_DATASET_ENSEMBLED_PATH)
             '''データの更新・読み込み'''
             stock_dfs_dict = await read_and_update_data(universe_filter)
             '''学習・予測'''
@@ -224,7 +223,7 @@ if __name__ == '__main__':
     SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
     ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250308'
     ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LGBM_learned_in_250308'
-    ML_DATASET_EMSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
+    ML_DATASET_ENSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''
@@ -243,7 +242,7 @@ if __name__ == '__main__':
 
 #%% 実行
 if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(main(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_EMSEMBLED_PATH, 
+    asyncio.get_event_loop().run_until_complete(main(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH, 
                                                      SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
                                                      universe_filter, trading_sector_num, candidate_sector_num,
                                                      train_start_day, train_end_day, test_start_day, test_end_day,
