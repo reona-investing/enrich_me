@@ -39,7 +39,8 @@ class OrderMaker:
             order_type = "指値"
             if order_type_value:
                 order_type_value = order_type_value.replace('成', '指')
-            limit_price = self._calculate_short_selling_limit_price(estimated_price)
+            if not limit_price:
+                limit_price = self._calculate_short_selling_limit_price(estimated_price)
         
         return OrderRequest(
             symbol_code=symbol_code,
@@ -62,7 +63,7 @@ class OrderMaker:
     
     def _get_margin_trade_section(self, is_borrowing_stock: bool) -> str:
         """信用取引区分を取得する"""
-        return "制度" if is_borrowing_stock else "日計り"
+        return "日計り" if is_borrowing_stock else "制度"
     
     def _calculate_short_selling_limit_price(self, price: float) -> float:
         """空売り制限価格を計算する"""
