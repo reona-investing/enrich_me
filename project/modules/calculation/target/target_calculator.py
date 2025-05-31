@@ -1,7 +1,6 @@
 from datetime import datetime
 import pandas as pd
-from preprocessing.pca_handler import PCAHandler
-#from calculation.target.pca_for_sector_target import PCAforMultiSectorTarget
+from calculation.target.pca_for_sector_target import PCAforMultiSectorTarget
 
 class TargetCalculator:
     @staticmethod
@@ -28,9 +27,8 @@ class TargetCalculator:
             tuple[pd.DataFrame, pd.DataFrame]: 生の日中リターン, PCA残差リターン
         '''
         raw_target_df = TargetCalculator.daytime_return(df)
-        target_df = PCAHandler.get_residuals_from_PCA(raw_target_df, reduce_components, train_start_day, train_end_day).sort_index(ascending=True)
-        #pca_handler = PCAforMultiSectorTarget(n_components=reduce_components, fit_start=train_start_day, fit_end=train_end_day)
-        #target_df = pca_handler.fit_transform(raw_target_df)
+        pca_handler = PCAforMultiSectorTarget(n_components=reduce_components, fit_start=train_start_day, fit_end=train_end_day)
+        target_df = pca_handler.fit_transform(raw_target_df)
         return raw_target_df, target_df
 
 #%% デバッグ
