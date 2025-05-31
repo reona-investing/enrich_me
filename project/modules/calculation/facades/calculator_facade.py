@@ -2,6 +2,7 @@ import pandas as pd
 from typing import Literal, Optional, Tuple
 from calculation.sector_index_calculator import SectorIndexCalculator
 from calculation.features_calculator import FeaturesCalculator
+from preprocessing.pipeline import PreprocessingPipeline
 
 
 class CalculatorFacade:
@@ -28,7 +29,10 @@ class CalculatorFacade:
         adopt_size_factor: bool = True,
         adopt_eps_factor: bool = True,
         adopt_sector_categorical: bool = True,
-        add_rank: bool = True
+        add_rank: bool = True,
+        # 前処理パイプラインのパラメータ
+        indices_preprocessing_pipeline: Optional[PreprocessingPipeline] = None,
+        price_preprocessing_pipeline: Optional[PreprocessingPipeline] = None
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         セクターインデックス計算と特徴量計算を一連で実行する
@@ -50,6 +54,8 @@ class CalculatorFacade:
             adopt_eps_factor (bool): EPSを特徴量とするか
             adopt_sector_categorical (bool): セクターをカテゴリ変数として採用するか
             add_rank (bool): 各日・各指標の業種別ランキングを追加するか
+            indices_preprocessing_pipeline (PreprocessingPipeline, optional): インデックス系特徴量の前処理パイプライン
+            price_preprocessing_pipeline (PreprocessingPipeline, optional): 価格系特徴量の前処理パイプライン
             
         Returns:
             Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -77,7 +83,7 @@ class CalculatorFacade:
         # 2. セクター定義の読み込み（特徴量計算用）
         new_sector_list = pd.read_csv(sector_redefinitions_csv)
         
-        # 3. 特徴量の計算
+        # 3. 特徴量の計算（前処理パイプライン付き）
         features_df = FeaturesCalculator.calculate_features(
             new_sector_price=new_sector_price,
             new_sector_list=new_sector_list,
@@ -94,7 +100,9 @@ class CalculatorFacade:
             adopt_size_factor=adopt_size_factor,
             adopt_eps_factor=adopt_eps_factor,
             adopt_sector_categorical=adopt_sector_categorical,
-            add_rank=add_rank
+            add_rank=add_rank,
+            indices_preprocessing_pipeline=indices_preprocessing_pipeline,
+            price_preprocessing_pipeline=price_preprocessing_pipeline
         )
         
         return new_sector_price, stock_price_for_order, features_df

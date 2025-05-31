@@ -62,8 +62,8 @@ class OrderMaker:
         )
     
     def _get_margin_trade_section(self, is_borrowing_stock: bool) -> str:
-        """信用取引区分を取得する"""
-        return "日計り" if is_borrowing_stock else "制度"
+        """信用取引区分を適正化する"""
+        return "日計り" if is_borrowing_stock else "制度" # 基本は"制度"で発注したいが、貸借銘柄は"日計り"しか発注できない。
     
     def _calculate_short_selling_limit_price(self, price: float) -> float:
         """空売り制限価格を計算する"""

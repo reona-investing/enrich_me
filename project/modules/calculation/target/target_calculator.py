@@ -1,6 +1,7 @@
 from datetime import datetime
 import pandas as pd
 from preprocessing.pca_handler import PCAHandler
+#from calculation.target.pca_for_sector_target import PCAforMultiSectorTarget
 
 class TargetCalculator:
     @staticmethod
@@ -28,6 +29,8 @@ class TargetCalculator:
         '''
         raw_target_df = TargetCalculator.daytime_return(df)
         target_df = PCAHandler.get_residuals_from_PCA(raw_target_df, reduce_components, train_start_day, train_end_day).sort_index(ascending=True)
+        #pca_handler = PCAforMultiSectorTarget(n_components=reduce_components, fit_start=train_start_day, fit_end=train_end_day)
+        #target_df = pca_handler.fit_transform(raw_target_df)
         return raw_target_df, target_df
 
 #%% デバッグ
@@ -37,5 +40,5 @@ if __name__ == '__main__':
     NEW_SECTOR_PRICE_PKLGZ = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/sector_price/New48sectors_price.parquet'
     df = pd.read_parquet(NEW_SECTOR_PRICE_PKLGZ)
     df = df.set_index(['Date', 'Sector'], drop=True)
-    raw_target_df, target_df = TargetCalculator.daytime_return_PCAresiduals(df, 1, datetime(2016,1,1), datetime.today())
+    raw_target_df, target_df = TargetCalculator.daytime_return_PCAresiduals(df, 1, datetime(2014,1,1), datetime(2021,12,31))
     print(target_df.tail(5))

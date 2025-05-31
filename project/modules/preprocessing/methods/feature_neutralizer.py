@@ -22,9 +22,9 @@ class FeatureNeutralizer(BasePreprocessor):
         直交化対象の列名。Noneの場合は全列を互いに直交化
     neutralize_features : str, list of str, or None
         直交化に使用する列名。target_featuresがNoneでない場合に必須
-    mode : str, default='specific'
-        'specific': 指定列を指定列で直交化
+    mode : str, default='mutual'
         'mutual': 全列を互いに直交化
+        'specific': 指定列を指定列で直交化
     copy : bool, default=True
         データをコピーするかどうか
     fit_intercept : bool, default=False
@@ -34,7 +34,7 @@ class FeatureNeutralizer(BasePreprocessor):
     def __init__(self, 
                  target_features: Union[str, List[str], None] = None,
                  neutralize_features: Union[str, List[str], None] = None,
-                 mode: str = 'specific',
+                 mode: str = 'mutual',
                  copy: bool = True,
                  fit_intercept: bool = False):
         super().__init__(copy=copy)

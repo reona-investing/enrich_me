@@ -1,10 +1,10 @@
 #%% モジュールのインポート
 from utils.paths import Paths
 import pandas as pd
-from typing import Literal
+from typing import Literal, Optional
 from calculation.sector_index_calculator import SectorIndexCalculator
+from preprocessing import PreprocessingPipeline
 
-#%% 関数群
 class FeaturesCalculator:
     @staticmethod
     def calculate_features(new_sector_price:pd.DataFrame,
@@ -22,7 +22,9 @@ class FeaturesCalculator:
                         adopt_size_factor:bool = True,
                         adopt_eps_factor:bool = True,
                         adopt_sector_categorical:bool = True,
-                        add_rank:bool = True) -> pd.DataFrame:
+                        add_rank:bool = True,
+                        indices_preprocessing_pipeline: Optional[PreprocessingPipeline] = None,
+                        price_preprocessing_pipeline: Optional[PreprocessingPipeline] = None) -> pd.DataFrame:
         """
         特徴量を計算する。
         :param pd.DataFrame new_sector_price: セクター価格
@@ -41,6 +43,8 @@ class FeaturesCalculator:
         :param bool adopt_eps_factor: （価格）EPSを特徴量とするか
         :param bool adopt_sector_categorical: （価格）セクターをカテゴリ変数として採用するか
         :param bool add_rank: （価格）各日・各指標のの業種別ランキング
+        :param Optional[PreprocessingPipeline] indices_preprocessing_pipeline: インデックス系特徴量の前処理パイプライン
+        :param Optional[PreprocessingPipeline] price_preprocessing_pipeline: 価格系特徴量の前処理パイプライン
         """
         if adopts_features_indices:
             features_to_scrape_df = \
@@ -49,6 +53,11 @@ class FeaturesCalculator:
                 FeaturesCalculator.calculate_features_indices(features_to_scrape_df=features_to_scrape_df, 
                                                               currencies_type=currencies_type, 
                                                               commodity_type=commodity_type)
+            
+            # インデックス系特徴量の前処理
+            if indices_preprocessing_pipeline is not None:
+                features_indices_df = indices_preprocessing_pipeline.fit_transform(features_indices_df)
+                
             if adopts_features_price:
                 features_price_df = FeaturesCalculator.calculate_features_price(new_sector_price=new_sector_price,
                                                                                 new_sector_list=new_sector_list,
@@ -60,11 +69,16 @@ class FeaturesCalculator:
                                                                                 adopt_eps_factor=adopt_eps_factor,
                                                                                 adopt_sector_categorical=adopt_sector_categorical,
                                                                                 add_rank=add_rank)
+                
+                # 価格系特徴量の前処理
+                if price_preprocessing_pipeline is not None:
+                    features_price_df = price_preprocessing_pipeline.fit_transform(features_price_df)
             else:
                 features_price_df = pd.DataFrame(index=new_sector_price.index)
 
             features_df = FeaturesCalculator.merge_features(features_indices_df, features_price_df)
             features_df = features_df.sort_index()
+            
         elif adopts_features_price:
             features_df = FeaturesCalculator.calculate_features_price(new_sector_price=new_sector_price,
                                                                       new_sector_list=new_sector_list,
@@ -76,9 +90,14 @@ class FeaturesCalculator:
                                                                       adopt_eps_factor=adopt_eps_factor,
                                                                       adopt_sector_categorical=adopt_sector_categorical,
                                                                       add_rank=add_rank)
+            
+            # 価格系特徴量のみの場合の前処理
+            if price_preprocessing_pipeline is not None:
+                features_df = price_preprocessing_pipeline.fit_transform(features_df)
         else:
             return None
         return features_df
+
 
     @staticmethod
     def select_features_to_scrape(groups_setting:dict={}, names_setting:dict={}):
