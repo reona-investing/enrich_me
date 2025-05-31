@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, List, Union
+from typing import Any, Optional, List, Union, Set
 import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -20,75 +20,25 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
     
     def __init__(self, copy: bool = True):
         self.copy = copy
+        self._is_fitted = False  # 内部的なfit状態管理
+        self._fit_attributes: Set[str] = set()  # fit時に設定された属性を記録
     
     @abstractmethod
     def fit(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[Any] = None) -> 'BasePreprocessor':
-        """
-        前処理のパラメータを学習
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or np.ndarray
-            学習用データ
-        y : Any, optional
-            目的変数（使用しない場合はNone）
-            
-        Returns
-        -------
-        self : BasePreprocessor
-            自身のインスタンス
-        """
+        """前処理のパラメータを学習"""
         pass
     
     @abstractmethod
     def transform(self, X: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
-        """
-        学習したパラメータを使って変換を実行
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or np.ndarray
-            変換対象データ
-            
-        Returns
-        -------
-        X_transformed : pd.DataFrame or np.ndarray
-            変換後のデータ
-        """
+        """学習したパラメータを使って変換を実行"""
         pass
     
     def fit_transform(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[Any] = None) -> Union[pd.DataFrame, np.ndarray]:
-        """
-        fit と transform を同時に実行
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or np.ndarray
-            学習・変換用データ
-        y : Any, optional
-            目的変数
-            
-        Returns
-        -------
-        X_transformed : pd.DataFrame or np.ndarray
-            変換後のデータ
-        """
+        """fit と transform を同時に実行"""
         return self.fit(X, y).transform(X)
     
     def _validate_input(self, X: Union[pd.DataFrame, np.ndarray]) -> None:
-        """
-        入力データの妥当性をチェック
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or np.ndarray
-            チェック対象データ
-            
-        Raises
-        ------
-        ValueError
-            データが不正な場合
-        """
+        """入力データの妥当性をチェック"""
         if isinstance(X, pd.DataFrame):
             if X.empty:
                 raise ValueError("Input DataFrame is empty")
@@ -100,135 +50,76 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
         else:
             raise ValueError("Input must be a pandas DataFrame or numpy array")
     
-    def _check_is_fitted(self, attributes: Optional[List[str]] = None) -> None:
+    def _mark_as_fitted(self, **kwargs) -> None:
         """
-        fitが実行済みかチェック
+        fit完了をマークし、重要な属性を記録
+        
+        このメソッドを継承クラスのfit()の最後で呼び出すだけで
+        バリデーションが機能するようになる
         
         Parameters
         ----------
-        attributes : List[str], optional
-            チェックすべき属性名のリスト。Noneの場合は標準的な属性をチェック
-            
-        Raises
-        ------
-        ValueError
-            fitが実行されていない場合
-            
-        Notes
-        -----
-        継承クラスでは以下のいずれかの方法でfitの確認を行う：
-        1. attributes引数で明示的に指定
-        2. デフォルトの属性チェック（推奨）
-        3. クラス変数_FIT_REQUIRED_ATTRIBUTESで指定
-        
-        Examples
-        --------
-        # 方法1: 明示的指定
-        self._check_is_fitted(['pca_', 'n_components_'])
-        
-        # 方法2: デフォルト（推奨）
-        self._check_is_fitted()  # n_features_in_をチェック
-        
-        # 方法3: クラス変数で指定
-        class MyProcessor(BasePreprocessor):
-            _FIT_REQUIRED_ATTRIBUTES = ['model_', 'parameters_']
+        **kwargs : 任意のキーワード引数
+            fit時に設定された重要な属性を渡す
+            例: self._mark_as_fitted(pca_=self.pca_, n_components_=self.n_components)
         """
-        # 1. 明示的に指定された属性をチェック
-        if attributes is not None:
-            missing_attrs = [attr for attr in attributes if not hasattr(self, attr)]
-            if missing_attrs:
-                raise ValueError(
-                    f"This {self.__class__.__name__} instance is not fitted yet. "
-                    f"Missing attributes: {missing_attrs}"
-                )
-            return
+        self._is_fitted = True
         
-        # 2. クラス変数で指定された属性をチェック
-        if hasattr(self.__class__, '_FIT_REQUIRED_ATTRIBUTES'):
-            required_attrs = self.__class__._FIT_REQUIRED_ATTRIBUTES
-            missing_attrs = [attr for attr in required_attrs if not hasattr(self, attr)]
-            if missing_attrs:
-                raise ValueError(
-                    f"This {self.__class__.__name__} instance is not fitted yet. "
-                    f"Missing attributes: {missing_attrs}"
-                )
-            return
+        # 渡された属性を記録
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+            self._fit_attributes.add(key)
         
-        # 3. デフォルトの属性チェック
-        # 以下の順序で存在をチェックし、最初に見つかった属性で判定
-        default_attrs = [
-            'n_features_in_',      # 最も一般的
-            'feature_names_in_',   # DataFrame用
-            'is_fitted_',          # カスタム属性
-        ]
+        # 共通の属性も自動で記録
+        common_attrs = ['n_features_in_', 'feature_names_in_', 'is_fitted_']
+        for attr in common_attrs:
+            if hasattr(self, attr):
+                self._fit_attributes.add(attr)
+    
+    def _check_is_fitted(self, additional_attributes: Optional[List[str]] = None) -> None:
+        """
+        fitが実行済みかチェック（簡素化版）
         
-        # 少なくとも1つの属性が存在するかチェック
-        has_fit_attr = any(hasattr(self, attr) for attr in default_attrs)
-        
-        if not has_fit_attr:
+        Parameters
+        ----------
+        additional_attributes : List[str], optional
+            追加でチェックしたい属性があれば指定
+        """
+        # 基本的なfit状態チェック
+        if not self._is_fitted:
             raise ValueError(
                 f"This {self.__class__.__name__} instance is not fitted yet. "
-                f"Call 'fit' with appropriate arguments before using this estimator. "
-                f"Expected one of: {default_attrs}"
+                f"Call 'fit' with appropriate arguments before using this estimator."
             )
+        
+        # 追加属性のチェック（必要に応じて）
+        if additional_attributes:
+            missing_attrs = [attr for attr in additional_attributes if not hasattr(self, attr)]
+            if missing_attrs:
+                raise ValueError(
+                    f"This {self.__class__.__name__} instance appears to be corrupted. "
+                    f"Missing expected attributes: {missing_attrs}"
+                )
     
     def _store_fit_metadata(self, X: Union[pd.DataFrame, np.ndarray]) -> None:
-        """
-        fit時に共通メタデータを保存するヘルパーメソッド
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or np.ndarray
-            学習用データ
-            
-        Notes
-        -----
-        継承クラスのfit()メソッド内で呼び出すことを推奨。
-        これにより、_check_is_fitted()が適切に動作する。
-        """
+        """fit時に共通メタデータを保存するヘルパーメソッド"""
         if isinstance(X, pd.DataFrame):
             self.feature_names_in_ = X.columns.tolist()
             self.n_features_in_ = len(self.feature_names_in_)
         elif isinstance(X, np.ndarray):
             self.n_features_in_ = X.shape[1] if X.ndim > 1 else 1
-            # numpy arrayの場合はgeneric feature names
             self.feature_names_in_ = [f'feature_{i}' for i in range(self.n_features_in_)]
         
-        # カスタム属性（明示的なfit状態表示）
         self.is_fitted_ = True
     
     def get_feature_names_out(self, input_features: Optional[List[str]] = None) -> List[str]:
-        """
-        変換後の特徴量名を取得（sklearn互換）
-        
-        Parameters
-        ----------
-        input_features : List[str], optional
-            入力特徴量名
-            
-        Returns
-        -------
-        feature_names : List[str]
-            変換後の特徴量名
-        """
+        """変換後の特徴量名を取得（sklearn互換）"""
         if hasattr(self, 'feature_names_in_'):
             return self.feature_names_in_
         return input_features if input_features is not None else []
     
     def _prepare_output(self, X: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
-        """
-        出力データの準備（コピーの処理など）
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or np.ndarray
-            元データ
-            
-        Returns
-        -------
-        X_output : pd.DataFrame or np.ndarray
-            出力用データ
-        """
+        """出力データの準備（コピーの処理など）"""
         if self.copy:
             if isinstance(X, pd.DataFrame):
                 return X.copy()
@@ -237,19 +128,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
         return X
     
     def _get_feature_names_from_input(self, X: Union[pd.DataFrame, np.ndarray]) -> List[str]:
-        """
-        入力データから特徴量名を取得
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or np.ndarray
-            入力データ
-            
-        Returns
-        -------
-        feature_names : List[str]
-            特徴量名のリスト
-        """
+        """入力データから特徴量名を取得"""
         if isinstance(X, pd.DataFrame):
             return X.columns.tolist()
         elif isinstance(X, np.ndarray):
@@ -257,3 +136,12 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
             return [f'feature_{i}' for i in range(n_features)]
         else:
             return []
+    
+    def get_fit_info(self) -> dict:
+        """fit状態と設定された属性の情報を取得"""
+        return {
+            'is_fitted': self._is_fitted,
+            'fit_attributes': list(self._fit_attributes),
+            'n_features_in': getattr(self, 'n_features_in_', None),
+            'feature_names_in': getattr(self, 'feature_names_in_', None)
+        }

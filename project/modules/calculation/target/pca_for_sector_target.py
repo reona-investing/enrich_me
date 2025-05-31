@@ -1,7 +1,3 @@
-"""
-PCAハンドラー - リファクタリング版
-汎用PCAHandlerと機械学習特化ファサードの実装
-"""
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -97,6 +93,16 @@ class PCAforMultiSectorTarget(BasePreprocessor):
         self.n_features_in_ = len(self.feature_names_in_)
         self._original_sectors = df_for_pca.columns.tolist()
         
+        # 重要: fit完了をマーク
+        # 内包するPCAHandlerと、このクラス固有の重要な属性を指定
+        self._mark_as_fitted(
+            _generic_pca=self._generic_pca,
+            _original_sectors=self._original_sectors,
+            fit_start=self.fit_start,
+            fit_end=self.fit_end,
+            target_column=self.target_column
+        )
+        
         return self
     
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -178,10 +184,12 @@ class PCAforMultiSectorTarget(BasePreprocessor):
     # 汎用PCAHandlerのメソッドを委譲
     def get_explained_variance_ratio(self) -> np.ndarray:
         """各主成分の寄与率を取得"""
+        self._check_is_fitted()
         return self._generic_pca.get_explained_variance_ratio()
     
     def get_cumulative_variance_ratio(self) -> np.ndarray:
         """累積寄与率を取得"""
+        self._check_is_fitted()
         return self._generic_pca.get_cumulative_variance_ratio()
     
     def get_components(self) -> pd.DataFrame:
@@ -203,3 +211,24 @@ class PCAforMultiSectorTarget(BasePreprocessor):
     def get_feature_names_out(self, input_features: Optional[List[str]] = None) -> List[str]:
         """変換後の特徴量名を取得"""
         return [self.target_column]
+    
+    def get_fit_info(self) -> dict:
+        """fit状態と設定情報を取得（オーバーライド）"""
+        # 親クラスの基本情報を取得
+        base_info = super().get_fit_info()
+        
+        # このクラス固有の情報を追加
+        if self._is_fitted:
+            ml_specific_info = {
+                'fit_start': self.fit_start,
+                'fit_end': self.fit_end,
+                'target_column': self.target_column,
+                'n_sectors': len(getattr(self, '_original_sectors', [])),
+                'original_sectors': getattr(self, '_original_sectors', []),
+                'pca_mode': self._generic_pca.mode,
+                'n_components': self._generic_pca.n_components,
+                'explained_variance_ratio': self._generic_pca.get_explained_variance_ratio().tolist() if hasattr(self._generic_pca, 'pca_') else None
+            }
+            base_info.update(ml_specific_info)
+        
+        return base_info
