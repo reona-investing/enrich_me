@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 from typing import Union, List, Optional
+from sklearn.linear_model import LinearRegression
 
-from preprocessing.methods.base_preprocessor import BasePreprocessor
+from .base_preprocessor import BasePreprocessor
 
 
 class FeatureNeutralizer(BasePreprocessor):
@@ -10,6 +11,7 @@ class FeatureNeutralizer(BasePreprocessor):
     特徴量の直交化を行うTransformer
     
     BasePreprocessorを継承し、統一されたインターフェースを提供。
+    指定期間でfitし、全期間でtransformすることが可能。
     
     Parameters
     ----------
@@ -24,14 +26,23 @@ class FeatureNeutralizer(BasePreprocessor):
         データをコピーするかどうか
     fit_intercept : bool, default=False
         線形回帰で切片を含めるかどうか
+    fit_start : str, pd.Timestamp, or None, default=None
+        fitに使用する開始日時
+    fit_end : str, pd.Timestamp, or None, default=None
+        fitに使用する終了日時
+    time_column : str or None, default=None
+        時間列の名前
     """
     def __init__(self, 
                  target_features: Union[str, List[str], None] = None,
                  neutralize_features: Union[str, List[str], None] = None,
                  mode: str = 'mutual',
                  copy: bool = True,
-                 fit_intercept: bool = False):
-        super().__init__(copy=copy)
+                 fit_intercept: bool = False,
+                 fit_start: Union[str, pd.Timestamp, None] = None,
+                 fit_end: Union[str, pd.Timestamp, None] = None,
+                 time_column: Optional[str] = None):
+        super().__init__(copy=copy, fit_start=fit_start, fit_end=fit_end, time_column=time_column)
         self.target_features = target_features
         self.neutralize_features = neutralize_features
         self.mode = mode
@@ -50,11 +61,14 @@ class FeatureNeutralizer(BasePreprocessor):
                 raise ValueError("neutralize_features must be specified when mode='specific'")
     
     def fit(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[any] = None) -> 'FeatureNeutralizer':
-        """直交化のパラメータを学習"""
+        """直交化のパラメータを学習（指定期間のデータを使用）"""
         # 基本検証
         self._validate_input(X)
         
-        # 共通メタデータを保存
+        # 指定期間でデータをフィルタリング
+        X_fit = self._filter_data_by_time(X, self.fit_start, self.fit_end)
+        
+        # 共通メタデータを保存（元のデータで）
         self._store_fit_metadata(X)
         
         # 実装固有の処理...
@@ -63,14 +77,24 @@ class FeatureNeutralizer(BasePreprocessor):
         if self.mode == 'specific':
             self.target_features_ = self._ensure_list(self.target_features)
             self.neutralize_features_ = self._ensure_list(self.neutralize_features)
+            
+            # 指定期間のデータで回帰係数を学習
+            self._fit_regression_coefficients(X_fit)
+            
         elif self.mode == 'mutual':
             if isinstance(X, pd.DataFrame):
                 numeric_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+                # 時間列は除外
+                if self.time_column and self.time_column in numeric_cols:
+                    numeric_cols.remove(self.time_column)
                 self.target_features_ = numeric_cols
             else:
                 self.target_features_ = feature_names
+            
+            # 相互直交化の場合の学習処理
+            self._fit_mutual_neutralization(X_fit)
         
-        # 重要: fit完了をマーク（これだけで_check_is_fitted()が動作する）
+        # 重要: fit完了をマーク
         self._mark_as_fitted(
             target_features_=self.target_features_,
             neutralize_features_=getattr(self, 'neutralize_features_', None),
@@ -79,8 +103,52 @@ class FeatureNeutralizer(BasePreprocessor):
         
         return self
     
+    def _fit_regression_coefficients(self, X_fit: Union[pd.DataFrame, np.ndarray]) -> None:
+        """特定の直交化のための回帰係数を学習"""
+        self.regression_models_ = {}
+        
+        if isinstance(X_fit, pd.DataFrame):
+            for target_col in self.target_features_:
+                if target_col not in X_fit.columns:
+                    continue
+                    
+                # 中和用特徴量を取得
+                neutralize_cols = [col for col in self.neutralize_features_ if col in X_fit.columns and col != target_col]
+                if not neutralize_cols:
+                    continue
+                
+                # 回帰モデルを学習
+                X_neutralize = X_fit[neutralize_cols].values
+                y_target = X_fit[target_col].values
+                
+                # 欠損値を除去
+                mask = ~(np.isnan(X_neutralize).any(axis=1) | np.isnan(y_target))
+                if mask.sum() == 0:
+                    continue
+                
+                reg = LinearRegression(fit_intercept=self.fit_intercept)
+                reg.fit(X_neutralize[mask], y_target[mask])
+                self.regression_models_[target_col] = {
+                    'model': reg,
+                    'neutralize_cols': neutralize_cols
+                }
+    
+    def _fit_mutual_neutralization(self, X_fit: Union[pd.DataFrame, np.ndarray]) -> None:
+        """相互直交化のためのパラメータを学習"""
+        if isinstance(X_fit, pd.DataFrame):
+            # 数値列のみで相関行列を計算
+            numeric_data = X_fit[self.target_features_].select_dtypes(include=[np.number])
+            self.correlation_matrix_ = numeric_data.corr()
+            self.means_ = numeric_data.mean()
+            self.stds_ = numeric_data.std()
+        else:
+            # numpy配列の場合
+            self.correlation_matrix_ = np.corrcoef(X_fit.T)
+            self.means_ = np.mean(X_fit, axis=0)
+            self.stds_ = np.std(X_fit, axis=0)
+    
     def transform(self, X: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
-        """直交化を実行"""
+        """直交化を実行（全期間のデータに適用）"""
         # シンプルなfit状態チェック
         self._check_is_fitted()
         
@@ -90,8 +158,56 @@ class FeatureNeutralizer(BasePreprocessor):
         # 変換処理の実装...
         X_transformed = self._prepare_output(X)
         
-        # 実際の変換ロジックはここに...
+        if self.mode == 'specific':
+            X_transformed = self._apply_specific_neutralization(X_transformed)
+        elif self.mode == 'mutual':
+            X_transformed = self._apply_mutual_neutralization(X_transformed)
+        
         return X_transformed
+    
+    def _apply_specific_neutralization(self, X: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
+        """特定の直交化を適用"""
+        if isinstance(X, pd.DataFrame):
+            for target_col, reg_info in self.regression_models_.items():
+                if target_col not in X.columns:
+                    continue
+                
+                model = reg_info['model']
+                neutralize_cols = reg_info['neutralize_cols']
+                
+                # 中和用特徴量が存在するかチェック
+                available_cols = [col for col in neutralize_cols if col in X.columns]
+                if not available_cols:
+                    continue
+                
+                # 予測と残差計算
+                X_neutralize = X[available_cols].values
+                mask = ~np.isnan(X_neutralize).any(axis=1)
+                
+                if mask.sum() > 0:
+                    predictions = model.predict(X_neutralize[mask])
+                    X.loc[mask, target_col] = X.loc[mask, target_col] - predictions
+        
+        return X
+    
+    def _apply_mutual_neutralization(self, X: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
+        """相互直交化を適用（簡単な実装例）"""
+        if isinstance(X, pd.DataFrame):
+            # グラム・シュミット過程の簡易版
+            for i, col in enumerate(self.target_features_):
+                if col not in X.columns:
+                    continue
+                
+                for j, other_col in enumerate(self.target_features_[:i]):
+                    if other_col not in X.columns:
+                        continue
+                    
+                    # 射影を計算して除去
+                    corr_coef = self.correlation_matrix_.loc[col, other_col]
+                    if not np.isnan(corr_coef):
+                        X[col] = X[col] - corr_coef * X[other_col]
+        
+        return X
     
     def _ensure_list(self, features):
         """ヘルパーメソッド"""

@@ -2,7 +2,7 @@ from utils.paths import Paths
 from acquisition.jquants_api_operations import StockAcquisitionFacade
 from calculation.facades import CalculatorFacade
 from preprocessing import PreprocessingPipeline
-from preprocessing.methods import PCAHandler, FeatureNeutralizer
+from preprocessing.methods import PCAHandler, FeatureNeutralizer, Standardizer
 from datetime import datetime
 
 train_start = datetime(2014,1,1)
@@ -15,8 +15,14 @@ saf = StockAcquisitionFacade(filter=univerce_filter)
 stock_dfs = saf.get_stock_data_dict()
 
 fn = FeatureNeutralizer(mode='mutual')
-ppp = PreprocessingPipeline([('FeatureNeutralizer', fn)])
+std = Standardizer(fit_start=train_start, fit_end=train_end)
+ppp = PreprocessingPipeline([('Standardizer', std)])
+
+
+new_sector_price, stock_price_for_order, features_df = CalculatorFacade.calculate_all(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+df = features_df.loc[(features_df.index.get_level_values('Date')<=train_end)&(features_df.index.get_level_values('Date')>=train_start)]
 
 new_sector_price, stock_price_for_order, features_df = CalculatorFacade.calculate_all(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
                                                                                       indices_preprocessing_pipeline=ppp)
-print(features_df)
+df = features_df.loc[(features_df.index.get_level_values('Date')<=train_end)&(features_df.index.get_level_values('Date')>=train_start)]
+print(df.describe().T.head(5))

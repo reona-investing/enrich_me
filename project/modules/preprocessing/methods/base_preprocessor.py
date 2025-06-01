@@ -11,17 +11,89 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
     
     全ての前処理クラスが継承すべき共通インターフェースを定義。
     scikit-learn互換のTransformerとして動作。
+    時系列データに対応し、指定期間でfitして全期間でtransformすることが可能。
     
     Parameters
     ----------
     copy : bool, default=True
         データをコピーするかどうか
+    fit_start : str, pd.Timestamp, or None, default=None
+        fitに使用する開始日時。Noneの場合は全期間を使用
+    fit_end : str, pd.Timestamp, or None, default=None
+        fitに使用する終了日時。Noneの場合は全期間を使用
+    time_column : str or None, default=None
+        時間列の名前。Noneの場合はindexを時間として使用
     """
     
-    def __init__(self, copy: bool = True):
+    def __init__(self, 
+                 copy: bool = True,
+                 fit_start: Union[str, pd.Timestamp, None] = None,
+                 fit_end: Union[str, pd.Timestamp, None] = None,
+                 time_column: Optional[str] = None):
         self.copy = copy
+        self.fit_start = fit_start
+        self.fit_end = fit_end
+        self.time_column = time_column
         self._is_fitted = False  # 内部的なfit状態管理
         self._fit_attributes: Set[str] = set()  # fit時に設定された属性を記録
+    
+    def _filter_data_by_time(self, X: Union[pd.DataFrame, np.ndarray], 
+                           start: Union[str, pd.Timestamp, None] = None,
+                           end: Union[str, pd.Timestamp, None] = None) -> Union[pd.DataFrame, np.ndarray]:
+        """
+        指定された期間でデータをフィルタリング
+        
+        Parameters
+        ----------
+        X : pd.DataFrame or np.ndarray
+            入力データ
+        start : str, pd.Timestamp, or None
+            開始日時
+        end : str, pd.Timestamp, or None
+            終了日時
+            
+        Returns
+        -------
+        Union[pd.DataFrame, np.ndarray]
+            フィルタリングされたデータ
+        """
+        if isinstance(X, np.ndarray):
+            # numpy配列の場合はフィルタリングできないのでそのまま返す
+            return X
+            
+        if not isinstance(X, pd.DataFrame):
+            raise ValueError("Time filtering is only supported for pandas DataFrame")
+        
+        # 開始・終了日時が指定されていない場合はそのまま返す
+        if start is None and end is None:
+            return X
+        
+        # 時間列を特定
+        if self.time_column is not None:
+            if self.time_column not in X.columns:
+                raise ValueError(f"Time column '{self.time_column}' not found in DataFrame")
+            time_index = pd.to_datetime(X[self.time_column])
+        else:
+            # indexを時間として使用
+            time_index = pd.to_datetime(X.index)
+        
+        # フィルタリング条件を作成
+        mask = pd.Series(True, index=X.index)
+        
+        if start is not None:
+            start_dt = pd.to_datetime(start)
+            mask = mask & (time_index >= start_dt)
+        
+        if end is not None:
+            end_dt = pd.to_datetime(end)
+            mask = mask & (time_index <= end_dt)
+        
+        filtered_data = X[mask]
+        
+        if filtered_data.empty:
+            raise ValueError(f"No data found in the specified time range: {start} to {end}")
+        
+        return filtered_data
     
     @abstractmethod
     def fit(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[Any] = None) -> 'BasePreprocessor':
@@ -143,5 +215,8 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
             'is_fitted': self._is_fitted,
             'fit_attributes': list(self._fit_attributes),
             'n_features_in': getattr(self, 'n_features_in_', None),
-            'feature_names_in': getattr(self, 'feature_names_in_', None)
+            'feature_names_in': getattr(self, 'feature_names_in_', None),
+            'fit_start': self.fit_start,
+            'fit_end': self.fit_end,
+            'time_column': self.time_column
         }

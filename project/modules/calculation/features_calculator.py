@@ -57,7 +57,7 @@ class FeaturesCalculator:
             # インデックス系特徴量の前処理
             if indices_preprocessing_pipeline is not None:
                 features_indices_df = indices_preprocessing_pipeline.fit_transform(features_indices_df)
-                
+
             if adopts_features_price:
                 features_price_df = FeaturesCalculator.calculate_features_price(new_sector_price=new_sector_price,
                                                                                 new_sector_list=new_sector_list,
@@ -293,7 +293,7 @@ class FeaturesCalculator:
         if adopt_sector_categorical:
             sector_replace_dict = {x: i for i, x in enumerate(features_price_df.index.get_level_values(1).unique())}
             features_price_df['Sector_cat'] = features_price_df.index.get_level_values(1)
-            features_price_df['Sector_cat'] = features_price_df['Sector_cat'].replace(sector_replace_dict).infer_objects(copy=False)
+            features_price_df['Sector_cat'] = features_price_df['Sector_cat'].map(sector_replace_dict)
 
         print('価格系特徴量の算出が完了しました。')
 
