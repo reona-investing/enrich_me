@@ -30,7 +30,7 @@ class PCAHandler(BasePreprocessor):
         fitに使用する開始日時
     fit_end : str, pd.Timestamp, or None, default=None
         fitに使用する終了日時
-    time_column : str or None, default=None
+    time_column : str or None, default='Date'
         時間列の名前
     """
     
@@ -41,7 +41,7 @@ class PCAHandler(BasePreprocessor):
                  random_state: Optional[int] = None,
                  fit_start: Union[str, pd.Timestamp, None] = None,
                  fit_end: Union[str, pd.Timestamp, None] = None,
-                 time_column: Optional[str] = None):
+                 time_column: Optional[str] = 'Date'):
         super().__init__(copy=copy, fit_start=fit_start, fit_end=fit_end, time_column=time_column)
         self.n_components = n_components
         self.mode = mode

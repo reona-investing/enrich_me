@@ -21,7 +21,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
         fitに使用する開始日時。Noneの場合は全期間を使用
     fit_end : str, pd.Timestamp, or None, default=None
         fitに使用する終了日時。Noneの場合は全期間を使用
-    time_column : str or None, default=None
+    time_column : str or None, default='Date'
         時間列の名前。Noneの場合はindexを時間として使用
     """
     
@@ -29,7 +29,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
                  copy: bool = True,
                  fit_start: Union[str, pd.Timestamp, None] = None,
                  fit_end: Union[str, pd.Timestamp, None] = None,
-                 time_column: Optional[str] = None):
+                 time_column: Optional[str] = 'Date'):
         self.copy = copy
         self.fit_start = fit_start
         self.fit_end = fit_end
@@ -70,12 +70,15 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
         
         # 時間列を特定
         if self.time_column is not None:
-            if self.time_column not in X.columns:
+            if self.time_column in X.columns:
+                time_index = pd.to_datetime(X[self.time_column])
+            elif self.time_column in X.index.names:
+                time_index = pd.to_datetime(X.index.get_level_values(self.time_column))
+            else:
                 raise ValueError(f"Time column '{self.time_column}' not found in DataFrame")
-            time_index = pd.to_datetime(X[self.time_column])
         else:
-            # indexを時間として使用
-            time_index = pd.to_datetime(X.index)
+            raise ValueError(f"Time column is not set.")
+
         
         # フィルタリング条件を作成
         mask = pd.Series(True, index=X.index)

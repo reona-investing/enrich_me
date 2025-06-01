@@ -27,7 +27,7 @@ class Standardizer(BasePreprocessor):
         fitに使用する開始日時
     fit_end : str, pd.Timestamp, or None, default=None
         fitに使用する終了日時
-    time_column : str or None, default=None
+    time_column : str or None, default='Date'
         時間列の名前
         
     Attributes
@@ -51,7 +51,7 @@ class Standardizer(BasePreprocessor):
                  copy: bool = True,
                  fit_start: Union[str, pd.Timestamp, None] = None,
                  fit_end: Union[str, pd.Timestamp, None] = None,
-                 time_column: Optional[str] = None):
+                 time_column: Optional[str] = 'Date'):
         super().__init__(copy=copy, fit_start=fit_start, fit_end=fit_end, time_column=time_column)
         self.with_mean = with_mean
         self.with_std = with_std

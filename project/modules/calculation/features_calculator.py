@@ -293,7 +293,7 @@ class FeaturesCalculator:
         if adopt_sector_categorical:
             sector_replace_dict = {x: i for i, x in enumerate(features_price_df.index.get_level_values(1).unique())}
             features_price_df['Sector_cat'] = features_price_df.index.get_level_values(1)
-            features_price_df['Sector_cat'] = features_price_df['Sector_cat'].map(sector_replace_dict)
+            features_price_df['Sector_cat'] = features_price_df['Sector_cat'].map(sector_replace_dict).astype('category')
 
         print('価格系特徴量の算出が完了しました。')
 
