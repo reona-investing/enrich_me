@@ -24,8 +24,9 @@ df = features_df.loc[(features_df.index.get_level_values('Date')<=train_end)&(fe
 
 new_sector_price, stock_price_for_order, features_df = CalculatorFacade.calculate_all(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
                                                                                       indices_preprocessing_pipeline=ppp,
-                                                                                      price_preprocessing_pipeline=ppp)
+                                                                                      price_preprocessing_pipeline=ppp
+                                                                                      )
 #TODO FeaturesCalculator.calculate_features_price()で、rankやcatの追加を処理後にする。
 
 df = features_df.loc[(features_df.index.get_level_values('Date')<=train_end)&(features_df.index.get_level_values('Date')>=train_start)]
-print(df.describe().T)
+print(df)
