@@ -4,15 +4,15 @@ from datetime import datetime
 from typing import Optional, List, Tuple
 import warnings
 
-from preprocessing.methods.base_preprocessor import BasePreprocessor
 from preprocessing.methods import PCAHandler
 
-class PCAforMultiSectorTarget(BasePreprocessor):
+
+class PCAforMultiSectorTarget:
     """
-    機械学習用途特化PCAハンドラー（ファサード）
+    機械学習用途特化PCA前処理ファサード
     
-    二階層インデックスDataFrameの目的変数前処理に特化した実装。
-    内部で汎用PCAHandlerを使用し、ML用途に必要な前後処理を提供。
+    特定用途（ML目的変数前処理）に特化したシンプルなファサードパターン。
+    内部でPCAHandlerを使用し、ML特化の前後処理を提供。
     
     Parameters
     ----------
@@ -41,107 +41,80 @@ class PCAforMultiSectorTarget(BasePreprocessor):
                  mode: str = 'residuals',
                  copy: bool = True,
                  random_state: Optional[int] = None):
-        super().__init__(copy=copy)
-        
-        # 汎用PCAハンドラーを内包
-        self._generic_pca = PCAHandler(
-            n_components=n_components,
-            mode=mode,
-            copy=copy,
-            random_state=random_state
-        )
         
         # ML特化パラメータ
         self.fit_start = fit_start
         self.fit_end = fit_end
         self.target_column = target_column
+        self.copy = copy
         
-        self._validate_ml_params()
-    
-    def _validate_ml_params(self) -> None:
-        """ML特化パラメータの妥当性をチェック"""
+        # パイプラインを初期化（PCAHandlerのみを含む）
+        self._pipeline = [
+            PCAHandler(
+                n_components=n_components,
+                mode=mode,
+                copy=copy,
+                random_state=random_state
+            )
+        ]
+        
+        # 内部状態管理
+        self._is_fitted = False
+        self._original_sectors = None
+        
         if self.fit_start is not None and self.fit_end is not None:
             if self.fit_start > self.fit_end:
                 raise ValueError("fit_start must be earlier than fit_end")
     
-    def fit(self, X: pd.DataFrame, y: Optional[any] = None) -> 'PCAforMultiSectorTarget':
+    def apply_pca(self, X: pd.DataFrame) -> pd.DataFrame:
         """
-        ML用途特化の前処理 + 汎用PCA学習
+        ML用途特化のPCA前処理を実行
+        
+        初回実行時は学習も同時に行い、2回目以降は学習済みパラメータで変換のみ実行。
         
         Parameters
         ----------
         X : pd.DataFrame
-            学習用データ（二階層インデックス必須）
-        y : ignored
-            sklearn互換のため
-            
-        Returns
-        -------
-        self : PCAforMultiSectorTarget
-        """
-        self._validate_input(X)
-        self._validate_multiindex_structure(X)
-        
-        # ML特化の前処理
-        df_for_pca, df_for_fit = self._prepare_fit_and_transform_dfs(X)
-        
-        # 汎用PCAに委譲して学習
-        self._generic_pca.fit(df_for_fit.values)
-        
-        # メタデータを保存（ML特化）
-        self.feature_names_in_ = X.columns.tolist()
-        self.n_features_in_ = len(self.feature_names_in_)
-        self._original_sectors = df_for_pca.columns.tolist()
-        
-        # 重要: fit完了をマーク
-        # 内包するPCAHandlerと、このクラス固有の重要な属性を指定
-        self._mark_as_fitted(
-            _generic_pca=self._generic_pca,
-            _original_sectors=self._original_sectors,
-            fit_start=self.fit_start,
-            fit_end=self.fit_end,
-            target_column=self.target_column
-        )
-        
-        return self
-    
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """
-        ML用途特化の前処理 + 汎用PCA変換 + 後処理
-        
-        Parameters
-        ----------
-        X : pd.DataFrame
-            変換対象データ
+            処理対象データ（二階層インデックス必須）
             
         Returns
         -------
         X_transformed : pd.DataFrame
-            変換後のデータ
+            PCA処理後のデータ
         """
-        self._check_is_fitted()
-        self._validate_input(X)
-        self._validate_multiindex_structure(X)
-        
         # ML特化の前処理
-        df_for_pca, _ = self._prepare_fit_and_transform_dfs(X)
+        df_for_pca, df_for_fit = self._prepare_data(X)
         
-        # 汎用PCAで変換
-        transformed_array = self._generic_pca.transform(df_for_pca.values)
+        if not self._is_fitted:
+            # 初回実行：学習 + 変換
+            current_data = df_for_fit.values
+            for processor in self._pipeline:
+                processor.fit(current_data)
+                current_data = processor.transform(current_data)
+            
+            # メタデータを保存
+            self._original_sectors = df_for_pca.columns.tolist()
+            self._is_fitted = True
+            
+            # 全データに対して変換を実行
+            current_data = df_for_pca.values
+            for processor in self._pipeline:
+                current_data = processor.transform(current_data)
+        else:
+            # 2回目以降：変換のみ
+            current_data = df_for_pca.values
+            for processor in self._pipeline:
+                current_data = processor.transform(current_data)
         
         # ML特化の後処理（DataFrame復元）
-        return self._restore_dataframe_format(transformed_array, df_for_pca)
+        return self._restore_dataframe_format(current_data, df_for_pca)
     
-    def _validate_multiindex_structure(self, X: pd.DataFrame) -> None:
-        """マルチインデックス構造の妥当性をチェック"""
-        if X.index.nlevels != 2:
-            raise ValueError('DataFrame must have a 2-level MultiIndex')
-        
-        if self.target_column not in X.columns:
-            raise ValueError(f"Column '{self.target_column}' not found in DataFrame")
-    
-    def _prepare_fit_and_transform_dfs(self, X: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def _prepare_data(self, X: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """学習・変換用データフレームを準備（ML特化処理）"""
+        # データをコピー（必要に応じて）
+        if self.copy:
+            X = X.copy()
+        
         # Target列をアンスタック
         df_for_pca = X[self.target_column].unstack(-1)
         
@@ -181,26 +154,28 @@ class PCAforMultiSectorTarget(BasePreprocessor):
         
         return result
     
-    # 汎用PCAHandlerのメソッドを委譲
+    # PCAHandlerへの委譲メソッド（パイプラインの最初の要素を使用）
     def get_explained_variance_ratio(self) -> np.ndarray:
         """各主成分の寄与率を取得"""
-        self._check_is_fitted()
-        return self._generic_pca.get_explained_variance_ratio()
+        if not self._is_fitted:
+            raise ValueError("PCA has not been applied yet. Call apply_pca() first.")
+        return self._pipeline[0].get_explained_variance_ratio()
     
     def get_cumulative_variance_ratio(self) -> np.ndarray:
         """累積寄与率を取得"""
-        self._check_is_fitted()
-        return self._generic_pca.get_cumulative_variance_ratio()
+        if not self._is_fitted:
+            raise ValueError("PCA has not been applied yet. Call apply_pca() first.")
+        return self._pipeline[0].get_cumulative_variance_ratio()
     
     def get_components(self) -> pd.DataFrame:
         """主成分ベクトルをDataFrame形式で取得"""
-        self._check_is_fitted()
-        components_array = self._generic_pca.get_components()
+        if not self._is_fitted:
+            raise ValueError("PCA has not been applied yet. Call apply_pca() first.")
+        components_array = self._pipeline[0].get_components()
         
         # ML特化：セクター名を使用してDataFrame化
         component_names = [f'PC_{i:02d}' for i in range(components_array.shape[0])]
-        sector_names = getattr(self, '_original_sectors', 
-                             [f'Sector_{i}' for i in range(components_array.shape[1])])
+        sector_names = self._original_sectors or [f'Sector_{i}' for i in range(components_array.shape[1])]
         
         return pd.DataFrame(
             components_array,
@@ -213,22 +188,33 @@ class PCAforMultiSectorTarget(BasePreprocessor):
         return [self.target_column]
     
     def get_fit_info(self) -> dict:
-        """fit状態と設定情報を取得（オーバーライド）"""
-        # 親クラスの基本情報を取得
-        base_info = super().get_fit_info()
+        """fit状態と設定情報を取得"""
+        base_info = {
+            'is_fitted': self._is_fitted,
+            'fit_start': self.fit_start,
+            'fit_end': self.fit_end,
+            'target_column': self.target_column,
+        }
         
-        # このクラス固有の情報を追加
         if self._is_fitted:
+            pca_handler = self._pipeline[0]  # PCAHandlerは最初の要素
             ml_specific_info = {
-                'fit_start': self.fit_start,
-                'fit_end': self.fit_end,
-                'target_column': self.target_column,
-                'n_sectors': len(getattr(self, '_original_sectors', [])),
-                'original_sectors': getattr(self, '_original_sectors', []),
-                'pca_mode': self._generic_pca.mode,
-                'n_components': self._generic_pca.n_components,
-                'explained_variance_ratio': self._generic_pca.get_explained_variance_ratio().tolist() if hasattr(self._generic_pca, 'pca_') else None
+                'n_sectors': len(self._original_sectors) if self._original_sectors else 0,
+                'original_sectors': self._original_sectors,
+                'pca_mode': pca_handler.mode,
+                'n_components': pca_handler.n_components,
+                'explained_variance_ratio': pca_handler.get_explained_variance_ratio().tolist()
             }
             base_info.update(ml_specific_info)
         
         return base_info
+    
+    @property
+    def is_fitted(self) -> bool:
+        """fit状態を確認"""
+        return self._is_fitted
+    
+    @property
+    def pipeline(self) -> List:
+        """内部のパイプラインにアクセス（デバッグ用）"""
+        return self._pipeline

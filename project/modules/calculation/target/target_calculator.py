@@ -28,7 +28,7 @@ class TargetCalculator:
         '''
         raw_target_df = TargetCalculator.daytime_return(df)
         pca_handler = PCAforMultiSectorTarget(n_components=reduce_components, fit_start=train_start_day, fit_end=train_end_day)
-        target_df = pca_handler.fit_transform(raw_target_df)
+        target_df = pca_handler.apply_pca(raw_target_df)
         return raw_target_df, target_df
 
 #%% デバッグ
