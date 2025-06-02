@@ -57,7 +57,7 @@ class PCAforMultiSectorTarget:
             random_state=random_state,
             fit_start=fit_start,
             fit_end=fit_end,
-            time_column=None  # インデックスを時間として使用
+            time_column='Date'  # インデックスを時間として使用
         )
         
         # 内部状態管理

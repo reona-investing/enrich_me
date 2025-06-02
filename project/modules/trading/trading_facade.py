@@ -136,13 +136,13 @@ class TradingFacade:
 
 if __name__ == '__main__':
     async def main():
-        from models.dataset import MLDataset
-        ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250308'
+        from models.machine_learning import MLDataset
+        ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
         SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
         ml_dataset = MLDataset(ML_DATASET_PATH)
         trade_facade = TradingFacade()
 
-        '''  
+        
         await trade_facade.take_positions(
             ml_dataset= ml_dataset,
             SECTOR_REDEFINITIONS_CSV = SECTOR_REDEFINITIONS_CSV,
@@ -151,6 +151,7 @@ if __name__ == '__main__':
             top_slope = 1)
         '''
         await trade_facade.take_additionals()
+        '''
       
 
         
