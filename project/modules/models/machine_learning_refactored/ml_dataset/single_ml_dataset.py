@@ -1,14 +1,16 @@
 import pandas as pd
 from datetime import datetime
+from typing import Optional
 
-from models.machine_learning.ml_dataset.components import MLObjects, PostProcessingData, TrainTestData
-from models.machine_learning.outputs import TrainerOutputs, TrainTestDatasets, EvaluationMaterials, StockSelectionMaterials
+from models.machine_learning_refactored.ml_dataset.components import MLObjects, PostProcessingData, TrainTestData
+from models.machine_learning_refactored.outputs import TrainerOutputs, TrainTestDatasets, EvaluationMaterials, StockSelectionMaterials
 
-class MLDataset:
-    """機械学習データセットの統合管理"""
+class SingleMLDataset:
+    """単体機械学習データセットの統合管理"""
     
-    def __init__(self, dataset_folder_path: str, init_load: bool = True):
+    def __init__(self, dataset_folder_path: str, name: str, init_load: bool = True):
         self.dataset_folder_path = dataset_folder_path
+        self.name = name
         
         # 各コンポーネントの初期化
         self.train_test_data = TrainTestData(
@@ -24,6 +26,9 @@ class MLDataset:
             init_load=init_load
         )
 
+    def get_name(self) -> str:
+        """オブジェクトの名称を取得"""
+        return self.name
 
     def save(self):
         """全体を保存"""
@@ -47,9 +52,9 @@ class MLDataset:
             reuse_features_df=reuse_features_df
         )
 
-    def archive_ml_objects(self, models: list[object], scalers: list[object]):
+    def archive_ml_objects(self, model: object, scaler: Optional[object] = None):
         """MLObjects の archive メソッドを実行"""
-        self.ml_objects.archive_ml_objects(models=models, scalers=scalers)
+        self.ml_objects.archive_ml_objects(model=model, scaler=scaler)
 
     def archive_post_processing_data(self, raw_target_df: pd.DataFrame, 
                                      order_price_df: pd.DataFrame, pred_result_df: pd.DataFrame):
@@ -88,10 +93,10 @@ class MLDataset:
     def stock_selection_materials(self) -> StockSelectionMaterials:
         return self.post_processing_data.getter_stock_selection()
 
-    def copy_from_other_dataset(self, copy_from: 'MLDataset'):
+    def copy_from_other_dataset(self, copy_from: 'SingleMLDataset'):
         """他のデータセットからすべてのインスタンス変数をコピー"""
-        if not isinstance(copy_from, MLDataset):
-            raise TypeError("copy_fromにはMLDatasetインスタンスを指定してください。")
+        if not isinstance(copy_from, SingleMLDataset):
+            raise TypeError("copy_fromにはSingleMLDatasetインスタンスを指定してください。")
 
         for component_name in ['train_test_data', 'ml_objects', 'post_processing_data']:
             source_component = getattr(copy_from, component_name)

@@ -49,7 +49,7 @@ if __name__ == '__main__':
     async def main():
         bm = BrowserManager()
         fs = FeatureScraper(bm)
-        df = await fs.scrape_feature(investing_code='commodities/iron-ore-62-cfr-futures', additional_scrape='Tradingview', additional_code='COMEX-TIO1!')
+        df = await fs.scrape_feature(investing_code='indices/baltic-dry', additional_scrape='Baltic', additional_code='BDI')
         print(df)
     
     import asyncio

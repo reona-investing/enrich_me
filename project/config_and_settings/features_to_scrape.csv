@@ -54,7 +54,7 @@ Palladium,commodity,raw_CmdPalladium_price.parquet,commodities/palladium,None,No
 FeederCattle,commodity,raw_CmdFeederCattle_price.parquet,commodities/feed-cattle,None,None,TRUE
 GasOil,commodity,raw_CmdGasOil_price.parquet,commodities/london-gas-oil,None,None,TRUE
 IronORE62,commodity,raw_CmdIronORE62_price.parquet,commodities/iron-ore-62-cfr-futures,Tradingview,COMEX-TIO1!,TRUE
-BalticDry,other_index,raw_BalticDry_price.parquet,indices/baltic-dry,Baltic,None,TRUE
+BalticDry,other_index,raw_BalticDry_price.parquet,indices/baltic-dry,Baltic,BDI,TRUE
 PHLX Semicondactor,other_index,raw_PHLXSemicondactor_price.parquet,indices/phlx-semiconductor,None,None,TRUE
 JPREIT,other_index,raw_JPREIT_price.parquet,indices/topix-reit-market,None,None,TRUE
 DJ_OilGas,dj_sectors,raw_DJOilGas_price.parquet,indices/dj-oil---gas,None,None,TRUE

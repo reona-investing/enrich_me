@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import pytz
 from acquisition.features_updater.scrapers.feature_latest_value.base import BaseLatestValueScraper
+from bs4 import BeautifulSoup
 
 
 class BalticScraper(BaseLatestValueScraper):
@@ -37,22 +38,36 @@ class BalticScraper(BaseLatestValueScraper):
             latest_day = datetime.combine(UK_time.date(), datetime.min.time())
 
             named_tab = await self.browser_manager.new_tab(name=name, url=url)
-            await named_tab.tab.utils.wait(3)
-            ticker_name_element = await named_tab.tab.utils.wait_for(ticker_code)
+            ticker_rail_element = await named_tab.tab.utils.wait_for('div[class="ticker-rail"]', is_css=True)
+            await named_tab.tab.utils.wait(5)
+            ticker_rail_html = await ticker_rail_element.get_html()
+
+            soup = BeautifulSoup(ticker_rail_html, 'html.parser')
+            price_text = None
+            for ticket in soup.find_all('div', class_='ticket'):
+                index_span = ticket.find('span', class_='index')
+                value_span = ticket.find('span', class_='value')
+                if index_span and value_span and index_span.get_text(strip=True) == ticker_code:
+                    price_text = value_span.get_text(strip=True)
+                    break
             
-            if ticker_name_element is None or ticker_name_element.parent is None:
+            if price_text is None:
                 raise ValueError(f'{ticker_code}の価格情報の要素が見つかりませんでした。')
             
-            element = ticker_name_element.parent.children[1]
-            if type(element) == Element:
-                value = float(element.text.replace(',', ''))
-            elif type(element) == str:
-                value = float(element.replace(',', ''))
-            else:
-                raise ValueError(f'{ticker_code}の価格情報を正しく取得できませんでした。')
+            value = float(price_text.replace(',', ''))
 
             await self.browser_manager.close_tab(name=name)
 
         if latest_day is None or value is None:
             return pd.DataFrame()
         return self._create_df_with_one_row(latest_day, value)
+
+
+if __name__ == '__main__':
+    from utils.browser import BrowserManager
+    import asyncio
+    async def main():
+        bs = BalticScraper(BrowserManager())
+        a = await bs.scrape_latest_value()
+        print(a)
+    asyncio.get_event_loop().run_until_complete(main())
