@@ -1,5 +1,3 @@
-import shutil
-import tempfile
 import os
 import asyncio
 import nodriver as uc
@@ -17,7 +15,7 @@ class BrowserUtils:
     @classmethod
     async def launch_browser(cls) -> uc.Browser:
         """
-        ブラウザを起動します。
+        ブラウザを起動し、ウインドウを最大化します。
         
         Returns:
             nodriver.Browser: ブラウザインスタンス
@@ -25,6 +23,9 @@ class BrowserUtils:
         async with cls._lock:
             if cls.browser_instance is None:
                 cls.browser_instance = await uc.start(browser_executable_path=cls.BROWSER_PATH, user_data_dir=cls.USER_DATA_DIR)
+                # ブラウザ起動後、最初のタブでウインドウを最大化
+                if cls.browser_instance.tabs:
+                    await cls.browser_instance.tabs[0].set_window_state(state='maximized')
             return cls.browser_instance
 
     @classmethod
@@ -39,7 +40,7 @@ class BrowserUtils:
     @classmethod
     async def reset_browser(cls) -> uc.Browser:
         """
-        ブラウザを再起動します。
+        ブラウザを再起動し、ウインドウを最大化します。
 
         Returns:
             nodriver.Browser: ブラウザインスタンス
@@ -47,7 +48,6 @@ class BrowserUtils:
         await cls.clear_browser()
         return await cls.launch_browser()
     
-
 
 
 if __name__ == '__main__':

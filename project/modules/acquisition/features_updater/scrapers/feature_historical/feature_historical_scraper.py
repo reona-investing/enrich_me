@@ -38,10 +38,13 @@ class FeatureHistoricalScraper:
         for i in range(max_retry):
             try:
                 if named_tab:
-                    print('reloading...')
-                    await named_tab.tab.utils.reload()
-                else:
-                    named_tab = await self.browser_manager.new_tab(name=name, url=url)
+                    print('closing tab and recreating...')
+                    # 既存のタブを閉じる
+                    await self.browser_manager.close_tab(name=name)
+                    named_tab = None
+                
+                # 新しいタブを作成
+                named_tab = await self.browser_manager.new_tab(name=name, url=url)
                     
                 # テーブル全体を読み込むのに時間がかかるようなので、要素の存在を確認した後待機時間を設ける
                 await named_tab.tab.utils.wait_for('日付け')
@@ -69,7 +72,15 @@ class FeatureHistoricalScraper:
                 # DataFrame に変換
                 df_to_add = pd.DataFrame(rows, columns=headers)
                 break
-            except:
+            except Exception as e:
+                print(f'Retry {i+1}/{max_retry}: {str(e)}')
+                # エラー時にもタブが開いている場合は閉じる
+                if named_tab:
+                    try:
+                        await self.browser_manager.close_tab(name=name)
+                    except:
+                        pass
+                    named_tab = None
                 continue
         else:
             raise ValueError(f'DataFrame is not found: {url}')
