@@ -129,6 +129,7 @@ class SectorIndex:
         self.marketcap_df = stock_price_cap
         
         return stock_price_cap
+    
 if __name__ == '__main__':
     from acquisition.jquants_api_operations.facades import StockAcquisitionFacade
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))")
