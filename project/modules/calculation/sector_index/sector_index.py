@@ -12,7 +12,7 @@ from .index_calculator import SectorIndexCalculator
 
 
 class SectorIndex:
-    def __init__(self, stock_dfs_dict: dict | None = None, sector_redefinitions_csv: str | None = None, sector_index_parquet: str | None = None):
+    def __init__(self, stock_dfs_dict: dict, sector_redefinitions_csv: str, sector_index_parquet: str):
         self.stock_dfs_dict = stock_dfs_dict
         self.sector_redefinitions_csv = sector_redefinitions_csv
         self.sector_index_parquet = sector_index_parquet
@@ -49,6 +49,10 @@ class SectorIndex:
         ``__init__`` で設定された ``stock_dfs_dict``、``sector_redefinitions_csv``、
         ``sector_index_parquet`` を利用して計算する。既に計算済みの場合は
         キャッシュされた結果を返す。
+
+        Returns:
+            pd.DataFrame: セクターインデックス
+            pd.DataFrame: 発注処理用の株価データ
         """
 
         if self.sector_index_df is not None and self.stock_price_for_order is not None:
