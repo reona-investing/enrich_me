@@ -14,10 +14,10 @@ class SectorIndexGenerator(DataGenerator):
     
     def __init__(self, sector_calculator=None, **kwargs):
         super().__init__()
-        # 既存のSectorIndexCalculatorを使用
+        # 既存のSectorIndexを使用
         if sector_calculator is None:
-            from calculation.sector_index_calculator import SectorIndexCalculator
-            self.sector_calculator = SectorIndexCalculator()
+            from calculation.sector_index_calculator import SectorIndex
+            self.sector_calculator = SectorIndex()
         else:
             self.sector_calculator = sector_calculator
     

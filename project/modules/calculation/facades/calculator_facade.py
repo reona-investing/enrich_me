@@ -1,13 +1,13 @@
 import pandas as pd
 from typing import Literal, Optional, Tuple
-from calculation.sector_index_calculator import SectorIndexCalculator
+from calculation.sector_index_calculator import SectorIndex
 from calculation.features_calculator import FeaturesCalculator
 from preprocessing.pipeline import PreprocessingPipeline
 
 
 class CalculatorFacade:
     """
-    SectorIndexCalculatorとFeaturesCalculatorを組み合わせて
+    SectorIndexとFeaturesCalculatorを組み合わせて
     一連の処理を実行するファサードクラス
     """
     
@@ -74,7 +74,8 @@ class CalculatorFacade:
             names_setting = {}
         
         # 1. セクターインデックスの計算
-        new_sector_price, stock_price_for_order = SectorIndexCalculator.calc_sector_index(
+        sic = SectorIndex()
+        new_sector_price, stock_price_for_order = sic.calc_sector_index(
             stock_dfs_dict=stock_dfs,
             SECTOR_REDEFINITIONS_CSV=sector_redefinitions_csv,
             SECTOR_INDEX_PARQUET=sector_index_parquet
