@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Dict, List, Optional
-from models.machine_learning_refactored.ml_dataset.single_ml_dataset import SingleMLDataset
+from models.machine_learning.ml_dataset.single_ml_dataset import SingleMLDataset
 
 class MLDatasets:
     """複数のSingleMLDatasetを統合管理するクラス"""

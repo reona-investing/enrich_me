@@ -2,8 +2,8 @@ import pandas as pd
 from datetime import datetime
 from typing import Optional
 
-from models.machine_learning_refactored.ml_dataset.components import MLObjects, PostProcessingData, TrainTestData
-from models.machine_learning_refactored.outputs import TrainerOutputs, TrainTestDatasets, EvaluationMaterials, StockSelectionMaterials
+from models.machine_learning.ml_dataset.components import MLObjects, PostProcessingData, TrainTestData
+from models.machine_learning.outputs import TrainerOutputs, TrainTestDatasets, EvaluationMaterials, StockSelectionMaterials
 
 class SingleMLDataset:
     """単体機械学習データセットの統合管理"""

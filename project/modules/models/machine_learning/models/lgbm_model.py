@@ -21,28 +21,26 @@ class LgbmModel(BaseModel):
             **kwargs: lightGBMのハイパーパラメータを任意で設定可能
             
         Returns:
-            TrainerOutputs: モデルのリストとスケーラーのリストを格納したデータクラス
+            TrainerOutputs: モデルとスケーラーを格納したデータクラス
         """
         trainer = LgbmTrainer(target_train_df, features_train_df)
         trainer_outputs = trainer.train(categorical_features, **kwargs)
-        # categorical_featuresを保存
-        self.categorical_features = categorical_features
         return trainer_outputs
     
     def predict(self, target_test_df: pd.DataFrame, features_test_df: pd.DataFrame, 
-                models: List[lgb.train], scalers: Optional[List] = None) -> pd.DataFrame:
+                model: lgb.train, scaler: Optional[object] = None) -> pd.DataFrame:
         """
         lightGBMによる予測を管理します。
         
         Args:
             target_test_df (pd.DataFrame): テスト用の目的変数データフレーム
             features_test_df (pd.DataFrame): テスト用の特徴量データフレーム
-            models (List[lgb.train]): LightGBMモデルを格納したリスト
-            scalers (Optional[List]): 使用しない（LightGBMでは不要）
+            model (lgb.train): LightGBMモデル
+            scaler (Optional[object]): 使用しない（LightGBMでは不要）
             
         Returns:
             pd.DataFrame: 予測結果のデータフレーム
         """
-        predictor = LgbmPredictor(target_test_df, features_test_df, models, categorical_features=self.categorical_features)
+        predictor = LgbmPredictor(target_test_df, features_test_df, [model])
         pred_result_df = predictor.predict()
         return pred_result_df

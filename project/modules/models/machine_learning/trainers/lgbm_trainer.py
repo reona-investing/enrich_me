@@ -19,7 +19,7 @@ class LgbmTrainer(BaseTrainer):
             **kwargs: lightgbmのハイパーパラメータを任意で設定可能
             
         Returns:
-            TrainerOutputs: モデルのリストとスケーラーのリストを設定したデータクラス
+            TrainerOutputs: モデルを設定したデータクラス
         """
         X_train = self.features_train_df
         y_train = self.target_train_df['Target']
@@ -44,9 +44,8 @@ class LgbmTrainer(BaseTrainer):
             feval=self._numerai_corr_lgbm, 
             num_boost_round=100000
         )
-        models = [model]
         
-        return TrainerOutputs(models=models)
+        return TrainerOutputs(model=model)
 
     def _numerai_corr_lgbm(self, preds, data):
         """

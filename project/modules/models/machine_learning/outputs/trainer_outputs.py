@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import Optional
 
 @dataclass
 class TrainerOutputs:
-    models: list[object] = None
-    scalers: list[object] = None
+    model: object = None
+    scaler: Optional[object] = None
