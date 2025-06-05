@@ -27,7 +27,17 @@ class SBIMarginProvider(IMarginProvider):
         if self.margin_power is None:
             await self.refresh()
         return self.margin_power
-    
+        
+    async def get_buying_power(self) -> float:
+        """買付余力を取得する
+        
+        Returns:
+            float: 買付余力
+        """
+        if self.buying_power is None:
+            await self.refresh()
+        return self.buying_power
+        
     async def refresh(self) -> None:
         """証拠金情報（信用建余力、買付余力）を最新の情報に更新する"""
         await self.browser_manager.launch()

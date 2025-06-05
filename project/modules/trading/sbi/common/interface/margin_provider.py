@@ -9,6 +9,10 @@ class IMarginProvider(ABC):
         pass
     
     @abstractmethod
+    async def get_buying_power(self) -> float:
+        """利用可能な証拠金を取得する"""
+        pass    
+    @abstractmethod
     async def refresh(self) -> None:
         """証拠金情報を更新する"""
         pass

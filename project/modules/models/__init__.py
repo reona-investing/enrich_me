@@ -1,9 +1,10 @@
 from .machine_learning import (
-    LassoModel, LgbmModel, EnsembleMethodFactory, MLDataset
+    LassoModel, LgbmModel, EnsembleMethodFactory, MLDatasets, SingleMLDataset
     )
 
 __all__ = [
-    'MLDataset',
+    'MLDatasets',
+    'SingleMLDataset',
     'LassoModel',
     'LgbmModel',
     'EnsembleMethodFactory',
