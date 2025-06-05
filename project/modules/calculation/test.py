@@ -15,7 +15,7 @@ from calculation.features_calculator import FeaturesCalculator as OldFeaturesCal
 from calculation.refactored_features_calculator import main as new_features_calculator_main
 from acquisition.jquants_api_operations.facades.stock_acquisition_facade import StockAcquisitionFacade
 from utils.paths import Paths
-from calculation.sector_index_calculator import SectorIndexCalculator
+from calculation.sector_index_calculator import SectorIndex
 
 
 def compare_dataframes(old_df, new_df, name=""):
@@ -125,7 +125,8 @@ def test_features_calculator():
     NEW_SECTOR_PRICE_PKLGZ = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/sector_price/New48sectors_price.parquet'
     
     # セクター価格の計算（両方のテストで共通利用）
-    new_sector_price_df, _ = SectorIndexCalculator.calc_sector_index(
+    si = SectorIndex()
+    new_sector_price_df, _ = si.calc_sector_index(
         stock_dfs, SECTOR_REDEFINITIONS_CSV, NEW_SECTOR_PRICE_PKLGZ)
     new_sector_list = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
 
