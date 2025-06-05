@@ -19,6 +19,7 @@ class SectorIndex:
         self.sector_index_df: pd.DataFrame | None = None
         self.stock_price_for_order: pd.DataFrame | None = None
         self.marketcap_df: pd.DataFrame | None = None
+        self.sector_index_dict: dict[str, pd.DataFrame] | None = None
         self._marketcap_calc = MarketCapCalculator()
         self._data_preparer = SectorDataPreparer()
         self._index_calc = SectorIndexCalculator()
@@ -42,38 +43,47 @@ class SectorIndex:
     # パブリックメソッド（外部から呼び出し可能）
     # ========================================
 
-    def calc_sector_index(
-        self, stock_dfs_dict: dict, SECTOR_REDEFINITIONS_CSV: str, SECTOR_INDEX_PARQUET: str
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        self.stock_dfs_dict = stock_dfs_dict
-        self.sector_redefinitions_csv = SECTOR_REDEFINITIONS_CSV
-        self.sector_index_parquet = SECTOR_INDEX_PARQUET
-        '''
-        セクターインデックスを算出します。
-        Args:
-            stock_dfs_dict (dict): 'list', 'fin', 'price'が定義されたデータフレーム
-            SECTOR_REDEFINITIONS_CSV (str): セクター定義の設定ファイルのパス
-            SECTOR_INDEX_PARQUET (str): セクターインデックスを出力するparquetファイルのパス
-        Returns:
-            pd.DataFrame: セクターインデックスを格納
-            pd.DataFrame: 発注用に、個別銘柄の終値と時価総額を格納
-        '''
+    def calc_sector_index(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """セクターインデックスを算出する。
+
+        ``__init__`` で設定された ``stock_dfs_dict``、``sector_redefinitions_csv``、
+        ``sector_index_parquet`` を利用して計算する。既に計算済みの場合は
+        キャッシュされた結果を返す。
+        """
+
+        if self.sector_index_df is not None and self.stock_price_for_order is not None:
+            return self.sector_index_df, self.stock_price_for_order
+
+        if (
+            self.stock_dfs_dict is None
+            or self.sector_redefinitions_csv is None
+            or self.sector_index_parquet is None
+        ):
+            raise ValueError(
+                "stock_dfs_dict, sector_redefinitions_csv and sector_index_parquet must be set"
+            )
+
+        # セクターインデックスを算出
         _, price_col, sector_col = SectorIndex._get_column_names()
-        stock_price = stock_dfs_dict['price']
-        stock_fin = stock_dfs_dict['fin']
+        stock_price = self.stock_dfs_dict['price']
+        stock_fin = self.stock_dfs_dict['fin']
 
         # 価格情報に発行済み株式数の情報を結合
         stock_price_for_order = self.calc_marketcap(stock_price, stock_fin)
 
         # セクター定義を読み込み、株価データと結合
-        sector_price_data = self._data_preparer.from_csv(stock_price_for_order, SECTOR_REDEFINITIONS_CSV, self._get_column_names)
+        sector_price_data = self._data_preparer.from_csv(
+            stock_price_for_order,
+            self.sector_redefinitions_csv,
+            self._get_column_names,
+        )
 
         # 共通のインデックス計算処理
         new_sector_price = self._index_calc.aggregate(sector_price_data, self._get_column_names)
         
         # データフレームを保存して、インデックスを設定
         new_sector_price = new_sector_price.reset_index()
-        new_sector_price.to_parquet(SECTOR_INDEX_PARQUET)
+        new_sector_price.to_parquet(self.sector_index_parquet)
         new_sector_price = new_sector_price.set_index([sector_col['日付'], sector_col['セクター']])
 
         stock_price_for_order = stock_price_for_order[[
@@ -106,8 +116,44 @@ class SectorIndex:
         # 共通のインデックス計算処理
         sector_index = self._index_calc.aggregate(sector_price_data, self._get_column_names)
         self.sector_index_df = sector_index
-        
+
         return sector_index
+
+    def get_sector_index_dict(self) -> dict[str, pd.DataFrame]:
+        """セクターインデックスをセクター別に分割して返す。
+
+        必要に応じて :meth:`calc_sector_index` を実行し、計算済みの場合は
+        キャッシュを利用して結果を取得する。
+
+        Returns
+        -------
+        dict[str, pd.DataFrame]
+            キーをセクター名、値を各セクターの ``DataFrame`` とする辞書。
+        """
+
+        if self.sector_index_dict is not None:
+            return self.sector_index_dict
+
+        if self.sector_index_df is None:
+            self.calc_sector_index()
+
+        sector_index_df = self.sector_index_df
+
+        if sector_index_df is None or not isinstance(sector_index_df.index, pd.MultiIndex):
+            raise ValueError("sector_index_df must be MultiIndex")
+
+        _, _, sector_col = SectorIndex._get_column_names()
+        sector_name = sector_col['セクター']
+        date_name = sector_col['日付']
+
+        result: dict[str, pd.DataFrame] = {}
+        for sec in sector_index_df.index.get_level_values(sector_name).unique():
+            df = sector_index_df.xs(sec, level=sector_name)
+            df.index.name = date_name
+            result[sec] = df
+
+        self.sector_index_dict = result
+        return result
 
     def calc_marketcap(self, stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
         '''
@@ -135,10 +181,14 @@ if __name__ == '__main__':
     acq = StockAcquisitionFacade(filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))")
     stock_dfs = acq.get_stock_data_dict()
 
-    sic = SectorIndex()
-    sector_price_df, order_price_df = sic.calc_sector_index(stock_dfs, 
-                                            f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/topix1000.csv', 
-                                            f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/TOPIX1000_price.parquet')
+    sic = SectorIndex(
+        stock_dfs_dict=stock_dfs,
+        sector_redefinitions_csv=f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/topix1000.csv',
+        sector_index_parquet=f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/TOPIX1000_price.parquet',
+    )
+    # セクターインデックスを計算し、セクター別の辞書を取得
+    sector_price_df, order_price_df = sic.calc_sector_index()
+    index_dict = sic.get_sector_index_dict()
     #print(sector_price_df.index.get_level_values('Sector').unique())
     print(sector_price_df)
 
