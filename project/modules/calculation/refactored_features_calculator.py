@@ -5,7 +5,7 @@ from typing import Literal, List, Optional, Iterable
 from utils.paths import Paths
 from utils.yaml_utils import ColumnConfigsGetter
 from utils.metadata import FeatureMetadata
-from calculation import SectorIndexCalculator
+from calculation import SectorIndex
 from utils import yaml_utils
 
 logging.basicConfig(level=logging.ERROR)
@@ -527,7 +527,7 @@ class FinancialFeatureCalculator:
         eps_df = self._combine_forecast_eps(fin_df)
         # 2) ForecastEPSを銘柄・日付順に並べて ffill
         eps_df = self._ffill_forecast_eps(eps_df)
-        # 3) price_dfから時価総額を計算 (旧コードのSectorIndexCalculatorを利用)
+        # 3) price_dfから時価総額を計算 (旧コードのSectorIndexを利用)
         market_cap_df = self._calculate_marketcap(price_df, fin_df)
         # 4) market_cap_df と eps_df をマージし、欠損を再補完
         merged = self._merge_and_fill(market_cap_df, eps_df)
@@ -568,7 +568,7 @@ class FinancialFeatureCalculator:
 
     def _calculate_marketcap(self, price_df: pd.DataFrame, fin_df: pd.DataFrame) -> pd.DataFrame:
         """
-        旧コードのSectorIndexCalculator.calc_marketcap を用いて、
+        旧コードのSectorIndex.calc_marketcap を用いて、
         price_dfからMarketCapClose列を計算したDataFrameを返す。
 
         Args:
@@ -582,7 +582,8 @@ class FinancialFeatureCalculator:
         if self.is_sector:
             price_df_with_cap = price_df
         else:
-            price_df_with_cap = SectorIndexCalculator.calc_marketcap(price_df, fin_df)
+            si = SectorIndex()
+            price_df_with_cap = si.calc_marketcap(price_df, fin_df)
 
         # marketcap_col が計算された場合、列名を固定 (MarketCapClose) に変更
         if self.sector_col['終値時価総額'] in price_df_with_cap.columns:

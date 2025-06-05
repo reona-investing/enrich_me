@@ -12,7 +12,7 @@ from datetime import datetime
 import pandas as pd
 from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
-from calculation import TargetCalculator, FeaturesCalculator, SectorIndexCalculator
+from calculation import TargetCalculator, FeaturesCalculator, SectorIndex
 from models import MLDataset
 from models.loader import load_datasets
 from models.machine_learning import LassoModel, LgbmModel
@@ -41,8 +41,9 @@ async def read_and_update_data(filter: str) -> dict:
 def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end_day: datetime, 
                       SECTOR_REDEFINITIONS_CSV: str, SECTOR_INDEX_PARQUET: str) -> dict:
     '''セクターインデックスの計算'''
+    si = SectorIndex()
     new_sector_price_df, order_price_df = \
-        SectorIndexCalculator.calc_sector_index(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+        si.calc_sector_index(stock_dfs_dict, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     '''目的変数の算出'''
     raw_target_df, target_df = \
         TargetCalculator.daytime_return_PCAresiduals(new_sector_price_df,

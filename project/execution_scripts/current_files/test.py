@@ -48,7 +48,7 @@ def prepare_test_data() -> Dict[str, pd.DataFrame]:
     
     # プロジェクト内のモジュールをインポート
     from acquisition.jquants_api_operations.facades.stock_acquisition_facade import StockAcquisitionFacade
-    from calculation.sector_index_calculator import SectorIndexCalculator
+    from calculation.sector_index_calculator import SectorIndex
     from calculation.target_calculator import TargetCalculator
     from calculation.features_calculator import FeaturesCalculator
     from utils.paths import Paths
@@ -69,7 +69,8 @@ def prepare_test_data() -> Dict[str, pd.DataFrame]:
         
         # セクターインデックスの計算
         print("セクターインデックスを計算しています...")
-        sector_index_df, order_price_df = SectorIndexCalculator.calc_sector_index(
+        si = SectorIndex()
+        sector_index_df, order_price_df = si.calc_sector_index(
             stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET
         )
         
