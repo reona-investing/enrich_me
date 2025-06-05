@@ -60,7 +60,7 @@ class CalculatorFacade:
         Returns:
             Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 - new_sector_price: セクターインデックス価格データ
-                - stock_price_for_order: 発注用個別銘柄データ
+                - order_price_df: 発注用個別銘柄データ
                 - features_df: 特徴量データ
         """
         # デフォルト値の設定
@@ -75,7 +75,7 @@ class CalculatorFacade:
         
         # 1. セクターインデックスの計算
         sic = SectorIndex()
-        new_sector_price, stock_price_for_order = sic.calc_sector_index(
+        new_sector_price, order_price_df = sic.calc_sector_index(
             stock_dfs_dict=stock_dfs,
             SECTOR_REDEFINITIONS_CSV=sector_redefinitions_csv,
             SECTOR_INDEX_PARQUET=sector_index_parquet
@@ -106,4 +106,4 @@ class CalculatorFacade:
             price_preprocessing_pipeline=price_preprocessing_pipeline
         )
         
-        return new_sector_price, stock_price_for_order, features_df
+        return new_sector_price, order_price_df, features_df

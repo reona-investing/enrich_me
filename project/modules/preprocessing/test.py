@@ -19,12 +19,12 @@ std = Standardizer(fit_start=train_start, fit_end=train_end)
 ppp = PreprocessingPipeline([('Standardizer', std)])
 
 
-new_sector_price, stock_price_for_order, features_df = CalculatorFacade.calculate_all(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+new_sector_price, order_price_df, features_df = CalculatorFacade.calculate_all(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
 df = features_df.loc[(features_df.index.get_level_values('Date')<=train_end)&(features_df.index.get_level_values('Date')>=train_start)]
 
 print(features_df)
 
-new_sector_price, stock_price_for_order, features_df = CalculatorFacade.calculate_all(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
+new_sector_price, order_price_df, features_df = CalculatorFacade.calculate_all(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
                                                                                       indices_preprocessing_pipeline=ppp,
                                                                                       price_preprocessing_pipeline=ppp
                                                                                       )
