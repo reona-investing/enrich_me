@@ -8,7 +8,7 @@ import warnings
 
 # 既存クラスのインポート
 from calculation.features_calculator import FeaturesCalculator
-from calculation.sector_index_calculator import SectorIndexCalculator
+from calculation.sector_index_calculator import SectorIndex
 
 # 新システムのインポート
 from data_processing.core.return_calculators import get_return_calculator
@@ -236,8 +236,9 @@ class LegacyFeaturesFacade:
         if kwargs.get('adopt_size_factor', True):
             try:
                 new_sector_list['Code'] = new_sector_list['Code'].astype(str)
-                stock_price_cap = SectorIndexCalculator.calc_marketcap(
-                    stock_dfs_dict['price'], 
+                sic = SectorIndex()
+                stock_price_cap = sic.calc_marketcap(
+                    stock_dfs_dict['price'],
                     stock_dfs_dict['fin']
                 )
                 stock_price_cap = stock_price_cap[stock_price_cap['Code'].isin(new_sector_list['Code'])]

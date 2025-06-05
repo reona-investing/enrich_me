@@ -134,10 +134,11 @@ class PriceFeatures(BaseFeatures):
     
     def _add_size_factor(self, new_sector_list: pd.DataFrame, stock_dfs_dict: Dict, add_rank: bool) -> None:
         """サイズファクターをself.features_dfに追加"""
-        from calculation.sector_index_calculator import SectorIndexCalculator
-        
+        from calculation.sector_index_calculator import SectorIndex
+
         new_sector_list['Code'] = new_sector_list['Code'].astype(str)
-        stock_price_cap = SectorIndexCalculator.calc_marketcap(
+        sic = SectorIndex()
+        stock_price_cap = sic.calc_marketcap(
             stock_dfs_dict['price'], stock_dfs_dict['fin']
         )
         

@@ -124,7 +124,7 @@ class FeaturesSet:
 # 使用例とパターン
 if __name__ == '__main__':
     from acquisition.jquants_api_operations import StockAcquisitionFacade
-    from calculation.sector_index_calculator import SectorIndexCalculator
+    from calculation.sector_index_calculator import SectorIndex
     from utils.paths import Paths
 
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
     saf = StockAcquisitionFacade(filter="(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
     stock_dfs = saf.get_stock_data_dict()
-    sic = SectorIndexCalculator()
+    sic = SectorIndex()
     sector_df, _ = sic.calc_sector_index(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     sector_list_df = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
 

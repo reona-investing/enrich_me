@@ -10,8 +10,9 @@ import pandas as pd
 SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
 SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet'
 
-from calculation.sector_index_calculator import SectorIndexCalculator
-sector_df, order_price_df = SectorIndexCalculator.calc_sector_index(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+from calculation.sector_index_calculator import SectorIndex
+sic = SectorIndex()
+sector_df, order_price_df = sic.calc_sector_index(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
 
 print(sector_df)
 

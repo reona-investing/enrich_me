@@ -1,7 +1,7 @@
 from typing import Optional, Dict, List, Literal
 import pandas as pd
 from acquisition.jquants_api_operations import StockAcquisitionFacade
-from calculation.sector_index_calculator import SectorIndexCalculator
+from calculation.sector_index_calculator import SectorIndex
 from calculation.features.implementation import IndexFeatures, PriceFeatures
 from calculation.features.integration.features_set import FeaturesSet
 from preprocessing import PreprocessingPipeline
@@ -125,7 +125,7 @@ class FeaturesFacade:
                            sector_index_parquet: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         """セクターデータの準備"""
         print("セクターデータを準備中...")
-        sic = SectorIndexCalculator()
+        sic = SectorIndex()
         sector_df, _ = sic.calc_sector_index(
             stock_dfs_dict, sector_redefinitions_csv, sector_index_parquet
         )
