@@ -207,8 +207,10 @@ async def main(ML_DATASET_PATH:str, ML_DATASET_ENSEMBLED_PATH:str,
         trade_facade = TradingFacade()
         '''新規建'''
         if flag_manager.flags[Flags.TAKE_NEW_POSITIONS]:
+            stock_selection_materials = ml_dataset_ensembled.post_processing_data.getter_stock_selection()
             await trade_facade.take_positions(
-                ml_dataset= ml_dataset_ensembled,
+                order_price_df = stock_selection_materials.order_price_df,
+                pred_result_df = stock_selection_materials.pred_result_df,
                 SECTOR_REDEFINITIONS_CSV = SECTOR_REDEFINITIONS_CSV,
                 num_sectors_to_trade = trading_sector_num,
                 num_candidate_sectors = candidate_sector_num,

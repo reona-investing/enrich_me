@@ -13,8 +13,7 @@ from trading.sbi.orders.ordermaker.batch_order_maker import BatchOrderMaker
 from trading.sbi.orders.ordermaker.position_settler import PositionSettler
 from trading.sbi import HistoryManager
 from trading.sbi_trading_logic import HistoryUpdater
-
-from models import MLDatasets
+import pandas as pd
 
 class TradingFacade:
     def __init__(self):
@@ -38,7 +37,8 @@ class TradingFacade:
         self.Paths = Paths
 
     async def take_positions(self, 
-                             ml_datasets: MLDatasets, 
+                             order_price_df: pd.DataFrame,
+                             pred_result_df: pd.DataFrame,
                              SECTOR_REDEFINITIONS_CSV: str, 
                              num_sectors_to_trade: int = 3, 
                              num_candidate_sectors: int = 5, 
@@ -56,8 +56,6 @@ class TradingFacade:
         '''
         
         # 銘柄選択処理
-        order_price_df = ml_datasets.get_order_price()
-        pred_result_df = ml_datasets.get_pred_result()
         stock_selector = OneStopStockSelector(order_price_df = order_price_df,
                                               pred_result_df = pred_result_df,
                                               browser_manager = self.browser_manager,

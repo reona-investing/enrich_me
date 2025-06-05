@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Literal, Optional, Tuple
-from calculation.sector_index_calculator import SectorIndex
+from calculation.sector_index.sector_index import SectorIndex
 from calculation.features_calculator import FeaturesCalculator
 from preprocessing.pipeline import PreprocessingPipeline
 

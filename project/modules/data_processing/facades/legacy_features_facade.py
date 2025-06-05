@@ -8,7 +8,7 @@ import warnings
 
 # 既存クラスのインポート
 from calculation.features_calculator import FeaturesCalculator
-from calculation.sector_index_calculator import SectorIndex
+from calculation.sector_index.sector_index import SectorIndex
 
 # 新システムのインポート
 from data_processing.core.return_calculators import get_return_calculator

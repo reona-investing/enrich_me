@@ -124,7 +124,7 @@ class FeaturesSet:
 # 使用例とパターン
 if __name__ == '__main__':
     from acquisition.jquants_api_operations import StockAcquisitionFacade
-    from calculation.sector_index_calculator import SectorIndex
+    from calculation.sector_index.sector_index import SectorIndex
     from utils.paths import Paths
 
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
