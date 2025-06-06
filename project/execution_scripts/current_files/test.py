@@ -137,7 +137,6 @@ def run_original_ensemble(test_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
     from models import MLDataset
     from models.machine_learning import LassoModel, LgbmModel
     import models.ensemble as ensembles
-    from models.loader import load_datasets
     
     # テスト用のパス
     ML_DATASET_PATH1 = os.path.join(TEST_DIR, 'original', 'lasso_model')
