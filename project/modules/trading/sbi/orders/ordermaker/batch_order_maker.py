@@ -50,6 +50,7 @@ class BatchOrderMaker(OrderMaker):
                 unit=row['Unit'] * 100,
                 direction=row['Direction'],
                 estimated_price=row['EstimatedCost'] / 100,  # 単価を計算
+                is_borrowing_stock=bool(row.get("isBorrowingStock", False)),
                 order_type='成行',
                 period_type="当日中",
                 trade_section="特定預り"
