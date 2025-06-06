@@ -236,7 +236,7 @@ if __name__ == '__main__':
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
     SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
     ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_learned_in_250603'
-    ML_DATASET_ENSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
+    ML_DATASET_ENSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250603'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''

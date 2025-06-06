@@ -135,22 +135,26 @@ class TradingFacade:
 
 if __name__ == '__main__':
     async def main():
-        from models.machine_learning import MLDataset
-        ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
+        from models.machine_learning import SingleMLDataset
+        SINGLE_ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250603'
         SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
-        ml_dataset = MLDataset(ML_DATASET_PATH)
+        ml_dataset = SingleMLDataset(SINGLE_ML_DATASET_PATH, 'Ensembled')
+        order_price_df = ml_dataset.stock_selection_materials.order_price_df
+        pred_result_df = ml_dataset.stock_selection_materials.pred_result_df
         trade_facade = TradingFacade()
-
-        
+      
+        '''
         await trade_facade.take_positions(
-            ml_dataset= ml_dataset,
+            order_price_df = order_price_df,
+            pred_result_df = pred_result_df,
             SECTOR_REDEFINITIONS_CSV = SECTOR_REDEFINITIONS_CSV,
             num_sectors_to_trade = 3,
             num_candidate_sectors = 5,
             top_slope = 1)
         '''
+
         await trade_facade.take_additionals()
-        '''
+
       
 
         
