@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import List, Optional
 
 import pandas as pd
-
 from .machine_learning import MLDatasets, SingleMLDataset
 
 
@@ -75,9 +74,3 @@ class DatasetLoader:
             if os.path.isdir(path):
                 ml_datasets.append_model(SingleMLDataset(path, name))
         return ml_datasets
-
-
-# 以下のラッパー関数は、過去の互換性のために残していたが、
-# ``DatasetLoader`` を直接利用することで同等の処理が可能なため削除した。
-
-
