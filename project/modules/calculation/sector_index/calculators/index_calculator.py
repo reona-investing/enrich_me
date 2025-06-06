@@ -4,10 +4,12 @@ from typing import Callable
 
 
 class SectorIndexCalculator:
-    """Aggregate sector price data and compute index values."""
+    """セクター別の株価データからインデックス値を算出するユーティリティ。"""
 
     @staticmethod
     def aggregate(sector_price_data: pd.DataFrame, col_getter: Callable) -> pd.DataFrame:
+        """セクターインデックスの基礎データを集約する。"""
+
         _, _, sector_col = col_getter()
         columns_to_sum = [
             sector_col['始値時価総額'], sector_col['終値時価総額'], sector_col['高値時価総額'],
@@ -24,6 +26,8 @@ class SectorIndexCalculator:
 
     @staticmethod
     def _calculate_ohlc(sector_index: pd.DataFrame, col_getter: Callable) -> pd.DataFrame:
+        """集約後のデータから OHLC を求める補助メソッド。"""
+
         _, _, sector_col = col_getter()
         sector_index[sector_col['始値']] = (
             sector_index[sector_col['終値']] *

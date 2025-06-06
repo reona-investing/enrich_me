@@ -6,13 +6,23 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Any, Tuple
 
-from .marketcap_calculator import MarketCapCalculator
-from .sector_data_preparer import SectorDataPreparer
-from .index_calculator import SectorIndexCalculator
+from .calculators.marketcap_calculator import MarketCapCalculator
+from .preparers.sector_data_preparer import SectorDataPreparer
+from .calculators.index_calculator import SectorIndexCalculator
 
 
 class SectorIndex:
+    """Stock informationからセクターインデックスを計算するメインクラス。"""
+
     def __init__(self, stock_dfs_dict: dict, sector_redefinitions_csv: str, sector_index_parquet: str):
+        """各種データのパスとデータフレームを受け取り初期化を行う。
+
+        Args:
+            stock_dfs_dict (dict): ``'price'`` および ``'fin'`` をキーにもつデータフレーム辞書。
+            sector_redefinitions_csv (str): セクター再定義 CSV へのパス。
+            sector_index_parquet (str): 計算結果を保存する parquet ファイルのパス。
+        """
+
         self.stock_dfs_dict = stock_dfs_dict
         self.sector_redefinitions_csv = sector_redefinitions_csv
         self.sector_index_parquet = sector_index_parquet
@@ -45,15 +55,16 @@ class SectorIndex:
     # ========================================
 
     def calc_sector_index(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """セクターインデックスを算出する。
+        """セクターインデックスを算出して ``order_price_df`` も返す。
 
-        ``__init__`` で設定された ``stock_dfs_dict``、``sector_redefinitions_csv``、
-        ``sector_index_parquet`` を利用して計算する。既に計算済みの場合は
-        キャッシュされた結果を返す。
+        ``stock_dfs_dict`` で渡された株価データと財務データを用いて
+        時価総額を計算し、CSV で指定されたセクター定義を結合して
+        セクターごとの指数を計算する。結果は ``sector_index_parquet``
+        に保存される。
 
         Returns:
-            pd.DataFrame: セクターインデックス
-            pd.DataFrame: 発注処理用の株価データ（order_price_df）
+            tuple[pd.DataFrame, pd.DataFrame]:
+                計算したセクターインデックスと発注処理用株価データ。
         """
 
         if self.sector_index_df is not None and self.order_price_df is not None:
@@ -102,18 +113,17 @@ class SectorIndex:
         return new_sector_price, order_price_df
 
     def calc_sector_index_by_dict(self, sector_stock_dict: dict, stock_price_data: pd.DataFrame) -> pd.DataFrame:
-        """
-        セクター名をキーとし、そのセクターに属する銘柄コードの配列を値とする辞書から
-        セクターインデックスを算出します。同じ銘柄コードが複数のセクターに含まれる場合も対応します。
-        
+        """辞書形式のセクター定義からインデックスを計算する。
+
         Args:
-            sector_stock_dict (dict): セクター名をキー、銘柄コード配列を値とする辞書
-                                    例: {'JPY感応株': ['6758', '6501', '6702'], 
-                                        'JPbond感応株': ['6751', '8306', '8316', '8411']}
-            stock_price_data (pd.DataFrame): 株価データ（SectorIndex.calc_marketcapの出力と同じ構造）
-            
+            sector_stock_dict (dict):
+                セクター名をキー、銘柄コードのリストを値とする辞書。
+                例: ``{"JPY感応株": ["6758", "6501"], "JPbond感応株": ["6751", ...]}``
+            stock_price_data (pd.DataFrame):
+                ``calc_marketcap`` の結果と同じ形式の株価データ。
+
         Returns:
-            pd.DataFrame: セクターインデックスのデータフレーム
+            pd.DataFrame: セクターインデックスのデータフレーム。
         """
         # セクター定義を辞書から作成し、株価データと結合
         sector_price_data = self._data_preparer.from_dict(stock_price_data, sector_stock_dict, self._get_column_names)
@@ -127,13 +137,14 @@ class SectorIndex:
     def get_sector_index_dict(self) -> tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame]]:
         """セクター別のデータフレーム辞書を取得する。
 
-        必要に応じて :meth:`calc_sector_index` を実行し、計算済みの場合は
-        キャッシュを利用して結果を取得する。
+        :meth:`calc_sector_index` が未実行の場合は内部で呼び出して
+        計算結果をキャッシュする。
 
         Returns
         -------
         tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame]]
-            セクターインデックス辞書と order_price_df をセクター別に分割した辞書を返す。
+            セクターインデックス辞書と ``order_price_df`` をセクター毎に
+            分割した辞書を返す。
         """
 
         if self.sector_index_dict is not None and self.order_price_dict is not None:
@@ -176,14 +187,15 @@ class SectorIndex:
         return sector_dict, order_dict
 
     def calc_marketcap(self, stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
-        '''
-        各銘柄の日ごとの時価総額を算出する。
+        """各銘柄の日次時価総額を計算する。
+
         Args:
-            stock_price (pd.DataFrame): 価格情報
-            stok_fin (pd.DataFrame): 財務情報
+            stock_price (pd.DataFrame): 株価データ。
+            stock_fin (pd.DataFrame): 財務データ。
+
         Returns:
-            pd.DataFrame: 価格情報に時価総額を付記
-        '''
+            pd.DataFrame: 時価総額および補正値を付加した株価データ。
+        """
         # 価格情報に発行済み株式数の情報を照合
         stock_price_with_shares = self._marketcap_calc.merge_stock_price_and_shares(stock_price, stock_fin, self._get_column_names)
         # 発行済み株式数の補正係数を算出
