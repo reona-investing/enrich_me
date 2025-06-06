@@ -2,9 +2,7 @@
 from utils.paths import Paths
 from utils.yaml_utils import ColumnConfigsGetter
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Any, Tuple
+from typing import Tuple
 
 from .calculators.marketcap_calculator import MarketCapCalculator
 from .preparers.sector_data_preparer import SectorDataPreparer

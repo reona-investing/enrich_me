@@ -54,13 +54,10 @@ class TradePossibilityManager:
         await named_tab.tab.utils.wait(1)
         # ダウンロード処理
         for _ in range (5):
-            #await named_tab.tab.utils.wait_for('#csvDownload', is_css = True)
-            #await named_tab.tab.utils.wait(1)
             await named_tab.tab.utils.set_download_path(Path(self.download_path))
             await named_tab.tab.utils.wait(1)
             element = await named_tab.tab.utils.wait_for('a[id="csvDownload"]', is_css = True, timeout = 10)
             await element.click()
-            #await named_tab.tab.utils.click_element('#csvDownload', is_css = True)
             await named_tab.tab.utils.wait(10)
             # CSVファイルの読み込み
             csv_file = await self._get_latest_csv()

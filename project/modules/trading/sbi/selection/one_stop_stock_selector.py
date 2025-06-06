@@ -128,38 +128,3 @@ class OneStopStockSelector:
     def sell_sectors(self) -> list:
         """選択された売りセクターのリストを取得"""
         return self.stock_selector.sell_sectors
-
-
-if __name__ == "__main__":
-    import asyncio
-    from trading.sbi.browser.sbi_browser_manager import SBIBrowserManager
-
-    async def main():
-        # MLデータの読み込み（以前のコードと同様）
-        from models import MLDataset
-        from utils.paths import Paths
-        
-        ml = MLDataset(f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250125')
-        
-        # ブラウザマネージャーの作成
-        browser_manager = SBIBrowserManager()
-        
-        # ファサードの作成（設定パラメータはここに渡す）
-        stock_selection = OneStopStockSelector(
-            order_price_df=ml.stock_selection_materials.order_price_df,
-            pred_result_df=ml.stock_selection_materials.pred_result_df,
-            browser_manager=browser_manager,
-            num_sectors_to_trade=3,
-            num_candidate_sectors=5,
-            top_slope=1.0
-        )
-        
-        # 銘柄選択の実行
-        orders_df, todays_pred_df = await stock_selection.select_stocks()
-        
-        print("選択された買いセクター:", stock_selection.buy_sectors)
-        print("選択された売りセクター:", stock_selection.sell_sectors)
-        print("選択された銘柄:")
-        print(orders_df)
-
-    asyncio.run(main())

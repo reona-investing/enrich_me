@@ -31,7 +31,7 @@ class OrderMaker:
         
         # 注文条件を決定
         order_type = kwargs.get('order_type', "成行")
-        order_type_value = kwargs.get('order_type_value', "寄成")  # デフォルト値を設定
+        order_type_value = kwargs.get('order_type_value')  # デフォルト値を設定
         limit_price = kwargs.get('limit_price')
         
         # 空売り規制対応（Short かつ ETFでない場合）
@@ -52,7 +52,6 @@ class OrderMaker:
             trigger_price=kwargs.get('trigger_price'),
             trade_type=trade_type,
             margin_trade_section=margin_trade_section,
-            # リファクタリング前から落ちているパラメータを追加
             stop_order_type=kwargs.get('stop_order_type', "成行"),
             stop_order_price=kwargs.get('stop_order_price'),
             period_type=kwargs.get('period_type', "当日中"),
