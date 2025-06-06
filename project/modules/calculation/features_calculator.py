@@ -264,7 +264,7 @@ class FeaturesCalculator:
         # サイズファクター（業種内の平均サイズファクター）
         if adopt_size_factor:
             new_sector_list['Code'] = new_sector_list['Code'].astype(str)
-            sector_index = SectorIndex(stock_dfs_dict=stock_dfs_dict)
+            sector_index = SectorIndex(stock_dfs_dict, None, None)
             stock_price_cap = sector_index.calc_marketcap(stock_dfs_dict['price'], stock_dfs_dict['fin'])
             stock_price_cap = stock_price_cap[stock_price_cap['Code'].isin(new_sector_list['Code'])]
             stock_price_cap = pd.merge(stock_price_cap, new_sector_list[['Code', 'Sector']], on='Code', how='left')
@@ -327,9 +327,9 @@ if __name__ == '__main__':
     universe_filter = \
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     stock_dfs_dict = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()
-    sector_index = SectorIndex(stock_dfs_dict=stock_dfs_dict)
+    sector_index = SectorIndex(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     new_sector_price_df, order_price_df = \
-        sector_index.calc_sector_index(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+        sector_index.calc_sector_index()
     
     new_sector_list = pd.read_csv(NEW_SECTOR_LIST_CSV)
 

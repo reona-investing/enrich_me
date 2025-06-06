@@ -133,7 +133,7 @@ class SectorIndex:
         Returns
         -------
         tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame]]
-            セクターインデックス辞書と order_price_df をセクター別に分割した辞書を返す。
+            セクターインデックスと発注処理用の価格データを、それぞれセクター別に分割した辞書を返す。
         """
 
         if self.sector_index_dict is not None and self.order_price_dict is not None:
