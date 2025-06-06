@@ -1,6 +1,11 @@
 from .machine_learning import (
-    LassoModel, LgbmModel, EnsembleMethodFactory, MLDatasets, SingleMLDataset
-    )
+    LassoModel,
+    LgbmModel,
+    EnsembleMethodFactory,
+    MLDatasets,
+    SingleMLDataset,
+)
+from .loader import DatasetLoader
 
 __all__ = [
     'MLDatasets',
@@ -8,4 +13,5 @@ __all__ = [
     'LassoModel',
     'LgbmModel',
     'EnsembleMethodFactory',
+    'DatasetLoader',
 ]
