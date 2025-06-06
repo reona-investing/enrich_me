@@ -3,10 +3,12 @@ from typing import Callable, Dict
 
 
 class SectorDataPreparer:
-    """Utility functions to attach sector definitions to price data."""
+    """株価データにセクター定義を付与するためのユーティリティ。"""
 
     @staticmethod
     def from_csv(stock_price_data: pd.DataFrame, csv_path: str, col_getter: Callable) -> pd.DataFrame:
+        """CSV からセクター定義を読み込み株価データに結合する。"""
+
         _, _, sector_col = col_getter()
         new_sector_list = pd.read_csv(csv_path).dropna(how='any', axis=1)
         new_sector_list[sector_col['銘柄コード']] = new_sector_list[sector_col['銘柄コード']].astype(str)
@@ -15,6 +17,8 @@ class SectorDataPreparer:
 
     @staticmethod
     def from_dict(stock_price_data: pd.DataFrame, sector_stock_dict: Dict[str, list], col_getter: Callable) -> pd.DataFrame:
+        """辞書形式のセクター定義を株価データに適用する。"""
+
         _, _, sector_col = col_getter()
         sector_definitions = []
         for sector_name, stock_codes in sector_stock_dict.items():
