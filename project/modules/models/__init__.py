@@ -4,8 +4,8 @@ from .machine_learning import (
     EnsembleMethodFactory,
     MLDatasets,
     SingleMLDataset,
+    DatasetLoader
 )
-from .loader import DatasetLoader
 
 __all__ = [
     'MLDatasets',

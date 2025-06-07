@@ -16,6 +16,7 @@ from calculation import TargetCalculator, FeaturesCalculator, SectorIndex
 from models.machine_learning.ml_dataset import MLDatasets, SingleMLDataset
 from models.machine_learning.ensembles import EnsembleMethodFactory
 from models.machine_learning.models import LassoModel, LgbmModel
+from models.machine_learning.loaders import DatasetLoader
 
 from trading import TradingFacade
 from acquisition.jquants_api_operations import StockAcquisitionFacade
@@ -153,7 +154,7 @@ def update_ensembled_model(ENSEMBLED_DATASET_PATH: str | os.PathLike[str], ensem
 
 
 #%% メイン関数
-async def main(ML_DATASET_PATH:str, ML_DATASET_ENSEMBLED_PATH:str,
+async def main(ML_DATASET_PATH1:str, ML_DATASET_PATH2:str, ML_DATASET_ENSEMBLED_PATH:str,
                SECTOR_REDEFINITIONS_CSV:str, SECTOR_INDEX_PARQUET:str,
                universe_filter:str, trading_sector_num:int, candidate_sector_num:int,
                train_start_day:datetime, train_end_day:datetime,
@@ -192,9 +193,9 @@ async def main(ML_DATASET_PATH:str, ML_DATASET_ENSEMBLED_PATH:str,
             ensemble_weights = [6.7, 1.3]
             necessary_dfs_dict = get_necessary_dfs(stock_dfs_dict, train_start_day, train_end_day, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
             
-            ml_dataset1 = update_1st_model(ML_DATASET_PATH, necessary_dfs_dict, 
+            ml_dataset1 = update_1st_model(ML_DATASET_PATH1, necessary_dfs_dict, 
                                            train_start_day, train_end_day, test_start_day, test_end_day)
-            ml_dataset2 = update_2nd_model(ml_dataset1, ML_DATASET_PATH, stock_dfs_dict, necessary_dfs_dict,
+            ml_dataset2 = update_2nd_model(ml_dataset1, ML_DATASET_PATH2, stock_dfs_dict, necessary_dfs_dict,
                                            train_start_day, train_end_day, test_start_day, test_end_day)
             pred_result_df1 = ml_dataset1.get_pred_result()
             pred_result_df2 = ml_dataset2.get_pred_result()
@@ -235,8 +236,9 @@ if __name__ == '__main__':
     '''パス類'''
     SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' #別でファイルを作っておく
     SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
-    ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_learned_in_250603'
-    ML_DATASET_ENSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250603'
+    ML_DATASET_PATH1 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250607'
+    ML_DATASET_PATH2 = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250607'
+    ML_DATASET_ENSEMBLED_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250607'
     '''ユニバースを絞るフィルタ'''
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     '''上位・下位何業種を取引対象とするか？'''
@@ -255,7 +257,7 @@ if __name__ == '__main__':
 
 #%% 実行
 if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(main(ML_DATASET_PATH, ML_DATASET_ENSEMBLED_PATH, 
+    asyncio.get_event_loop().run_until_complete(main(ML_DATASET_PATH1, ML_DATASET_PATH2, ML_DATASET_ENSEMBLED_PATH, 
                                                      SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
                                                      universe_filter, trading_sector_num, candidate_sector_num,
                                                      train_start_day, train_end_day, test_start_day, test_end_day,

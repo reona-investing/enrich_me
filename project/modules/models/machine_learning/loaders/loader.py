@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import pandas as pd
-from .machine_learning import MLDatasets, SingleMLDataset
+from models.machine_learning import MLDatasets, SingleMLDataset
 
 
 class DatasetLoader:
@@ -74,3 +74,12 @@ class DatasetLoader:
             if os.path.isdir(path):
                 ml_datasets.append_model(SingleMLDataset(path, name))
         return ml_datasets
+
+
+if __name__ == "__main__":
+    from utils.paths import Paths
+    test_path = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250607'
+    loader = DatasetLoader(test_path)
+    ml_datasets = loader.load_datasets()
+    print(ml_datasets.get_model_names())
+    print(ml_datasets.get_pred_result())

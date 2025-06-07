@@ -63,7 +63,6 @@ class MLDatasets:
             model = self.named_models[model_name]
             try:
                 df = getter(model).copy()
-                df['Model'] = model_name
                 results.append(df)
             except AttributeError:
                 print(f"警告: モデル '{model_name}' に{data_name}データが見つかりません。スキップします。")
