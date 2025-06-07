@@ -56,40 +56,64 @@ def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end
 def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
                         -> MLDatasets:
-    ml_datasets = MLDatasets()
+    loader = DatasetLoader(ML_DATASET_PATH)
     target_df = necessary_dfs_dict['target_df']
+
     if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''LASSO用特徴量の算出'''
-        features_df = FeaturesCalculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
-                                                            adopts_features_indices = True, adopts_features_price = False,
-                                                            groups_setting = None, names_setting = None, currencies_type = 'relative',
-                                                            adopt_1d_return = True, mom_duration = None, vola_duration = None,
-                                                            adopt_size_factor = False, adopt_eps_factor = False,
-                                                            adopt_sector_categorical = False, add_rank = False)
-        
-    for sector in target_df.index.get_level_values('Sector').unique():
-        if flag_manager.flags[Flags.UPDATE_DATASET]:
-            '''LASSO用データセットの更新'''        
-            single_target = target_df[target_df.index.get_level_values('Sector') == sector]
-            single_features = features_df[features_df.index.get_level_values('Sector') == sector]
-            SINGLE_DATASET_PATH = f'{ML_DATASET_PATH}/{sector}'
-            single_ml = SingleMLDataset(SINGLE_DATASET_PATH, sector)
-            single_ml.archive_train_test_data(single_target, single_features,
-                                           train_start_day, train_end_day, test_start_day, test_end_day,
-                                           outlier_threshold = 3,)
-            single_ml.archive_raw_target(necessary_dfs_dict['raw_target_df'])
-            single_ml.archive_order_price(necessary_dfs_dict['order_price_df'])
+        features_df = FeaturesCalculator.calculate_features(
+            necessary_dfs_dict['new_sector_price_df'],
+            None,
+            None,
+            adopts_features_indices = True,
+            adopts_features_price = False,
+            groups_setting = None,
+            names_setting = None,
+            currencies_type = 'relative',
+            adopt_1d_return = True,
+            mom_duration = None,
+            vola_duration = None,
+            adopt_size_factor = False,
+            adopt_eps_factor = False,
+            adopt_sector_categorical = False,
+            add_rank = False
+        )
 
+        ml_datasets = loader.create_grouped_datasets(
+            target_df = target_df,
+            features_df = features_df,
+            train_start_day = train_start_day,
+            train_end_day = train_end_day,
+            test_start_day = test_start_day,
+            test_end_day = test_end_day,
+            outlier_threshold = 3,
+            raw_target_df = necessary_dfs_dict['raw_target_df'],
+            order_price_df = necessary_dfs_dict['order_price_df'],
+        )
+    else:
+        ml_datasets = loader.load_datasets()
+
+    for _, single_ml in ml_datasets.items():
         lasso_model = LassoModel()
         if flag_manager.flags[Flags.LEARN]:
             '''LASSO（学習は必要時、予測は毎回）'''
             print(single_ml.get_name())
-            trainer_outputs = lasso_model.train(single_ml.train_test_materials.target_train_df, single_ml.train_test_materials.features_train_df)
-            single_ml.archive_ml_objects(trainer_outputs.model, trainer_outputs.scaler)
-        pred_result_df = lasso_model.predict(single_ml.train_test_materials.target_test_df, single_ml.train_test_materials.features_test_df, 
-                                        single_ml.ml_object_materials.model, single_ml.ml_object_materials.scaler)
+            trainer_outputs = lasso_model.train(
+                single_ml.train_test_materials.target_train_df,
+                single_ml.train_test_materials.features_train_df,
+            )
+            single_ml.archive_ml_objects(
+                trainer_outputs.model,
+                trainer_outputs.scaler,
+            )
+        pred_result_df = lasso_model.predict(
+            single_ml.train_test_materials.target_test_df,
+            single_ml.train_test_materials.features_test_df,
+            single_ml.ml_object_materials.model,
+            single_ml.ml_object_materials.scaler,
+        )
         single_ml.archive_pred_result(pred_result_df)
-        ml_datasets.append_model(single_ml)
+
     ml_datasets.save_all()
     return ml_datasets
 
