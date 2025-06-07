@@ -106,6 +106,77 @@ class TradingFacade:
             failed_messages = "\n".join([f"{order.message}" for order in failed_orders])
             self.slack.send_message(f'以下の注文の発注に失敗しました。\n{failed_messages}')
 
+    async def take_additionals_until_completed(
+        self,
+        interval: int = 60,
+        max_retries: int = 30,
+    ):
+        """追加発注リストを、約定するまで継続的に発注する
+
+        Args:
+            interval (int): 繰り返し実行の待機時間（秒）
+            max_retries (int): ループの最大実行回数
+
+        補足:
+            追加発注がすべて失敗し、その原因が「信用建余力」不足では
+            ない場合、処理を中断します。
+        """
+        import pandas as pd
+        import asyncio
+        from pathlib import Path
+
+        path = Path(Paths.FAILED_ORDERS_CSV)
+        if not path.exists():
+            self.slack.send_message('追加発注対象の注文はありません。')
+            return
+
+        retry_count = 0
+
+        while retry_count < max_retries:
+            if path.exists():
+                add_df = pd.read_csv(path)
+            else:
+                add_df = pd.DataFrame()
+
+            await self.margin_provider.refresh()
+            margin = await self.margin_provider.get_available_margin()
+            active_orders = await self.order_executor.get_active_orders()
+            active_cnt = len(active_orders)
+
+            self.slack.send_message(f'現在の信用建余力: {margin}円 / 未約定注文: {active_cnt}件')
+
+            if add_df.empty:
+                if active_cnt == 0:
+                    break
+                await asyncio.sleep(interval)
+                continue
+
+            if (add_df['UpperLimitTotal'] <= margin).any():
+                results = await self.batch_order_maker.place_batch_orders(add_df)
+                failed_orders = [r for r in results if not r.success]
+                if failed_orders:
+                    # すべての追加発注が失敗したかを確認
+                    if len(failed_orders) == len(results) and all('信用建余力' not in r.message for r in failed_orders):
+                        self.slack.send_message('追加発注が全て失敗しました。信用建余力不足以外が原因のため処理を終了します。')
+                        break
+                    failed_messages = "\n".join([f"{o.message}" for o in failed_orders])
+                    self.slack.send_message(f'以下の注文の発注に失敗しました。\n{failed_messages}')
+                else:
+                    self.slack.send_message('追加発注が完了しました。')
+            elif active_cnt == 0:
+                self.slack.send_message('信用建余力が不足しており、追加発注可能な銘柄がありません。')
+                break
+
+            await asyncio.sleep(interval)
+            retry_count += 1
+
+        if retry_count >= max_retries:
+            self.slack.send_message(
+                f'最大リトライ回数({max_retries})に達したため処理を終了します。'
+            )
+
+        self.slack.send_message('追加発注処理を終了します。')
+
     async def settle_positions(self):
         '''
         信用ポジションの決済注文を発注します。
