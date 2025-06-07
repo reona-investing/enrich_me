@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 import pandas as pd
 from pydantic import BaseModel, Field
 
@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 class OrderRequest(BaseModel):
     """注文リクエストのデータコンテナ"""
     direction: Literal['Long', 'Short']
-    # 以下、SBI証券の発注データ
     symbol_code: str = Field(..., description="銘柄コード")
     trade_type: Literal["現物買", "現物売", "信用新規買", "信用新規売"] = Field("信用新規買", description="取引タイプ")
     unit: int = Field(100, gt=0, description="取引単位（正の整数）")
@@ -25,7 +24,6 @@ class OrderRequest(BaseModel):
     margin_trade_section: Literal["制度", "一般", "日計り"] = Field("制度", description="信用取引区分")
 
 
-
 @dataclass
 class OrderResult:
     """注文結果のデータコンテナ"""
@@ -35,30 +33,34 @@ class OrderResult:
     error_code: Optional[str] = None
 
 
-class IOrderExecutor(ABC):
-    """注文実行のインターフェース"""
-    
+class IOrderPlacer(ABC):
     @abstractmethod
     async def place_order(self, order_request: OrderRequest) -> OrderResult:
-        """注文を発注する"""
         pass
-    
+
+
+class IOrderCanceller(ABC):
     @abstractmethod
-    async def cancel_all_orders(self, order_id: str) -> OrderResult:
-        """注文をキャンセルする"""
+    async def cancel_all_orders(self) -> List[OrderResult]:
         pass
-    
+
+
+class IPositionSettler(ABC):
     @abstractmethod
     async def settle_position(self, symbol_code: str, unit: Optional[int] = None) -> OrderResult:
-        """ポジションを決済する"""
         pass
-    
-    @abstractmethod
-    async def get_active_orders(self) -> pd.DataFrame:
-        """有効な注文一覧を取得する"""
-        pass
-    
+
     @abstractmethod
     async def get_positions(self) -> pd.DataFrame:
-        """現在のポジション一覧を取得する"""
         pass
+
+
+class IOrderInquiry(ABC):
+    @abstractmethod
+    async def get_active_orders(self) -> pd.DataFrame:
+        pass
+
+
+class IOrderExecutor(IOrderPlacer, IOrderCanceller, IPositionSettler, IOrderInquiry, ABC):
+    """注文実行全体のインターフェース"""
+    pass
