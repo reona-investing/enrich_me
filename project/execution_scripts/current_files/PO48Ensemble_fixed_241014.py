@@ -67,20 +67,16 @@ def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
                                                             adopt_size_factor = False, adopt_eps_factor = False,
                                                             adopt_sector_categorical = False, add_rank = False)
         
-    for sector in target_df.index.get_level_values('Sector').unique():
-        if flag_manager.flags[Flags.UPDATE_DATASET]:
-            '''LASSO用データセットの更新'''        
-            single_target = target_df[target_df.index.get_level_values('Sector') == sector]
-            single_features = features_df[features_df.index.get_level_values('Sector') == sector]
-            SINGLE_DATASET_PATH = f'{ML_DATASET_PATH}/{sector}'
-            single_ml = SingleMLDataset(SINGLE_DATASET_PATH, sector)
-            single_ml.archive_train_test_data(single_target, single_features,
-                                           train_start_day, train_end_day, test_start_day, test_end_day,
-                                           outlier_threshold = 3,)
-            single_ml.archive_raw_target(necessary_dfs_dict['raw_target_df'])
-            single_ml.archive_order_price(necessary_dfs_dict['order_price_df'])
+        from models import DatasetLoader
+        dsl = DatasetLoader(ML_DATASET_PATH)
+        ml_datasets = dsl.create_grouped_datasets(target_df, features_df,
+                                                  train_start_day, train_end_day, test_start_day, test_end_day,
+                                                  raw_target_df = necessary_dfs_dict['raw_target_df'],
+                                                  order_price_df = necessary_dfs_dict['order_price_df'],
+                                                  outlier_threshold = 3)
 
-        lasso_model = LassoModel()
+    lasso_model = LassoModel()
+    for key, single_ml in ml_datasets.items():
         if flag_manager.flags[Flags.LEARN]:
             '''LASSO（学習は必要時、予測は毎回）'''
             print(single_ml.get_name())
@@ -89,7 +85,7 @@ def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
         pred_result_df = lasso_model.predict(single_ml.train_test_materials.target_test_df, single_ml.train_test_materials.features_test_df, 
                                         single_ml.ml_object_materials.model, single_ml.ml_object_materials.scaler)
         single_ml.archive_pred_result(pred_result_df)
-        ml_datasets.append_model(single_ml)
+        ml_datasets.replace_model(single_ml)
     ml_datasets.save_all()
     return ml_datasets
 
