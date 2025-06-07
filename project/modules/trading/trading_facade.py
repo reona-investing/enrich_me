@@ -152,7 +152,6 @@ if __name__ == '__main__':
             num_candidate_sectors = 5,
             top_slope = 1)
         '''
-
         await trade_facade.take_additionals()
 
       

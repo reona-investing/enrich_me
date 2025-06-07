@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import pandas as pd
-from bs4 import BeautifulSoup as soup
 import re
 from trading.sbi.browser import SBIBrowserManager, PageNavigator
 

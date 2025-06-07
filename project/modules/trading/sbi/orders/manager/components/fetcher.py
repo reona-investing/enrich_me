@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from .base import BaseExecutor
-from trading.sbi.orders.interface import OrderResult
 import pandas as pd
 import traceback
 from bs4 import BeautifulSoup as soup

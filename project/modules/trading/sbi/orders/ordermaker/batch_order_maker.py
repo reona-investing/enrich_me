@@ -30,18 +30,22 @@ class BatchOrderMaker(OrderMaker):
             
             # 既に注文済みの銘柄はスキップ
             if symbol_code in existing_symbols:
+                message = f"{symbol_code}: 既に注文済みです"
                 results.append(OrderResult(
                     success=False,
-                    message=f"{symbol_code}: 既に注文済みです",
+                    message=message,
                 ))
+                print(message)
                 continue
             
             # 証拠金が不足している場合はスキップ
             if row['UpperLimitTotal'] > remaining_margin:
+                message = f"{symbol_code}: 証拠金不足のため発注しませんでした"
                 results.append(OrderResult(
                     success=False,
-                    message=f"{symbol_code}: 証拠金不足のため発注しませんでした",
+                    message=message,
                 ))
+                print(message)
                 self.failed_orders.append(symbol_code)
                 continue
             
@@ -59,6 +63,7 @@ class BatchOrderMaker(OrderMaker):
             # 注文を発注
             result = await self.order_executor.place_order(order_request)
             results.append(result)
+            print(result.message)
             
             if result.success:
                 remaining_margin -= row['UpperLimitTotal']

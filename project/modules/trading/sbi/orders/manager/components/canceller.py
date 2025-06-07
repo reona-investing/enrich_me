@@ -4,6 +4,7 @@ from typing import List
 from .base import BaseExecutor
 from trading.sbi.orders.interface import OrderResult
 from bs4 import BeautifulSoup as soup
+import pandas as pd
 import re
 import traceback
 

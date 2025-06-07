@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Optional
 from .base import BaseExecutor
 from trading.sbi.orders.interface import OrderResult
-import pandas as pd
 import traceback
+import re
 
 class PositionSettlerMixin(BaseExecutor):
     """Handles position settlement"""
