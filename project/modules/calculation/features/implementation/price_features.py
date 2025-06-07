@@ -21,7 +21,8 @@ class PriceFeatures(BaseFeatures):
                           adopt_size_factor: bool = True,
                           adopt_eps_factor: bool = True,
                           adopt_sector_categorical: bool = True,
-                          add_rank: bool = True) -> pd.DataFrame:
+                          add_rank: bool = True,
+                          preprocessing_pipeline: Optional[PreprocessingPipeline] = None) -> pd.DataFrame:
         """
         価格系特徴量を計算し、self.features_dfを更新
         
@@ -36,6 +37,7 @@ class PriceFeatures(BaseFeatures):
             adopt_eps_factor: EPSファクターを採用するか
             adopt_sector_categorical: セクターカテゴリを採用するか
             add_rank: ランキングを追加するか
+            preprocessing_pipeline: 前処理パイプライン (任意)
             
         Returns:
             計算された特徴量データフレーム
@@ -66,6 +68,8 @@ class PriceFeatures(BaseFeatures):
         # セクターカテゴリ
         if adopt_sector_categorical:
             self._add_sector_categorical()
+        
+        self.features_df = self.apply_preprocessing(preprocessing_pipeline)
         
         print('価格系特徴量の算出が完了しました。')
         return self.features_df.copy()

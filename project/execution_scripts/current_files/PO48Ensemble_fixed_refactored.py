@@ -13,6 +13,10 @@ import pandas as pd
 from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndex
+from calculation.features import FeaturesSet, IndexFeatures, PriceFeatures
+
+from preprocessing import PreprocessingPipeline, Standardizer
+
 from models.machine_learning.ml_dataset import MLDatasets, SingleMLDataset
 from models.machine_learning.ensembles import EnsembleMethodFactory
 from models.machine_learning.models import LassoModel, LgbmModel
@@ -56,17 +60,22 @@ def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end
 def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
                         -> MLDatasets:
+    sector_index = SectorIndex(necessary_dfs_dict['new_sector_price_df'], SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+    sector_index.get_sector_index_dict()
     ml_datasets = MLDatasets()
     target_df = necessary_dfs_dict['target_df']
     if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''LASSO用特徴量の算出'''
-        features_df = FeaturesCalculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
-                                                            adopts_features_indices = True, adopts_features_price = False,
-                                                            groups_setting = None, names_setting = None, currencies_type = 'relative',
-                                                            adopt_1d_return = True, mom_duration = None, vola_duration = None,
-                                                            adopt_size_factor = False, adopt_eps_factor = False,
-                                                            adopt_sector_categorical = False, add_rank = False)
-        
+        index_features =IndexFeatures()
+        ppp = PreprocessingPipeline([Standardizer(fit_start=train_start_day, fit_end=train_end_day)])
+        price_features = PriceFeatures()
+        index_features_df = index_features.calculate_features(preprocessing_pipeline=ppp)
+        price_features_df = price_features.calculate_features(necessary_dfs_dict['new_sector_price_df'], None, None,
+                                                              adopt_eps_factor=False, adopt_size_factor=False,
+                                                              adopt_sector_categorical=False, add_rank=False,
+                                                              preprocessing_pipeline=ppp)
+        features_df = FeaturesSet().combine_features(index_features_df, price_features_df)
+        print(features_df)
         dsl = DatasetLoader(ML_DATASET_PATH)
         ml_datasets = dsl.create_grouped_datasets(target_df, features_df,
                                                   train_start_day, train_end_day, test_start_day, test_end_day,

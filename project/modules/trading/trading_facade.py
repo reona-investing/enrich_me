@@ -143,7 +143,7 @@ class TradingFacade:
             active_orders = await self.order_executor.get_active_orders()
             active_cnt = len(active_orders)
 
-            self.slack.send_message(f'現在の信用建余力: {margin}円 / 未約定注文: {active_cnt}件')
+            print(f'現在の信用建余力: {margin}円 / 未約定注文: {active_cnt}件')
 
             if add_df.empty:
                 if active_cnt == 0:
@@ -160,9 +160,10 @@ class TradingFacade:
                         self.slack.send_message('追加発注が全て失敗しました。信用建余力不足以外が原因のため処理を終了します。')
                         break
                     failed_messages = "\n".join([f"{o.message}" for o in failed_orders])
-                    self.slack.send_message(f'以下の注文の発注に失敗しました。\n{failed_messages}')
+                    self.slack.send_message(f'以下の注文の発注に失敗しました。1分後に再発注を試みます。\n{failed_messages}')
                 else:
                     self.slack.send_message('追加発注が完了しました。')
+                    break
             elif active_cnt == 0:
                 self.slack.send_message('信用建余力が不足しており、追加発注可能な銘柄がありません。')
                 break
@@ -174,8 +175,6 @@ class TradingFacade:
             self.slack.send_message(
                 f'最大リトライ回数({max_retries})に達したため処理を終了します。'
             )
-
-        self.slack.send_message('追加発注処理を終了します。')
 
     async def settle_positions(self):
         '''

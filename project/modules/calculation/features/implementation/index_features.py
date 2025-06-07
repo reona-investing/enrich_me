@@ -16,7 +16,8 @@ class IndexFeatures(BaseFeatures):
                           groups_setting: Dict = {},
                           names_setting: Dict = {},
                           currencies_type: Literal['relative', 'raw'] = 'relative',
-                          commodity_type: Literal['JPY', 'raw'] = 'raw') -> pd.DataFrame:
+                          commodity_type: Literal['JPY', 'raw'] = 'raw',
+                          preprocessing_pipeline: Optional[PreprocessingPipeline] = None) -> pd.DataFrame:
         """
         インデックス系特徴量を計算し、self.features_dfを更新
         
@@ -25,6 +26,7 @@ class IndexFeatures(BaseFeatures):
             names_setting: 特徴量の採否設定
             currencies_type: 通貨の処理方法
             commodity_type: コモディティの処理方法
+            preprocessing_pipeline: 前処理パイプライン (任意)
             
         Returns:
             計算された特徴量データフレーム
@@ -39,6 +41,8 @@ class IndexFeatures(BaseFeatures):
             self.features_to_scrape_df, currencies_type, commodity_type
         )
         
+        self.features_df = self.apply_preprocessing(preprocessing_pipeline)
+
         print('インデックス系特徴量の算出が完了しました。')
         return self.features_df.copy()
     
