@@ -35,3 +35,29 @@ class HDBSCANCluster:
             best_labels = hdbscan.HDBSCAN(min_cluster_size=min_cluster_sizes[0]).fit_predict(df)
 
         return pd.DataFrame({"Cluster": best_labels}, index=df.index)
+
+    def fit_recursive(
+        self,
+        df: pd.DataFrame,
+        min_cluster_sizes: list[int] | None = None,
+    ) -> pd.DataFrame:
+        """再帰的にクラスタリングを実行し、各段階のラベルを保持する"""
+
+        result = pd.DataFrame(index=df.index)
+
+        def _recurse(indexes: pd.Index, depth: int) -> None:
+            sub_df = df.loc[indexes]
+            labels = self.fit(sub_df, min_cluster_sizes)["Cluster"]
+            result.loc[indexes, f"Level{depth}"] = labels
+            if labels.nunique() <= 1:
+                return
+            for lbl in labels.unique():
+                members = indexes[labels == lbl]
+                if len(members) <= 1:
+                    continue
+                _recurse(members, depth + 1)
+
+        _recurse(df.index, 0)
+        final = pd.factorize(result.fillna(-1).apply(tuple, axis=1))[0]
+        result["Cluster"] = final
+        return result
