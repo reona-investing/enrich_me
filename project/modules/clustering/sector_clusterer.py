@@ -12,6 +12,8 @@ class SectorClusterer:
     def __init__(self, stock_list_df: pd.DataFrame) -> None:
         self.reducer = UMAPReducer()
         self.cluster = HDBSCANCluster()
+        self.stock_list_df = stock_list_df
+
 
     def apply_umap(
         self,
@@ -36,4 +38,18 @@ class SectorClusterer:
         min_cluster_sizes: list[int] | None = None,
     ) -> pd.DataFrame:
         """HDBSCAN を再帰的に適用しクラスタを細分化する"""
-        return self.cluster.fit_recursive(df, min_cluster_sizes)
+        labels = self.cluster.fit_recursive(df, min_cluster_sizes)
+        merged = (
+            labels
+            .merge(self.stock_list_df, how="left", left_index=True, right_on="Code")
+            .set_index("Code")
+        )
+        info_cols = [
+            "CompanyName",
+            "MarketCodeName",
+            "Sector33CodeName",
+            "Sector17CodeName",
+            "ScaleCategory",
+            "Listing",
+        ]
+        return merged[info_cols + list(labels.columns)]

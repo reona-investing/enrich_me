@@ -41,34 +41,24 @@ class HDBSCANCluster:
         df: pd.DataFrame,
         min_cluster_sizes: list[int] | None = None,
     ) -> pd.DataFrame:
-        """再帰的にクラスタリングを実行し、分割不能になるまで細分化する"""
+        """再帰的にクラスタリングを実行し、各段階のラベルを保持する"""
 
-        final_labels = pd.Series(index=df.index, dtype=int)
-        next_label = 0
+        result = pd.DataFrame(index=df.index)
 
-        def _split(sub_df: pd.DataFrame) -> None:
-            nonlocal next_label
-            result = self.fit(sub_df, min_cluster_sizes)["Cluster"]
-            unique_labels = sorted(result.unique())
-
-            if len(unique_labels) <= 1:
-                final_labels.loc[sub_df.index] = next_label
-                next_label += 1
+        def _recurse(indexes: pd.Index, depth: int) -> None:
+            sub_df = df.loc[indexes]
+            labels = self.fit(sub_df, min_cluster_sizes)["Cluster"]
+            result.loc[indexes, f"Level{depth}"] = labels
+            if labels.nunique() <= 1:
                 return
-
-            for lbl in unique_labels:
-                members = sub_df.index[result == lbl]
+            for lbl in labels.unique():
+                members = indexes[labels == lbl]
                 if len(members) <= 1:
-                    final_labels.loc[members] = next_label
-                    next_label += 1
                     continue
-                sub_df_slice = sub_df.loc[members]
-                sub_res = self.fit(sub_df_slice, min_cluster_sizes)["Cluster"]
-                if len(np.unique(sub_res)) <= 1:
-                    final_labels.loc[members] = next_label
-                    next_label += 1
-                else:
-                    _split(sub_df_slice)
+                _recurse(members, depth + 1)
 
-        _split(df)
-        return pd.DataFrame({"Cluster": final_labels})
+        _recurse(df.index, 0)
+        final = pd.factorize(result.fillna(-1).apply(tuple, axis=1))[0]
+        result["Cluster"] = final
+        return result
+
