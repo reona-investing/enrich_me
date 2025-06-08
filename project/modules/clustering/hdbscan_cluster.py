@@ -61,3 +61,4 @@ class HDBSCANCluster:
         final = pd.factorize(result.fillna(-1).apply(tuple, axis=1))[0]
         result["Cluster"] = final
         return result
+

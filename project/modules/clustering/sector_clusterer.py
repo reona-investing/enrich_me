@@ -14,6 +14,7 @@ class SectorClusterer:
         self.cluster = HDBSCANCluster()
         self.stock_list_df = stock_list_df
 
+
     def apply_umap(
         self,
         df: pd.DataFrame,

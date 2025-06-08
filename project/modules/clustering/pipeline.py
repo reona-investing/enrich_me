@@ -14,6 +14,7 @@ class SectorClusteringPipeline:
         self.cluster = HDBSCANCluster()
         self.stock_list_df = stock_list_df
 
+
     def execute(self, df: pd.DataFrame) -> pd.DataFrame:
         """パイプライン全体を実行し、最終的なクラスタ付与結果を返す"""
         reduced = self.reducer.fit_transform(df)
