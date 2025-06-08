@@ -13,6 +13,7 @@ class HDBSCANCluster:
         self,
         df: pd.DataFrame,
         min_cluster_sizes: list[int] | None = None,
+        metric: str = 'euclidean',
     ) -> pd.DataFrame:
         """複数パラメータでクラスタリングを実行し、シルエット係数で最良の結果を返す"""
         if min_cluster_sizes is None:
@@ -22,7 +23,7 @@ class HDBSCANCluster:
         best_score = -1.0
 
         for size in min_cluster_sizes:
-            clusterer = hdbscan.HDBSCAN(min_cluster_size=size)
+            clusterer = hdbscan.HDBSCAN(min_cluster_size=size, metric=metric)
             labels = clusterer.fit_predict(df)
             if len(np.unique(labels)) <= 1:
                 continue
@@ -40,14 +41,15 @@ class HDBSCANCluster:
         self,
         df: pd.DataFrame,
         min_cluster_sizes: list[int] | None = None,
+        metric: str = 'euclidean',
     ) -> pd.DataFrame:
         """再帰的にクラスタリングを実行し、各段階のラベルを保持する"""
 
         result = pd.DataFrame(index=df.index)
 
-        def _recurse(indexes: pd.Index, depth: int) -> None:
+        def _recurse(indexes: pd.Index, depth: int, metric: str) -> None:
             sub_df = df.loc[indexes]
-            labels = self.fit(sub_df, min_cluster_sizes)["Cluster"]
+            labels = self.fit(sub_df, min_cluster_sizes, metric)["Cluster"]
             result.loc[indexes, f"Level{depth}"] = labels
             if labels.nunique() <= 1:
                 return
@@ -55,10 +57,33 @@ class HDBSCANCluster:
                 members = indexes[labels == lbl]
                 if len(members) <= 1:
                     continue
-                _recurse(members, depth + 1)
+                _recurse(members, depth + 1, metric)
 
-        _recurse(df.index, 0)
-        final = pd.factorize(result.fillna(-1).apply(tuple, axis=1))[0]
-        result["Cluster"] = final
-        return result
+        _recurse(df.index, 0, metric)
+        
+        # 各Level列を昇順に並び替え
+        level_cols = [col for col in result.columns if col.startswith('Level')]
+        sorted_result = result[level_cols].copy()
+        
+        # 各Level列について、NaNを適切に処理しながら昇順ソート
+        for col in level_cols:
+            # 各列の値を取得し、NaNでない値のみでソート用のマッピングを作成
+            unique_vals = sorted_result[col].dropna().unique()
+            unique_vals_sorted = sorted(unique_vals)
+            
+            # 値のマッピング辞書を作成（NaNは-1のまま保持）
+            value_mapping = {val: i for i, val in enumerate(unique_vals_sorted)}
+            value_mapping[-1] = -1  # ノイズラベルは-1のまま保持
+            
+            # マッピングを適用
+            sorted_result[col] = sorted_result[col].map(value_mapping).fillna(-1)
+        
+        # ソート済みの結果でCluster列を生成
+        sorted_result = sorted_result.sort_values(level_cols)
+        final = pd.factorize(sorted_result.fillna(-1).apply(tuple, axis=1))[0]
+        
+        # 元のresultにソート済みの列とCluster列を設定
+        sorted_result["Cluster"] = final
+        
+        return sorted_result
 
