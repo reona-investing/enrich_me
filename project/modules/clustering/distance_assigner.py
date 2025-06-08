@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import numpy as np
 import networkx as nx
 from sklearn.metrics import pairwise_distances
 
@@ -48,3 +49,22 @@ class EuclideanClusterAssigner:
                 "Cluster",
             ]
         ]
+
+    def analyze_distances(
+        self,
+        df: pd.DataFrame,
+        labels: pd.Series,
+    ) -> pd.DataFrame:
+        """各クラスタ内の平均距離を算出する"""
+        dist = pairwise_distances(df.values, metric="euclidean")
+        dist_df = pd.DataFrame(dist, index=df.index, columns=df.index)
+        results = []
+        for cluster in sorted(labels.unique()):
+            members = labels.index[labels == cluster]
+            if len(members) <= 1:
+                mean_dist = 0.0
+            else:
+                sub = dist_df.loc[members, members]
+                mean_dist = float(sub.where(~np.eye(len(sub), dtype=bool)).mean().mean())
+            results.append({"Cluster": cluster, "MeanDistance": mean_dist})
+        return pd.DataFrame(results).set_index("Cluster")
