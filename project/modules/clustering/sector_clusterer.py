@@ -4,7 +4,6 @@ import pandas as pd
 
 from .reducer import UMAPReducer
 from .hdbscan_cluster import HDBSCANCluster
-from .distance_assigner import EuclideanClusterAssigner
 
 
 class SectorClusterer:
@@ -13,7 +12,6 @@ class SectorClusterer:
     def __init__(self, stock_list_df: pd.DataFrame) -> None:
         self.reducer = UMAPReducer()
         self.cluster = HDBSCANCluster()
-        self.assigner = EuclideanClusterAssigner(stock_list_df)
 
     def apply_umap(
         self,
@@ -31,16 +29,11 @@ class SectorClusterer:
     ) -> pd.DataFrame:
         return self.cluster.fit(df, min_cluster_sizes)
 
-    def determine_cluster_from_euclidean(
-        self,
-        df: pd.DataFrame,
-        threshold: float = 0.03,
-    ) -> pd.DataFrame:
-        return self.assigner.assign(df, threshold)
 
-    def analyze_cluster_distances(
+    def apply_recursive_hdbscan(
         self,
         df: pd.DataFrame,
-        labels: pd.Series,
+        min_cluster_sizes: list[int] | None = None,
     ) -> pd.DataFrame:
-        return self.assigner.analyze_distances(df, labels)
+        """HDBSCAN を再帰的に適用しクラスタを細分化する"""
+        return self.cluster.fit_recursive(df, min_cluster_sizes)
