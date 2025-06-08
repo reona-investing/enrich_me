@@ -37,3 +37,10 @@ class SectorClusterer:
         threshold: float = 0.03,
     ) -> pd.DataFrame:
         return self.assigner.assign(df, threshold)
+
+    def analyze_cluster_distances(
+        self,
+        df: pd.DataFrame,
+        labels: pd.Series,
+    ) -> pd.DataFrame:
+        return self.assigner.analyze_distances(df, labels)
