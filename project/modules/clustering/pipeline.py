@@ -18,5 +18,7 @@ class SectorClusteringPipeline:
     def execute(self, df: pd.DataFrame) -> pd.DataFrame:
         """パイプライン全体を実行し、最終的なクラスタ付与結果を返す"""
         reduced = self.reducer.fit_transform(df)
-        clustered = self.cluster.fit(reduced)
-        return self.assigner.assign(clustered)
+        labels = self.cluster.fit(reduced)
+        assigned = self.assigner.assign(reduced)
+        analysis = self.assigner.analyze_distances(reduced, labels["Cluster"])
+        return assigned.join(analysis, how="left")
