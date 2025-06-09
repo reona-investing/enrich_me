@@ -21,16 +21,18 @@ class SectorClusterer:
         n_components: int = 15,
         n_neighbors: int = 5,
         min_dist: float = 0.1,
+        **kwargs,
     ) -> pd.DataFrame:
-        return self.reducer.fit_transform(df, n_components, n_neighbors, min_dist)
+        return self.reducer.fit_transform(df, n_components, n_neighbors, min_dist, **kwargs)
 
     def apply_hdbscan(
         self,
         df: pd.DataFrame,
         min_cluster_sizes: list[int] | None = None,
         metric: str = 'euclidean',
+        **kwargs,
     ) -> pd.DataFrame:
-        return self.cluster.fit(df, min_cluster_sizes, metric)
+        return self.cluster.fit(df, min_cluster_sizes, metric, **kwargs)
 
 
     def apply_recursive_hdbscan(
@@ -38,9 +40,10 @@ class SectorClusterer:
         df: pd.DataFrame,
         min_cluster_sizes: list[int] | None = None,
         metric: str = 'euclidean',
+        **kwargs,
     ) -> pd.DataFrame:
         """HDBSCAN を再帰的に適用しクラスタを細分化する"""
-        labels = self.cluster.fit_recursive(df, min_cluster_sizes, metric)
+        labels = self.cluster.fit_recursive(df, min_cluster_sizes, metric, **kwargs)
         merged = (
             labels
             .merge(self.stock_list_df, how="left", left_index=True, right_on="Code")

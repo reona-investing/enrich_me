@@ -56,7 +56,7 @@ def get_necessary_dfs(stock_dfs_dict: dict, train_start_day: datetime, train_end
 def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
                         -> MLDatasets:
-    ml_datasets = MLDatasets()
+    dsl = DatasetLoader(ML_DATASET_PATH)
     target_df = necessary_dfs_dict['target_df']
     if flag_manager.flags[Flags.UPDATE_DATASET]:
         '''LASSO用特徴量の算出'''
@@ -67,14 +67,15 @@ def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
                                                             adopt_size_factor = False, adopt_eps_factor = False,
                                                             adopt_sector_categorical = False, add_rank = False)
         
-        dsl = DatasetLoader(ML_DATASET_PATH)
         ml_datasets = dsl.create_grouped_datasets(target_df, features_df,
                                                   train_start_day, train_end_day, test_start_day, test_end_day,
                                                   raw_target_df = necessary_dfs_dict['raw_target_df'],
                                                   order_price_df = necessary_dfs_dict['order_price_df'],
                                                   outlier_threshold = 3)
+    else:
+        ml_datasets = dsl.load_datasets()
 
-    lasso_model = LassoModel()
+    lasso_model = LassoModel()    
     for key, single_ml in ml_datasets.items():
         if flag_manager.flags[Flags.LEARN]:
             '''LASSO（学習は必要時、予測は毎回）'''
@@ -84,55 +85,55 @@ def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
         pred_result_df = lasso_model.predict(single_ml.train_test_materials.target_test_df, single_ml.train_test_materials.features_test_df, 
                                         single_ml.ml_object_materials.model, single_ml.ml_object_materials.scaler)
         single_ml.archive_pred_result(pred_result_df)
-        ml_datasets.replace_model(single_ml)
-    ml_datasets.save_all()
+        single_ml.save()
     return ml_datasets
 
 def update_2nd_model(ml_datasets1: MLDatasets, ML_DATASET_PATH: str, 
                      stock_dfs_dict: dict, necessary_dfs_dict: dict, 
                      train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime) \
                         -> MLDatasets:
-    if flag_manager.flags[Flags.UPDATE_DATASET]:
-        '''lightGBM用特徴量の算出'''
-        ml_datasets2 = MLDatasets()
-        features_df = FeaturesCalculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
-                                                              pd.read_csv(SECTOR_REDEFINITIONS_CSV), stock_dfs_dict,
-                                                              adopts_features_indices = True, adopts_features_price = True,
-                                                              groups_setting = None, names_setting = None, currencies_type = 'relative',
-                                                              adopt_1d_return = True, mom_duration = [5, 21], vola_duration = [5, 21],
-                                                              adopt_size_factor = True, adopt_eps_factor = True,
-                                                              adopt_sector_categorical = True, add_rank = True)
-        pred_in_1st_model = ml_datasets1.get_pred_result()
-        features_df = pd.merge(features_df, pred_in_1st_model[['Pred']], how='outer',
-                            left_index=True, right_index=True) # LASSOでの予測結果をlightGBMの特徴量として追加
-        features_df = features_df.rename(columns={'Pred':'1stModel_pred'})
+    # TODO 多分新しいデータセットの生成がうまくいかないはず
+    dsl = DatasetLoader(ML_DATASET_PATH)
+    ml_datasets2 = dsl.load_datasets()
+    for key, single_ml in ml_datasets2.items():
+        if flag_manager.flags[Flags.UPDATE_DATASET]:
+            '''lightGBM用特徴量の算出'''
+            features_df = FeaturesCalculator.calculate_features(necessary_dfs_dict['new_sector_price_df'], 
+                                                                pd.read_csv(SECTOR_REDEFINITIONS_CSV), stock_dfs_dict,
+                                                                adopts_features_indices = True, adopts_features_price = True,
+                                                                groups_setting = None, names_setting = None, currencies_type = 'relative',
+                                                                adopt_1d_return = True, mom_duration = [5, 21], vola_duration = [5, 21],
+                                                                adopt_size_factor = True, adopt_eps_factor = True,
+                                                                adopt_sector_categorical = True, add_rank = True)
+            pred_in_1st_model = ml_datasets1.get_pred_result()
+            features_df = pd.merge(features_df, pred_in_1st_model[['Pred']], how='outer',
+                                left_index=True, right_index=True) # LASSOでの予測結果をlightGBMの特徴量として追加
+            features_df = features_df.rename(columns={'Pred':'1stModel_pred'})
 
-        '''lightGBM用データセットの更新'''
-        # 目的変数・特徴量dfをデータセットに登録
-        SINGLE_DATASET_PATH = f'{ML_DATASET_PATH}/lightGBM'
-        single_ml_dataset = SingleMLDataset(SINGLE_DATASET_PATH, 'LightGBM')
-        single_ml_dataset.archive_train_test_data(necessary_dfs_dict['target_df'], features_df,
-                                                  train_start_day, train_end_day, test_start_day, test_end_day,
-                                                  outlier_threshold = 3,
-                                                  no_shift_features=['1stModel_pred'], 
-                                                  reuse_features_df=True)
-        single_ml_dataset.archive_raw_target(necessary_dfs_dict['raw_target_df'])
-        single_ml_dataset.archive_order_price(necessary_dfs_dict['order_price_df'])
+            '''lightGBM用データセットの更新'''
+            # 目的変数・特徴量dfをデータセットに登録
+            single_ml.archive_train_test_data(necessary_dfs_dict['target_df'], features_df,
+                                                    train_start_day, train_end_day, test_start_day, test_end_day,
+                                                    outlier_threshold = 3,
+                                                    no_shift_features=['1stModel_pred'], 
+                                                    reuse_features_df=True)
+            single_ml.archive_raw_target(necessary_dfs_dict['raw_target_df'])
+            single_ml.archive_order_price(necessary_dfs_dict['order_price_df'])
 
-    lgbm_model = LgbmModel()
-    if flag_manager.flags[Flags.LEARN]:
-        '''lightGBM（学習は必要時、予測は毎回）'''
-        trainer_outputs = lgbm_model.train(single_ml_dataset.train_test_materials.target_train_df, 
-                                           single_ml_dataset.train_test_materials.features_train_df,
-                                           categorical_features = ['Sector_cat'])
-        single_ml_dataset.archive_ml_objects(model = trainer_outputs.model, scaler = None)
-    pred_result_df = lgbm_model.predict(single_ml_dataset.train_test_materials.target_test_df,
-                                        single_ml_dataset.train_test_materials.features_test_df,
-                                        single_ml_dataset.ml_object_materials.model)
-    single_ml_dataset.archive_pred_result(pred_result_df)
-    ml_datasets2.append_model(single_ml_dataset)
-    ml_datasets2.save_all()
-    return ml_datasets2
+        lgbm_model = LgbmModel()
+        if flag_manager.flags[Flags.LEARN]:
+            '''lightGBM（学習は必要時、予測は毎回）'''
+            trainer_outputs = lgbm_model.train(single_ml.train_test_materials.target_train_df, 
+                                            single_ml.train_test_materials.features_train_df,
+                                            categorical_features = ['Sector_cat'])
+            single_ml.archive_ml_objects(model = trainer_outputs.model, scaler = None)
+        pred_result_df = lgbm_model.predict(single_ml.train_test_materials.target_test_df,
+                                            single_ml.train_test_materials.features_test_df,
+                                            single_ml.ml_object_materials.model)
+        single_ml.archive_pred_result(pred_result_df)
+        ml_datasets2.append_model(single_ml)
+        ml_datasets2.save_all()
+        return ml_datasets2
 
 
 def ensemble_pred_results(ensemble_inputs: list[pd.DataFrame, float]) -> pd.DataFrame:

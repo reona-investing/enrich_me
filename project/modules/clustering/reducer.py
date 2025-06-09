@@ -13,12 +13,14 @@ class UMAPReducer:
         n_components: int = 15,
         n_neighbors: int = 5,
         min_dist: float = 0.1,
+        **kwargs,
     ) -> pd.DataFrame:
         """UMAP により次元削減を行い、結果の DataFrame を返す"""
         model = umap.UMAP(
             n_components=n_components,
             n_neighbors=n_neighbors,
             min_dist=min_dist,
+            **kwargs,
         )
         embedding = model.fit_transform(df)
         return pd.DataFrame(

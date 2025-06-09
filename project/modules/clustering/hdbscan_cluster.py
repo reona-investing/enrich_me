@@ -14,6 +14,7 @@ class HDBSCANCluster:
         df: pd.DataFrame,
         min_cluster_sizes: list[int] | None = None,
         metric: str = 'euclidean',
+        **kwargs,
     ) -> pd.DataFrame:
         """複数パラメータでクラスタリングを実行し、シルエット係数で最良の結果を返す"""
         if min_cluster_sizes is None:
@@ -23,7 +24,7 @@ class HDBSCANCluster:
         best_score = -1.0
 
         for size in min_cluster_sizes:
-            clusterer = hdbscan.HDBSCAN(min_cluster_size=size, metric=metric)
+            clusterer = hdbscan.HDBSCAN(min_cluster_size=size, metric=metric, **kwargs)
             labels = clusterer.fit_predict(df)
             if len(np.unique(labels)) <= 1:
                 continue
@@ -42,14 +43,15 @@ class HDBSCANCluster:
         df: pd.DataFrame,
         min_cluster_sizes: list[int] | None = None,
         metric: str = 'euclidean',
+        **kwargs,
     ) -> pd.DataFrame:
         """再帰的にクラスタリングを実行し、各段階のラベルを保持する"""
 
         result = pd.DataFrame(index=df.index)
 
-        def _recurse(indexes: pd.Index, depth: int, metric: str) -> None:
+        def _recurse(indexes: pd.Index, depth: int, metric: str, **kwargs) -> None:
             sub_df = df.loc[indexes]
-            labels = self.fit(sub_df, min_cluster_sizes, metric)["Cluster"]
+            labels = self.fit(sub_df, min_cluster_sizes, metric, **kwargs)["Cluster"]
             result.loc[indexes, f"Level{depth}"] = labels
             if labels.nunique() <= 1:
                 return
@@ -57,9 +59,9 @@ class HDBSCANCluster:
                 members = indexes[labels == lbl]
                 if len(members) <= 1:
                     continue
-                _recurse(members, depth + 1, metric)
+                _recurse(members, depth + 1, metric, **kwargs)
 
-        _recurse(df.index, 0, metric)
+        _recurse(df.index, 0, metric, **kwargs)
         
         # 各Level列を昇順に並び替え
         level_cols = [col for col in result.columns if col.startswith('Level')]

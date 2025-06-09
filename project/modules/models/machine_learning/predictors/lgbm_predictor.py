@@ -28,7 +28,13 @@ class LgbmPredictor(BasePredictor):
         Returns:
             pd.DataFrame: 予測結果を格納したデータフレーム
         """
-        X_test = self.features_test_df
+        X_test = self.features_test_df.copy()
+
+        # 予測時にも学習時と同じカテゴリ情報を保持するため、
+        # "_cat"で終わる列はカテゴリ型に変換しておく
+        categorical_cols = [col for col in X_test.columns if col.lower().endswith('_cat')]
+        for col in categorical_cols:
+            X_test[col] = X_test[col].astype('category')
 
         pred_result_df = self.target_test_df.copy()
         pred_result_df['Pred'] = self.models[0].predict(
