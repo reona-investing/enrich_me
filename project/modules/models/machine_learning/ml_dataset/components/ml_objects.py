@@ -16,5 +16,12 @@ class MLObjects(BaseDataComponent):
         self._scaler = scaler
 
     def getter(self) -> TrainerOutputs:
-        """データクラスとして返却"""
-        return TrainerOutputs(model=self._model, scaler=self._scaler)
+        """データクラスとして返却
+
+        ``_model`` や ``_scaler`` が存在しない場合は ``None`` を返す。
+        予測のみを行う際に ``archive_ml_objects`` が呼ばれていない状況でも
+        エラーとならないようにしている。
+        """
+        model = getattr(self, "_model", None)
+        scaler = getattr(self, "_scaler", None)
+        return TrainerOutputs(model=model, scaler=scaler)
