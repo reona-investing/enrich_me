@@ -77,6 +77,8 @@ def update_1st_model(ML_DATASET_PATH: str, necessary_dfs_dict: dict,
 
     lasso_model = LassoModel()    
     for key, single_ml in ml_datasets.items():
+        print(single_ml.train_test_materials.target_train_df)
+        print(single_ml.ml_object_materials.model)
         if flag_manager.flags[Flags.LEARN]:
             '''LASSO（学習は必要時、予測は毎回）'''
             print(single_ml.get_name())
@@ -257,4 +259,4 @@ if __name__ == '__main__':
                                                      SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET,
                                                      universe_filter, trading_sector_num, candidate_sector_num,
                                                      train_start_day, train_end_day, test_start_day, test_end_day,
-                                                     top_slope, learn, predict))
+                                                          top_slope, learn, predict))
