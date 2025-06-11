@@ -250,7 +250,7 @@ if __name__ == '__main__':
     test_start_day = datetime(2014, 1, 1)
     test_end_day = datetime(2099, 12, 31) #ずっと先の未来を指定
     '''学習するか否か'''
-    learn = False
+    learn =False
     predict = None
 
 #%% 実行

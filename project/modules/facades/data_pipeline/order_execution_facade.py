@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from models.machine_learning.ml_dataset import SingleMLDataset
+from models.machine_learning.ml_dataset import MLDatasets
 from trading import TradingFacade
 
 
 class OrderExecutionFacade:
-    """Facade for executing trading orders."""
+    """SBI証券でオーダーする"""
 
     def __init__(
         self,
@@ -25,14 +25,14 @@ class OrderExecutionFacade:
         self.candidate_sector_num = candidate_sector_num
         self.top_slope = top_slope
 
-    async def execute(self, ml_dataset: Optional[SingleMLDataset]) -> None:
-        if self.mode == 'none' or ml_dataset is None:
+    async def execute(self, ml_datasets: Optional[MLDatasets] = None) -> None:
+        if self.mode == 'none':
             return
-        if self.mode == 'new':
-            materials = ml_dataset.post_processing_data.getter_stock_selection()
+        if self.mode == 'new' and ml_datasets is not None:
+            materials = ml_datasets.post_processing_data.getter_stock_selection()
             await self.trade_facade.take_positions(
-                order_price_df=materials.order_price_df,
-                pred_result_df=materials.pred_result_df,
+                order_price_df=ml_datasets.get_order_price(),
+                pred_result_df=ml_datasets.get_pred_result(),
                 SECTOR_REDEFINITIONS_CSV=self.sector_csv,
                 num_sectors_to_trade=self.trading_sector_num,
                 num_candidate_sectors=self.candidate_sector_num,
@@ -42,4 +42,6 @@ class OrderExecutionFacade:
             await self.trade_facade.take_additionals_until_completed()
         elif self.mode == 'settle':
             await self.trade_facade.settle_positions()
+        else: 
+            return None
 

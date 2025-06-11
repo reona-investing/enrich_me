@@ -213,7 +213,7 @@ if __name__ == '__main__':
         pred_result_df = ml_dataset.stock_selection_materials.pred_result_df
         trade_facade = TradingFacade()
       
-        '''
+        
         await trade_facade.take_positions(
             order_price_df = order_price_df,
             pred_result_df = pred_result_df,
@@ -223,7 +223,7 @@ if __name__ == '__main__':
             top_slope = 1)
         '''
         await trade_facade.take_additionals()
-        
+        '''
 
       
 

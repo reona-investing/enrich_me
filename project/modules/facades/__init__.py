@@ -4,6 +4,7 @@ from .data_pipeline.data_update_facade import DataUpdateFacade
 from .data_pipeline.machine_learning_facade import MachineLearningFacade
 from .data_pipeline.order_execution_facade import OrderExecutionFacade
 from .data_pipeline.trade_data_facade import TradeDataFacade
+from .mode_setting import ModeCollection, ModeFactory, ModeForStrategy
 
 __all__ = [
     'EvaluationFacade',
@@ -12,4 +13,7 @@ __all__ = [
     'MachineLearningFacade',
     'OrderExecutionFacade',
     'TradeDataFacade',
+    'ModeCollection',
+    'ModeFactory',
+    'ModeForStrategy',
 ]
