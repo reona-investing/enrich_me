@@ -48,7 +48,7 @@ def prepare_test_data() -> Dict[str, pd.DataFrame]:
     
     # プロジェクト内のモジュールをインポート
     from acquisition.jquants_api_operations.facades.stock_acquisition_facade import StockAcquisitionFacade
-    from calculation.sector_index_calculator import SectorIndex
+    from calculation.sector_index.sector_index import SectorIndex
     from calculation.target_calculator import TargetCalculator
     from calculation.features_calculator import FeaturesCalculator
     from utils.paths import Paths
@@ -137,6 +137,7 @@ def run_original_ensemble(test_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
     from models import MLDataset
     from models.machine_learning import LassoModel, LgbmModel
     import models.ensemble as ensembles
+    from models.machine_learning.loaders.loader import load_datasets
     
     # テスト用のパス
     ML_DATASET_PATH1 = os.path.join(TEST_DIR, 'original', 'lasso_model')
