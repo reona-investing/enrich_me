@@ -97,7 +97,7 @@ class HistoryUpdater:
         buying_power_history['日付'] = pd.to_datetime(buying_power_history['日付']).dt.date
 
         # 買付余力の取得
-        buying_power = await margin_provider.get_available_margin()
+        buying_power = await margin_provider.get_buying_power()
 
         # 今日の日付の行がなければ追加、あれば更新
         today = datetime.today().date()
@@ -148,10 +148,13 @@ class HistoryUpdater:
             spots_diff = spots_df['買付余力増減'].sum()
 
         # 最新日のデータがすでに存在する場合は置換、存在しない場合は追加
-        if deposit_history_df.index[-1] != buying_power_history.index[-1]:
-            deposit_history_df.loc[buying_power_history.index[-1], '総入金額'] = deposit_history_df.loc[deposit_history_df.index[-1], '総入金額'] + capital_diff + spots_diff
+        if deposit_history_df.index[-1] == buying_power_history.index[-1]:
+            deposit_history_df.loc[buying_power_history.index[-1], '総入金額'] = \
+                deposit_history_df.loc[deposit_history_df.index[-2], '総入金額'] + capital_diff + spots_diff
         else:
-            deposit_history_df.loc[buying_power_history.index[-1], '総入金額'] = deposit_history_df.loc[deposit_history_df.index[-2], '総入金額'] + capital_diff + spots_diff
+            deposit_history_df.loc[buying_power_history.index[-1], '総入金額'] = \
+                deposit_history_df.loc[deposit_history_df.index[-1], '総入金額'] + capital_diff + spots_diff
+
         deposit_history_df = deposit_history_df.astype(int)
         print('総入金額の履歴')
         display(deposit_history_df.tail(5))

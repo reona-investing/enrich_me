@@ -31,12 +31,12 @@ class SBIBrowserManager(BrowserManager):
     async def _sign_in(self, named_tab: NamedTab):
         await self._input_credentials(named_tab=named_tab)
         try:
-            await named_tab.tab.utils.wait_for('ログアウト', timeout=10)
+            await named_tab.tab.utils.wait_for('ログアウト', timeout=30)
         except:
             device_code = await auth_code_getter()
             await named_tab.tab.utils.send_keys_to_element('input[name="device_code"]', is_css=False, keys=device_code)
             await named_tab.tab.utils.click_element('input[value="登録"]', is_css=True)
-            await named_tab.tab.utils.wait_for('ログアウト', timeout=10)
+            await named_tab.tab.utils.wait_for('ログアウト', timeout=30)
             
 
         

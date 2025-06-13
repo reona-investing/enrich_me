@@ -1,10 +1,10 @@
 #%% モジュールのインポート
 from utils.paths import Paths
 import pandas as pd
-from typing import Literal
-from calculation.sector_index_calculator import SectorIndexCalculator
+from typing import Literal, Optional
+from calculation.sector_index import SectorIndex
+from preprocessing import PreprocessingPipeline
 
-#%% 関数群
 class FeaturesCalculator:
     @staticmethod
     def calculate_features(new_sector_price:pd.DataFrame,
@@ -22,7 +22,9 @@ class FeaturesCalculator:
                         adopt_size_factor:bool = True,
                         adopt_eps_factor:bool = True,
                         adopt_sector_categorical:bool = True,
-                        add_rank:bool = True) -> pd.DataFrame:
+                        add_rank:bool = True,
+                        indices_preprocessing_pipeline: Optional[PreprocessingPipeline] = None,
+                        price_preprocessing_pipeline: Optional[PreprocessingPipeline] = None) -> pd.DataFrame:
         """
         特徴量を計算する。
         :param pd.DataFrame new_sector_price: セクター価格
@@ -41,6 +43,8 @@ class FeaturesCalculator:
         :param bool adopt_eps_factor: （価格）EPSを特徴量とするか
         :param bool adopt_sector_categorical: （価格）セクターをカテゴリ変数として採用するか
         :param bool add_rank: （価格）各日・各指標のの業種別ランキング
+        :param Optional[PreprocessingPipeline] indices_preprocessing_pipeline: インデックス系特徴量の前処理パイプライン
+        :param Optional[PreprocessingPipeline] price_preprocessing_pipeline: 価格系特徴量の前処理パイプライン
         """
         if adopts_features_indices:
             features_to_scrape_df = \
@@ -49,6 +53,11 @@ class FeaturesCalculator:
                 FeaturesCalculator.calculate_features_indices(features_to_scrape_df=features_to_scrape_df, 
                                                               currencies_type=currencies_type, 
                                                               commodity_type=commodity_type)
+            
+            # インデックス系特徴量の前処理
+            if indices_preprocessing_pipeline is not None:
+                features_indices_df = indices_preprocessing_pipeline.fit_transform(features_indices_df)
+
             if adopts_features_price:
                 features_price_df = FeaturesCalculator.calculate_features_price(new_sector_price=new_sector_price,
                                                                                 new_sector_list=new_sector_list,
@@ -60,11 +69,16 @@ class FeaturesCalculator:
                                                                                 adopt_eps_factor=adopt_eps_factor,
                                                                                 adopt_sector_categorical=adopt_sector_categorical,
                                                                                 add_rank=add_rank)
+                
+                # 価格系特徴量の前処理
+                if price_preprocessing_pipeline is not None:
+                    features_price_df = price_preprocessing_pipeline.fit_transform(features_price_df)
             else:
                 features_price_df = pd.DataFrame(index=new_sector_price.index)
 
             features_df = FeaturesCalculator.merge_features(features_indices_df, features_price_df)
             features_df = features_df.sort_index()
+            
         elif adopts_features_price:
             features_df = FeaturesCalculator.calculate_features_price(new_sector_price=new_sector_price,
                                                                       new_sector_list=new_sector_list,
@@ -76,9 +90,14 @@ class FeaturesCalculator:
                                                                       adopt_eps_factor=adopt_eps_factor,
                                                                       adopt_sector_categorical=adopt_sector_categorical,
                                                                       add_rank=add_rank)
+            
+            # 価格系特徴量のみの場合の前処理
+            if price_preprocessing_pipeline is not None:
+                features_df = price_preprocessing_pipeline.fit_transform(features_df)
         else:
             return None
         return features_df
+
 
     @staticmethod
     def select_features_to_scrape(groups_setting:dict={}, names_setting:dict={}):
@@ -245,7 +264,8 @@ class FeaturesCalculator:
         # サイズファクター（業種内の平均サイズファクター）
         if adopt_size_factor:
             new_sector_list['Code'] = new_sector_list['Code'].astype(str)
-            stock_price_cap = SectorIndexCalculator.calc_marketcap(stock_dfs_dict['price'], stock_dfs_dict['fin'])
+            sector_index = SectorIndex(stock_dfs_dict, None, None)
+            stock_price_cap = sector_index.calc_marketcap(stock_dfs_dict['price'], stock_dfs_dict['fin'])
             stock_price_cap = stock_price_cap[stock_price_cap['Code'].isin(new_sector_list['Code'])]
             stock_price_cap = pd.merge(stock_price_cap, new_sector_list[['Code', 'Sector']], on='Code', how='left')
             stock_price_cap = stock_price_cap[['Date', 'Code', 'Sector', 'MarketCapClose']]
@@ -274,7 +294,7 @@ class FeaturesCalculator:
         if adopt_sector_categorical:
             sector_replace_dict = {x: i for i, x in enumerate(features_price_df.index.get_level_values(1).unique())}
             features_price_df['Sector_cat'] = features_price_df.index.get_level_values(1)
-            features_price_df['Sector_cat'] = features_price_df['Sector_cat'].replace(sector_replace_dict).infer_objects(copy=False)
+            features_price_df['Sector_cat'] = features_price_df['Sector_cat'].map(sector_replace_dict).astype('category')
 
         print('価格系特徴量の算出が完了しました。')
 
@@ -298,7 +318,7 @@ class FeaturesCalculator:
 #%% デバッグ
 if __name__ == '__main__':
 
-    from acquisition.jquants_api_operations.facades.stock_acquisition_facade import StockAcquisitionFacade
+    from acquisition.jquants_api_operations.facades import StockAcquisitionFacade
 
     '''パス類'''
     NEW_SECTOR_LIST_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv' # 別でファイルを作っておく
@@ -306,9 +326,10 @@ if __name__ == '__main__':
     '''ユニバースを絞るフィルタ'''
     universe_filter = \
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
-    stock_dfs_dict = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()   
+    stock_dfs_dict = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()
+    sector_index = SectorIndex(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
     new_sector_price_df, order_price_df = \
-        SectorIndexCalculator.calc_sector_index(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+        sector_index.calc_sector_index()
     
     new_sector_list = pd.read_csv(NEW_SECTOR_LIST_CSV)
 

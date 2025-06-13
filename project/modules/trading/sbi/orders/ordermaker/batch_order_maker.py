@@ -6,10 +6,13 @@ from trading.sbi.orders.interface.order_executor import OrderResult
 
 class BatchOrderMaker(OrderMaker):
     """一括注文を行うクラス"""
-    
-    async def place_batch_orders(self, orders_df: pd.DataFrame, is_reorder: bool = False) -> List[OrderResult]:
+
+    async def place_batch_orders(self, orders_df: pd.DataFrame) -> List[OrderResult]:
         """一括で注文を発注する"""
-        
+
+        # 前回の失敗注文をリセット
+        self.failed_orders = []
+
         # 証拠金を更新
         await self.margin_provider.refresh()
         remaining_margin = await self.margin_provider.get_available_margin()
@@ -30,33 +33,32 @@ class BatchOrderMaker(OrderMaker):
             
             # 既に注文済みの銘柄はスキップ
             if symbol_code in existing_symbols:
+                message = f"{symbol_code}: 既に注文済みです"
                 results.append(OrderResult(
                     success=False,
-                    message=f"{symbol_code}: 既に注文済みです",
+                    message=message,
                 ))
+                print(message)
                 continue
             
             # 証拠金が不足している場合はスキップ
             if row['UpperLimitTotal'] > remaining_margin:
+                message = f"{symbol_code}: 証拠金不足のため発注しませんでした"
                 results.append(OrderResult(
                     success=False,
-                    message=f"{symbol_code}: 証拠金不足のため発注しませんでした",
+                    message=message,
                 ))
+                print(message)
                 self.failed_orders.append(symbol_code)
                 continue
-            
-            order_type = '成行'
-            if is_reorder:
-                order_type_value = None
             
             order_request = self.create_order_request(
                 symbol_code=symbol_code,
                 unit=row['Unit'] * 100,
                 direction=row['Direction'],
                 estimated_price=row['EstimatedCost'] / 100,  # 単価を計算
+                is_borrowing_stock=bool(row.get("isBorrowingStock", False)),
                 order_type='成行',
-                order_type_value='寄成',
-                # 追加パラメータ
                 period_type="当日中",
                 trade_section="特定預り"
             )
@@ -64,6 +66,7 @@ class BatchOrderMaker(OrderMaker):
             # 注文を発注
             result = await self.order_executor.place_order(order_request)
             results.append(result)
+            print(result.message)
             
             if result.success:
                 remaining_margin -= row['UpperLimitTotal']

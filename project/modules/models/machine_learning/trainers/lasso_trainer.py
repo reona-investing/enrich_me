@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV
 import scipy
 from IPython.display import display
-from models.machine_learning.trainers.outputs import TrainerOutputs
+from models.machine_learning.outputs import TrainerOutputs
 from models.machine_learning.trainers.base_trainer import BaseTrainer
 
 
@@ -23,19 +23,22 @@ class LassoTrainer(BaseTrainer):
             **kwargs: LASSOのハイパーパラメータを任意で設定可能
             
         Returns:
-            TrainerOutputs: モデルのリストとスケーラーのリストを設定したデータクラス
+            TrainerOutputs: モデルとスケーラーを設定したデータクラス
         """
         if self._is_multi_sector():
-            models, scalers = self._train_multi_sectors(max_features, min_features, **kwargs)
+            # マルチセクターの場合は最初のセクターのモデルのみを返す
+            sectors = self._get_sectors()
+            sector = sectors[0]
+            y = self.target_train_df[self.target_train_df.index.get_level_values('Sector') == sector]
+            X = self.features_train_df[self.features_train_df.index.get_level_values('Sector') == sector]
+            model, scaler = self._train_single_sector(y, X, max_features, min_features, **kwargs)
         else:
             model, scaler = self._train_single_sector(
                 self.target_train_df, self.features_train_df, 
                 max_features, min_features, **kwargs
             )
-            models = [model]
-            scalers = [scaler]
         
-        return TrainerOutputs(models=models, scalers=scalers)
+        return TrainerOutputs(model=model, scaler=scaler)
     
     def _train_single_sector(self, y: pd.DataFrame, X: pd.DataFrame, 
                            max_features: int, min_features: int, **kwargs) -> Tuple[Lasso, StandardScaler]:
@@ -64,25 +67,6 @@ class LassoTrainer(BaseTrainer):
         display(feature_importances_df)
 
         return model, scaler
-
-    def _train_multi_sectors(self, max_features: int, min_features: int, **kwargs) -> Tuple[List[Lasso], List[StandardScaler]]:
-        """
-        複数セクターに関して、LASSOで学習してモデルとスケーラーを返す関数
-        """
-        models = []
-        scalers = []
-        sectors = self._get_sectors()
-
-        # セクターごとに学習する
-        for sector in sectors:
-            print(sector)
-            y = self.target_train_df[self.target_train_df.index.get_level_values('Sector') == sector]
-            X = self.features_train_df[self.features_train_df.index.get_level_values('Sector') == sector]
-            model, scaler = self._train_single_sector(y, X, max_features, min_features, **kwargs)
-            models.append(model)
-            scalers.append(scaler)
-
-        return models, scalers
 
     def _search_alpha(self, X: np.array, y: pd.DataFrame, max_features: int, min_features: int) -> float:
         """

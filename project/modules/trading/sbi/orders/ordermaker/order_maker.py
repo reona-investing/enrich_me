@@ -31,7 +31,7 @@ class OrderMaker:
         
         # 注文条件を決定
         order_type = kwargs.get('order_type', "成行")
-        order_type_value = kwargs.get('order_type_value', "寄成")  # デフォルト値を設定
+        order_type_value = kwargs.get('order_type_value')  # デフォルト値を設定
         limit_price = kwargs.get('limit_price')
         
         # 空売り規制対応（Short かつ ETFでない場合）
@@ -39,7 +39,8 @@ class OrderMaker:
             order_type = "指値"
             if order_type_value:
                 order_type_value = order_type_value.replace('成', '指')
-            limit_price = self._calculate_short_selling_limit_price(estimated_price)
+            if not limit_price:
+                limit_price = self._calculate_short_selling_limit_price(estimated_price)
         
         return OrderRequest(
             symbol_code=symbol_code,
@@ -51,7 +52,6 @@ class OrderMaker:
             trigger_price=kwargs.get('trigger_price'),
             trade_type=trade_type,
             margin_trade_section=margin_trade_section,
-            # リファクタリング前から落ちているパラメータを追加
             stop_order_type=kwargs.get('stop_order_type', "成行"),
             stop_order_price=kwargs.get('stop_order_price'),
             period_type=kwargs.get('period_type', "当日中"),
@@ -61,8 +61,8 @@ class OrderMaker:
         )
     
     def _get_margin_trade_section(self, is_borrowing_stock: bool) -> str:
-        """信用取引区分を取得する"""
-        return "制度" if is_borrowing_stock else "日計り"
+        """信用取引区分を適正化する"""
+        return "制度" if is_borrowing_stock else "日計り" # 基本は"制度"で発注したいが、"制度"で発注できるのは貸借銘柄のみ。
     
     def _calculate_short_selling_limit_price(self, price: float) -> float:
         """空売り制限価格を計算する"""

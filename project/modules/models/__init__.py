@@ -1,10 +1,17 @@
-from .dataset import MLDataset
-from .machine_learning import LassoModel, LgbmModel
-from .ensemble import by_rank
+from .machine_learning import (
+    LassoModel,
+    LgbmModel,
+    EnsembleMethodFactory,
+    MLDatasets,
+    SingleMLDataset,
+    DatasetLoader
+)
 
 __all__ = [
-    'MLDataset',
+    'MLDatasets',
+    'SingleMLDataset',
     'LassoModel',
     'LgbmModel',
-    'by_rank'
+    'EnsembleMethodFactory',
+    'DatasetLoader',
 ]
