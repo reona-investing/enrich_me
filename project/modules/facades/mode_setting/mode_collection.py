@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
+from typing import Optional, Any
 
 class DataUpdateMode(str, Enum):
     """データ更新に関するモード"""
@@ -29,6 +30,7 @@ class TradeDataFetchMode(str, Enum):
 
 class ModeCollection(BaseModel):
     """フラグ管理用クラス"""
+    model_config = ConfigDict(validate_assignment=True)
     order_execution_mode: OrderExecutionMode = Field(default=OrderExecutionMode.NONE)
     machine_learning_mode: MachineLearningMode = Field(default=MachineLearningMode.NONE)
     data_update_mode: DataUpdateMode = Field(default=DataUpdateMode.NONE)
@@ -58,3 +60,13 @@ class ModeCollection(BaseModel):
             for msg in messages:
                 print(msg)
         return values
+
+    def model_copy(
+        self,
+        *,
+        update: Optional[dict[str, Any]] = None,
+        deep: bool = False,
+    ) -> "ModeCollection":
+        """モデルをコピーし、更新後にバリデーションを実行する。"""
+        copied = super().model_copy(update=update, deep=deep)
+        return self.__class__.model_validate(copied.model_dump())
