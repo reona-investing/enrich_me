@@ -36,6 +36,7 @@ class ModeCollection(BaseModel):
             values.machine_learning_mode = MachineLearningMode.LOAD_ONLY
             messages.append(
                 "order_execution_modeが'new'のためmachine_learning_modeを'load_only'に変更しました。"
+
             )
         if (
             values.machine_learning_mode in {MachineLearningMode.TRAIN_AND_PREDICT, MachineLearningMode.PREDICT_ONLY}
