@@ -54,15 +54,20 @@ class MachineLearningFacade:
             self._update_ensembled_model()
             return self.ensembled_ml_datasets
         elif self.mode == 'predict_only':
-            self._load_1st_model()
+            self.ml_datasets1 = self._load_model(dataset_root=self.datasets1_path)
             self._predict_1st_model()
-            self._load_2nd_model()
+            self.ml_datasets2 = self._load_model(dataset_root=self.datasets2_path)
             self._predict_2nd_model()
             self._ensemble()
             self._update_ensembled_model()
             return self.ensembled_ml_datasets
+        elif self.mode == 'load_only':
+            self.ml_datasets1 = self._load_model(dataset_root=self.datasets1_path)
+            self.ml_datasets2 = self._load_model(dataset_root=self.datasets2_path)
+            self.ensembled_ml_datasets = self._load_model(dataset_root=self.ensembled_datasets_path)
         else:
             return None
+
 
     def _get_necessary_dfs(self):
         sic = SectorIndex(self.stock_dfs_dict, self.sector_redef_csv_path, self.sector_index_parquet_path)
@@ -77,6 +82,12 @@ class MachineLearningFacade:
         self.raw_target_df = raw_target_df
         self.order_price_df = order_price_df
         self.new_sector_price_df = new_sector_price_df
+
+
+    def _load_model(self, dataset_root: str) -> MLDatasets:
+        dsl = DatasetLoader(dataset_root = dataset_root)
+        return dsl.load_datasets()
+
 
     def _train_1st_model(self):
         dsl = DatasetLoader(dataset_root = self.datasets1_path)
@@ -110,10 +121,6 @@ class MachineLearningFacade:
             single_ml.archive_ml_objects(trainer_outputs.model, trainer_outputs.scaler)
             single_ml.save()
             self.ml_datasets1.replace_model(single_ml_dataset = single_ml)
-
-    def _load_1st_model(self):
-        dsl = DatasetLoader(dataset_root = self.datasets1_path)
-        self.ml_datasets1 = dsl.load_datasets()
     
 
     def _predict_1st_model(self):
@@ -165,11 +172,6 @@ class MachineLearningFacade:
         self.ml_datasets2.save_all()
 
 
-    def _load_2nd_model(self):
-        dsl = DatasetLoader(dataset_root = self.datasets2_path)
-        self.ml_datasets2 = dsl.load_datasets()
-    
-
     def _predict_2nd_model(self):
         lgbm_model = LgbmModel()
         for _, single_ml in self.ml_datasets2.items():
@@ -182,6 +184,7 @@ class MachineLearningFacade:
             single_ml.save()
             self.ml_datasets2.replace_model(single_ml_dataset = single_ml)
         print('第二モデル予測完了')
+
 
     def _ensemble(self):
         emf = EnsembleMethodFactory()
@@ -199,6 +202,7 @@ class MachineLearningFacade:
         single_ml_dataset.archive_raw_target(self.ml_datasets1.get_raw_target())
         single_ml_dataset.save()
         self.ensembled_ml_datasets.append_model(single_ml_dataset=single_ml_dataset)
+
 
     def _get_features_df(self, adopt_features_price: bool, adopt_size_factor: bool, adopt_eps_factor: bool,
                          adopt_sector_categorical: bool, add_rank: bool,

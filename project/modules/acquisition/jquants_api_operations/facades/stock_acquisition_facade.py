@@ -59,9 +59,6 @@ class StockAcquisitionFacade:
 if __name__ == "__main__":
     # Example usage
     filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
-    from utils.flag_manager import FlagManager, Flags
-    flag_manager = FlagManager()
-    flag_manager.set_flag(flag=Flags.PROCESS_STOCK_PRICE, value=True)
     stock_df_dict = StockAcquisitionFacade(update=True, process=True, filter=filter).get_stock_data_dict()
     
     '''
