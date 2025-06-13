@@ -1,5 +1,4 @@
-from .evaluation_facade import EvaluationFacade
-from .mode_setting import (
+from .mode_collection import (
     OrderExecutionMode,
     MachineLearningMode,
     DataUpdateMode,
@@ -7,7 +6,6 @@ from .mode_setting import (
 )
 
 __all__ = [
-    'EvaluationFacade',
     'OrderExecutionMode',
     'MachineLearningMode',
     'DataUpdateMode',
