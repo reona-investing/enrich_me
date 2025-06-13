@@ -6,10 +6,13 @@ from trading.sbi.orders.interface.order_executor import OrderResult
 
 class BatchOrderMaker(OrderMaker):
     """一括注文を行うクラス"""
-    
+
     async def place_batch_orders(self, orders_df: pd.DataFrame) -> List[OrderResult]:
         """一括で注文を発注する"""
-        
+
+        # 前回の失敗注文をリセット
+        self.failed_orders = []
+
         # 証拠金を更新
         await self.margin_provider.refresh()
         remaining_margin = await self.margin_provider.get_available_margin()
