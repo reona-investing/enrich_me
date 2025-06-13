@@ -29,7 +29,6 @@ class OrderExecutionFacade:
         if self.mode == 'none':
             return
         if self.mode == 'new' and ml_datasets is not None:
-            materials = ml_datasets.post_processing_data.getter_stock_selection()
             await self.trade_facade.take_positions(
                 order_price_df=ml_datasets.get_order_price(),
                 pred_result_df=ml_datasets.get_pred_result(),

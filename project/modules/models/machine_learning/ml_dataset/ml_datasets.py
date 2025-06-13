@@ -99,20 +99,18 @@ class MLDatasets:
 
     def get_raw_target(self, model_names: Optional[List[str]] = None) -> pd.DataFrame:
         """raw_target_dfをマージして返却"""
-        return self._merge_dfs(
-            getter=lambda m: m.evaluation_materials.raw_target_df,
-            model_names=model_names,
-            data_name="raw_target"
-        )
+        first_model_name = self.get_model_names()[0]
+        first_model = self.get_model(model_name=first_model_name)
+        ssm = first_model.post_processing_data.getter_evaluation()
+        return ssm.raw_target_df
 
-    def get_order_price(self, model_names: Optional[List[str]] = None) -> pd.DataFrame:
+    def get_order_price(self) -> pd.DataFrame:
         """order_price_dfをマージして返却"""
-        return self._merge_dfs(
-            getter=lambda m: m.stock_selection_materials.order_price_df,
-            model_names=model_names,
-            data_name="order_price"
-        )
-    
+        first_model_name = self.get_model_names()[0]
+        first_model = self.get_model(model_name=first_model_name)
+        ssm = first_model.post_processing_data.getter_stock_selection()
+        return ssm.order_price_df
+
     def save_all(self):
         """全てのモデルを保存"""
         for model in self.named_models.values():

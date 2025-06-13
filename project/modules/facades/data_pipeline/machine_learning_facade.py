@@ -13,16 +13,16 @@ class MachineLearningFacade:
     def __init__(self, mode: Literal['train_and_predict', 'predict_only', 'none'],
                  stock_dfs_dict: Dict[str, pd.DataFrame],
                  sector_redef_csv_path: str, sector_index_parquet_path: str,
-                 dataset1_path: str, dataset2_path:str,
-                 ensembled_dataset_path: str, model1_weight: float, model2_weight: float,
+                 datasets1_path: str, datasets2_path:str,
+                 ensembled_datasets_path: str, model1_weight: float, model2_weight: float,
                  train_start_day: datetime, train_end_day: datetime, test_start_day: datetime, test_end_day: datetime):
         self.mode = mode
         self.stock_dfs_dict = stock_dfs_dict
         self.sector_redef_csv_path = sector_redef_csv_path
         self.sector_index_parquet_path = sector_index_parquet_path
-        self.dataset1_path = dataset1_path
-        self.dataset2_path = dataset2_path
-        self.ensembled_dataset_path = ensembled_dataset_path
+        self.datasets1_path = datasets1_path
+        self.datasets2_path = datasets2_path
+        self.ensembled_datasets_path = ensembled_datasets_path
         self.model1_weight = model1_weight
         self.model2_weight = model2_weight
         self.train_start_day = train_start_day
@@ -79,7 +79,7 @@ class MachineLearningFacade:
         self.new_sector_price_df = new_sector_price_df
 
     def _train_1st_model(self):
-        dsl = DatasetLoader(dataset_root = self.dataset1_path)
+        dsl = DatasetLoader(dataset_root = self.datasets1_path)
 
         self.features_df1 = self._get_features_df(adopt_features_price = False,
                                 adopt_size_factor = False,
@@ -112,7 +112,7 @@ class MachineLearningFacade:
             self.ml_datasets1.replace_model(single_ml_dataset = single_ml)
 
     def _load_1st_model(self):
-        dsl = DatasetLoader(dataset_root = self.dataset1_path)
+        dsl = DatasetLoader(dataset_root = self.datasets1_path)
         self.ml_datasets1 = dsl.load_datasets()
     
 
@@ -132,7 +132,7 @@ class MachineLearningFacade:
 
 
     def _train_2nd_model(self):
-        single_ml = SingleMLDataset(dataset_folder_path = self.dataset2_path, name='LightGBM')
+        single_ml = SingleMLDataset(dataset_folder_path = f'{self.datasets2_path}/LightGBM', name='LightGBM')
         
         self.features_df2 = self._get_features_df(adopt_features_price = True,
                                 adopt_size_factor = True,
@@ -160,13 +160,13 @@ class MachineLearningFacade:
                                            single_ml.train_test_materials.features_train_df,
                                            categorical_features = ['Sector_cat'])
         single_ml.archive_ml_objects(model = trainer_outputs.model, scaler = None)
-        single_ml.save()
         self.ml_datasets2 = MLDatasets()
         self.ml_datasets2.append_model(single_ml_dataset=single_ml)
+        self.ml_datasets2.save_all()
 
 
     def _load_2nd_model(self):
-        dsl = DatasetLoader(dataset_root = self.dataset2_path)
+        dsl = DatasetLoader(dataset_root = self.datasets2_path)
         self.ml_datasets2 = dsl.load_datasets()
     
 
@@ -193,10 +193,10 @@ class MachineLearningFacade:
 
     def _update_ensembled_model(self):
         self.ensembled_ml_datasets = MLDatasets()
-        single_ml_dataset = SingleMLDataset(self.ensembled_dataset_path, 'Ensembled')
+        single_ml_dataset = SingleMLDataset(self.ensembled_datasets_path, 'Ensembled')
         single_ml_dataset.archive_pred_result(self.ensembled_pred_df)
         single_ml_dataset.archive_order_price(self.ml_datasets1.get_order_price())
-        single_ml_dataset.archive_raw_target(self.ml_datasets1.get_raw_target)
+        single_ml_dataset.archive_raw_target(self.ml_datasets1.get_raw_target())
         single_ml_dataset.save()
         self.ensembled_ml_datasets.append_model(single_ml_dataset=single_ml_dataset)
 
@@ -239,7 +239,7 @@ if __name__ == '__main__':
     sector_index_parquet_path = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet' #出力のみなのでファイルがなくてもOK
     datasets1_path = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250607'
     datasets2_path = f'{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250607'
-    ensembled_dataset_path = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250607'
+    ensembled_datasets_path = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250607'
 
     async def main():
         duf = DataUpdateFacade(mode='load_only', universe_filter=universe_filter)
@@ -248,9 +248,9 @@ if __name__ == '__main__':
                                     stock_dfs_dict=stock_dfs_dict,
                                     sector_redef_csv_path=sector_redef_csv_path, 
                                     sector_index_parquet_path=sector_index_parquet_path,
-                                    dataset1_path=datasets1_path, 
-                                    dataset2_path=datasets2_path,
-                                    ensembled_dataset_path=ensembled_dataset_path,
+                                    datasets1_path=datasets1_path, 
+                                    datasets2_path=datasets2_path,
+                                    ensembled_datasets_path=ensembled_datasets_path,
                                     model1_weight=6.7,
                                     model2_weight=1.3,
                                     train_start_day=datetime(2014,1,1),

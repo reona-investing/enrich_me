@@ -25,9 +25,9 @@ async def main() -> None:
     # パラメータ設定
     sector_redef_csv = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
     sector_index_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet"
-    dataset_path1 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250607"
-    dataset_path2 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250607"
-    ensembled_dataset_path = f"{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250607"
+    datasets_path1 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250607"
+    datasets_path2 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250607"
+    ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250607"
     model1_weight = 6.7
     model2_weight = 1.3
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
@@ -41,7 +41,7 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
-        
+
         # 1. データ更新
         data_facade = DataUpdateFacade(mode=modes.data_update_mode, universe_filter=universe_filter)
         stock_dict = await data_facade.execute()
@@ -53,9 +53,9 @@ async def main() -> None:
             stock_dfs_dict=stock_dict,
             sector_redef_csv_path=sector_redef_csv,
             sector_index_parquet_path=sector_index_parquet,
-            dataset1_path=dataset_path1,
-            dataset2_path=dataset_path2,
-            ensembled_dataset_path=ensembled_dataset_path,
+            datasets1_path=datasets_path1,
+            datasets2_path=datasets_path2,
+            ensembled_datasets_path=ensembled_datasets_path,
             model1_weight=model1_weight,
             model2_weight=model2_weight,
             train_start_day=train_start_day,
