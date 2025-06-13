@@ -16,14 +16,16 @@ class StockAcquisitionFacade:
             filter (str): 読み込み対象銘柄のフィルタリング条件（クエリ）
             filtered_code_list (list[str]): フィルタリングする銘柄コードのをリストで指定
         """
+        needs_processing = False
         if update:
             ListUpdater()
             FinUpdater()
-            PriceUpdater()
+            updater = PriceUpdater()
+            needs_processing = updater.needs_processing
         if process:
             ListProcessor()
             FinProcessor()
-            PriceProcessor()
+            PriceProcessor(process_all=needs_processing)
         reader = Reader(filter=filter, filtered_code_list=filtered_code_list)
         self.list_df = reader.read_list()
         self.fin_df = reader.read_fin()

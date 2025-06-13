@@ -1,7 +1,6 @@
 import pandas as pd
 from datetime import datetime
 from typing import Tuple, List, Dict, Callable
-from utils.flag_manager import flag_manager, Flags
 from utils.paths import Paths
 from utils.yaml_utils import ColumnConfigsGetter
 import numpy as np
@@ -9,14 +8,13 @@ import numpy as np
 from acquisition.jquants_api_operations.processor.formatter import Formatter
 from acquisition.jquants_api_operations.utils import FileHandler
 from acquisition.jquants_api_operations.processor.code_replacement_info import manual_adjustment_dict_list,codes_to_replace_dict
-
-
 class PriceProcessor:
     def __init__(self,
                  raw_basic_path: str = Paths.RAW_STOCK_PRICE_PARQUET,
                  processing_basic_path: str = Paths.STOCK_PRICE_PARQUET,
                  raw_cols_yaml_path: str = Paths.RAW_STOCK_PRICE_COLUMNS_YAML,
-                 cols_yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML):
+                 cols_yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML,
+                 process_all: bool = False):
         """
         価格情報を加工して、機械学習用に整形します。
 
@@ -31,7 +29,7 @@ class PriceProcessor:
         
         for year in range(end_date.year, 2012, -1):
             is_latest_file = year == end_date.year
-            should_process = is_latest_file or flag_manager.flags[Flags.PROCESS_STOCK_PRICE]
+            should_process = is_latest_file or process_all
             if should_process:
                 stock_price = self._load_yearly_raw_data(raw_basic_path, year)
                 if stock_price.empty:
@@ -215,5 +213,4 @@ class PriceProcessor:
 
 
 if __name__ == '__main__':
-    flag_manager.set_flag(Flags.PROCESS_STOCK_PRICE, True)
-    PriceProcessor()
+    PriceProcessor(process_all=True)
