@@ -4,8 +4,6 @@ from utils.paths import Paths
 from utils.yaml_utils import ColumnConfigsGetter
 from acquisition.jquants_api_operations.utils import FileHandler
 from utils.jquants_api_utils import cli
-from utils.flag_manager import flag_manager, Flags
-
 
 class PriceUpdater:
     def __init__(self,
@@ -17,6 +15,7 @@ class PriceUpdater:
         :param basic_path: パスのテンプレート（例: "path_to_data/0000.parquet"）
         """
         self._load_column_configs(cols_yaml_path)
+        self._needs_processing = False
 
         current_year = datetime.today().year
         prev_year = current_year - 1
@@ -105,7 +104,7 @@ class PriceUpdater:
     def _set_adjustment_flag(self, fetched_stock_price: pd.DataFrame):
         """AdjustmentFactorが変更された場合のフラグを設定します。"""
         if any(fetched_stock_price[self.cols['調整係数']] != 1):
-            flag_manager.set_flag(Flags.PROCESS_STOCK_PRICE, True)
+            self._needs_processing = True
 
 
     def _update_raw_stock_price(self, existing_data: pd.DataFrame, new_data: pd.DataFrame) -> pd.DataFrame:
@@ -116,6 +115,13 @@ class PriceUpdater:
             combined_data[self.cols['銘柄コード']].notnull()
         ].drop_duplicates(subset=[self.cols['日付'], self.cols['銘柄コード']])
 
+    @property
+    def needs_processing(self) -> bool:
+        """価格データの再加工が必要かどうかを示す。"""
+        return self._needs_processing
+
 
 if __name__ == '__main__':
-    PriceUpdater()
+    updater = PriceUpdater()
+    print(updater.needs_processing)
+
