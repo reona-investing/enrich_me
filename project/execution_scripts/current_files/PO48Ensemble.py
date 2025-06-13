@@ -41,9 +41,6 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
-        print(modes)
-        modes = modes.model_copy(update={'machine_learning_mode': 'predict_only'})
-        print(modes)
 
         # 1. データ更新
         data_facade = DataUpdateFacade(mode=modes.data_update_mode, universe_filter=universe_filter)
