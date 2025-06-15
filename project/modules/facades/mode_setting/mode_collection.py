@@ -67,6 +67,45 @@ class ModeCollection(BaseModel):
         update: Optional[dict[str, Any]] = None,
         deep: bool = False,
     ) -> "ModeCollection":
-        """モデルをコピーし、更新後にバリデーションを実行する。"""
+        """
+        モデルをコピーし、更新後にバリデーションを実行する。
+        
+        Params:
+            update (dict[str, Any]): 更新したいパラメータを指定。
+            
+            パラメータ:
+            data_update_mode: ['update', 'load_only', 'none'], 
+            machine_learning_mode: ['train_and_predict', 'predict_only', 'load_only', 'none'], 
+            order_execution_mode: ['new', 'additional', 'settle', 'none'], 
+            trade_data_fetch_mode: ['fetch', 'none']
+        """
         copied = super().model_copy(update=update, deep=deep)
         return self.__class__.model_validate(copied.model_dump())
+
+
+
+
+class DataUpdateMode(str, Enum):
+    """データ更新に関するモード"""
+    UPDATE = 'update'
+    LOAD_ONLY = 'load_only'
+    NONE = 'none'
+
+class MachineLearningMode(str, Enum):
+    """機械学習に関するモード"""
+    TRAIN_AND_PREDICT = 'train_and_predict'
+    PREDICT_ONLY = 'predict_only'
+    LOAD_ONLY = 'load_only'
+    NONE = 'none'
+
+class OrderExecutionMode(str, Enum):
+    """注文実行に関するモード"""
+    NEW = 'new'
+    ADDITIONAL = 'additional'
+    SETTLE = 'settle'
+    NONE = 'none'
+
+class TradeDataFetchMode(str, Enum):
+    """データ更新に関するモード"""
+    FETCH = 'fetch'
+    NONE = 'none'

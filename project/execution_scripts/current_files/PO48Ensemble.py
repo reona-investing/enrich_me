@@ -25,9 +25,9 @@ async def main() -> None:
     # パラメータ設定
     sector_redef_csv = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
     sector_index_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet"
-    datasets_path1 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250607"
-    datasets_path2 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250607"
-    ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250607"
+    datasets_path1 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250615"
+    datasets_path2 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250615"
+    ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250615"
     model1_weight = 6.7
     model2_weight = 1.3
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
@@ -35,17 +35,18 @@ async def main() -> None:
     candidate_sector_num = 5
     top_slope = 1
     train_start_day = datetime(2014, 1, 1)
-    train_end_day = datetime(2024, 12, 31)
+    train_end_day = datetime(2022, 12, 31)
     test_start_day = datetime(2014, 1, 1)
     test_end_day = datetime(2099, 12, 31)
 
     try:
         modes = ModeForStrategy.generate_mode()
+        modes = modes.model_copy(update={'machine_learning_mode': 'train_and_predict'})
+        print(modes)
 
         # 1. データ更新
         data_facade = DataUpdateFacade(mode=modes.data_update_mode, universe_filter=universe_filter)
         stock_dict = await data_facade.execute()
-        
 
         # 2. 機械学習
         ml_facade = MachineLearningFacade(
