@@ -17,3 +17,5 @@ class FileHandler:
         data.to_parquet(path)
         if verbose == True:
             print(f"データを保存しました: {path}")
+            print(data.tail(2))
+            print('--------------------------------------')

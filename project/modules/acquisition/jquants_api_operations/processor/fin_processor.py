@@ -37,7 +37,6 @@ class FinProcessor:
         stock_fin = self._calculate_additional_fins(stock_fin)
         stock_fin = self._process_merger(stock_fin)
         stock_fin = self._finalize_df(stock_fin)
-        print(stock_fin)
         FileHandler.write_parquet(stock_fin, processing_path)
 
     def _get_col_info(self, raw_cols_yaml_path: str, cols_yaml_path: str):

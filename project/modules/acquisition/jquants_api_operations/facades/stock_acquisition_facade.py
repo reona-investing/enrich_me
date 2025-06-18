@@ -20,12 +20,10 @@ class StockAcquisitionFacade:
         if update:
             ListUpdater()
             FinUpdater()
-            updater = PriceUpdater()
-            needs_processing = updater.needs_processing
-        if process:
+            PriceUpdater()
             ListProcessor()
             FinProcessor()
-            PriceProcessor(process_all=needs_processing)
+            PriceProcessor()
         reader = Reader(filter=filter, filtered_code_list=filtered_code_list)
         self.list_df = reader.read_list()
         self.fin_df = reader.read_fin()
@@ -60,20 +58,8 @@ class StockAcquisitionFacade:
 
 if __name__ == "__main__":
     # Example usage
+    from datetime import datetime
     filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
+    start = datetime.now()
     stock_df_dict = StockAcquisitionFacade(update=True, process=True, filter=filter).get_stock_data_dict()
-    
-    '''
-    from utils.paths import Paths
-    data = []
-    for i in range(2013, 2026):
-        path = Paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(i))
-        df = pd.read_parquet(path)
-        df['Date'] = pd.to_datetime(df['Date'])
-        df['Code'] = df['Code'].astype(str)
-        df = df[df['Code'] == '91010']
-        data.append(df[['Date', 'Code', 'Close', 'Volume', 'TurnoverValue', 'AdjustmentFactor']])
-    df = pd.concat(data, axis=0).sort_values('Date')
-    df.to_csv('test_processed.csv')
-    '''
-    
+    print(datetime.now() - start)

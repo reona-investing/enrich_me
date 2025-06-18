@@ -55,26 +55,19 @@ class Reader:
         return df[df[date_col]<=end_date]
 
     def read_price(self,
-                   basic_path: str = Paths.STOCK_PRICE_PARQUET, 
+                   price_path: str = Paths.STOCK_PRICE_PARQUET,
                    list_path: str = Paths.STOCK_LIST_PARQUET,
                    cols_yaml_path: str = Paths.STOCK_PRICE_COLUMNS_YAML,
                    end_date: datetime = datetime.today()) ->pd.DataFrame: # 価格情報の読み込み
         """
         価格情報を読み込み、調整を行います。
         Args:
-            basic_path (str): 株価データのparquetファイルのパス
+            price_path (str): 株価データのparquetファイルのパス
             list_path (str): 銘柄一覧のparquetファイルのパス（フィルタリング用）
             end_date (datetime): データの終了日
         Returns:
             pd.DataFrame: 価格情報
         """
-        df = self._generate_price_df(basic_path, list_path, self.filter, self.filtered_code_list, end_date, cols_yaml_path)
-        return self._recalc_adjustment_factors(df, cols_yaml_path)
-
-    def _generate_price_df(self, basic_path: str, list_path: str, 
-                           filter: str | None, filtered_code_list: list[str] | None, 
-                           end_date: datetime, cols_yaml_path: str) -> pd.DataFrame:
-        """年次の株価データから、通期の価格データフレームを生成します。"""
         ccg = ColumnConfigsGetter(cols_yaml_path = cols_yaml_path)
         date_col = ccg.get_column_name('日付')
         code_col = ccg.get_column_name('銘柄コード')
@@ -82,17 +75,14 @@ class Reader:
         if cols is None:
             cols = []
         cols.append('CumulativeAdjustmentFactor')
-        list_df = FileHandler.read_parquet(list_path)
-        dfs = []
-        for my_year in range(2013, end_date.year + 1):
-            if os.path.exists(basic_path.replace('0000', str(my_year))):
-                df = pd.read_parquet(Paths.STOCK_PRICE_PARQUET.replace('0000', str(my_year)))
-                df = df[cols].copy()
-                df = filter_stocks(df, list_df, filtered_code_list=filtered_code_list, filter=filter, code_col=code_col)
-                dfs.append(df)
-        df =  pd.concat(dfs, axis=0).drop_duplicates(subset=[date_col, code_col], keep='last')
         
+        list_df = FileHandler.read_parquet(list_path)
+        df = pd.read_parquet(price_path)
+        df = df[cols].copy()
+        df = filter_stocks(df, list_df, filtered_code_list=self.filtered_code_list, filter=self.filter, code_col=code_col)
+        df =  self._recalc_adjustment_factors(df, cols_yaml_path)
         return df[df[date_col]<=end_date]
+    
     
     def _recalc_adjustment_factors(self, df: pd.DataFrame, cols_yaml_path: str) -> pd.DataFrame:
         """全銘柄の最終日の累積調整係数が1となるように再計算します。"""
