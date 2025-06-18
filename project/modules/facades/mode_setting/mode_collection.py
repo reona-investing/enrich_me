@@ -5,7 +5,7 @@ from typing import Optional, Any
 
 class DataUpdateMode(str, Enum):
     """データ更新に関するモード"""
-    UPDATE = 'update'
+    UPDATE_AND_LOAD = 'update_and_load'
     LOAD_ONLY = 'load_only'
     NONE = 'none'
 
@@ -74,38 +74,10 @@ class ModeCollection(BaseModel):
             update (dict[str, Any]): 更新したいパラメータを指定。
             
             パラメータ:
-            data_update_mode: ['update', 'load_only', 'none'], 
+            data_update_mode: ['update_and_load', 'load_only', 'none'], 
             machine_learning_mode: ['train_and_predict', 'predict_only', 'load_only', 'none'], 
             order_execution_mode: ['new', 'additional', 'settle', 'none'], 
             trade_data_fetch_mode: ['fetch', 'none']
         """
         copied = super().model_copy(update=update, deep=deep)
         return self.__class__.model_validate(copied.model_dump())
-
-
-
-
-class DataUpdateMode(str, Enum):
-    """データ更新に関するモード"""
-    UPDATE = 'update'
-    LOAD_ONLY = 'load_only'
-    NONE = 'none'
-
-class MachineLearningMode(str, Enum):
-    """機械学習に関するモード"""
-    TRAIN_AND_PREDICT = 'train_and_predict'
-    PREDICT_ONLY = 'predict_only'
-    LOAD_ONLY = 'load_only'
-    NONE = 'none'
-
-class OrderExecutionMode(str, Enum):
-    """注文実行に関するモード"""
-    NEW = 'new'
-    ADDITIONAL = 'additional'
-    SETTLE = 'settle'
-    NONE = 'none'
-
-class TradeDataFetchMode(str, Enum):
-    """データ更新に関するモード"""
-    FETCH = 'fetch'
-    NONE = 'none'

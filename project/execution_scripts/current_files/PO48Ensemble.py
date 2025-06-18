@@ -35,14 +35,12 @@ async def main() -> None:
     candidate_sector_num = 5
     top_slope = 1
     train_start_day = datetime(2014, 1, 1)
-    train_end_day = datetime(2022, 12, 31)
+    train_end_day = datetime(2021, 12, 31)
     test_start_day = datetime(2014, 1, 1)
     test_end_day = datetime(2099, 12, 31)
 
     try:
         modes = ModeForStrategy.generate_mode()
-        modes = modes.model_copy(update={'machine_learning_mode': 'train_and_predict'})
-        print(modes)
 
         # 1. データ更新
         data_facade = DataUpdateFacade(mode=modes.data_update_mode, universe_filter=universe_filter)
