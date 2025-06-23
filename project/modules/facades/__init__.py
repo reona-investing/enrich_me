@@ -7,6 +7,7 @@ from .data_pipeline.multi_model_order_facade import (
     MultiModelOrderExecutionFacade,
     ModelOrderConfig,
 )
+from .data_pipeline.lasso_learning_facade import LassoLearningFacade
 from .data_pipeline.trade_data_facade import TradeDataFacade
 from .mode_setting import ModeCollection, ModeFactory, ModeForStrategy
 
@@ -18,6 +19,7 @@ __all__ = [
     'OrderExecutionFacade',
     'MultiModelOrderExecutionFacade',
     'ModelOrderConfig',
+    'LassoLearningFacade',
     'TradeDataFacade',
     'ModeCollection',
     'ModeFactory',

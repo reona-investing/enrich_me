@@ -5,8 +5,14 @@ import asyncio
 
 from utils.notifier import SlackNotifier
 from utils.paths import Paths
-from facades import DataUpdateFacade, ModeForStrategy
-from facades import MultiModelOrderExecutionFacade, ModelOrderConfig
+from facades import (
+    DataUpdateFacade,
+    ModeForStrategy,
+    TradeDataFacade,
+    LassoLearningFacade,
+    MultiModelOrderExecutionFacade,
+    ModelOrderConfig,
+)
 from trading import TradingFacade
 
 async def main() -> None:
@@ -25,13 +31,26 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
+
+        # 1. データ更新
         data_facade = DataUpdateFacade(mode=modes.data_update_mode, universe_filter=universe_filter)
         await data_facade.execute()
 
+        # 2. 機械学習
+        ml_48 = LassoLearningFacade(
+            mode=modes.machine_learning_mode,
+            dataset_path=datasets_48,
+        ).execute()
+        ml_54 = LassoLearningFacade(
+            mode=modes.machine_learning_mode,
+            dataset_path=datasets_54,
+        ).execute()
+
+        # 3. 発注
         trade_facade = TradingFacade()
         configs = [
             ModelOrderConfig(
-                dataset_path=datasets_48,
+                ml_datasets=ml_48,
                 sector_csv=sector_csv_48,
                 trading_sector_num=trading_sector_num,
                 candidate_sector_num=candidate_sector_num,
@@ -39,7 +58,7 @@ async def main() -> None:
                 margin_weight=0.5,
             ),
             ModelOrderConfig(
-                dataset_path=datasets_54,
+                ml_datasets=ml_54,
                 sector_csv=sector_csv_54,
                 trading_sector_num=trading_sector_num,
                 candidate_sector_num=candidate_sector_num,
@@ -54,6 +73,14 @@ async def main() -> None:
             configs=configs,
         )
         await order_facade.execute()
+
+        # 4. 取引データの取得
+        trade_data_facade = TradeDataFacade(
+            mode=modes.trade_data_fetch_mode,
+            trade_facade=trade_facade,
+            sector_csv=sector_csv_48,
+        )
+        await trade_data_facade.execute()
 
         slack.finish(message='すべての処理が完了しました。')
     except Exception:

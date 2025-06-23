@@ -2,15 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List, Literal
-
-from models.machine_learning.loaders import DatasetLoader
 from trading import TradingFacade
-from models.machine_learning.models import LassoModel
-from models.machine_learning.ml_dataset import MLDatasets, SingleMLDataset
+from models.machine_learning.ml_dataset import MLDatasets
 
 @dataclass
 class ModelOrderConfig:
-    dataset_path: str
+    ml_datasets: MLDatasets
     sector_csv: str
     trading_sector_num: int
     candidate_sector_num: int
@@ -20,27 +17,29 @@ class ModelOrderConfig:
 class MultiModelOrderExecutionFacade:
     """複数モデルの予測結果を用いた発注を管理するファサード"""
 
-    def __init__(self, mode: Literal['new', 'none'], trade_facade: TradingFacade, configs: List[ModelOrderConfig]):
+    def __init__(
+        self,
+        mode: Literal["new", "none"],
+        trade_facade: TradingFacade,
+        configs: List[ModelOrderConfig],
+    ):
         self.mode = mode
         self.trade_facade = trade_facade
         self.configs = configs
+        self._normalize_margin_weights()
 
-    def _predict_lasso(self, dataset_path: str) -> MLDatasets:
-        """LASSOモデルで予測を実行し ``MLDatasets`` を返す"""
-        loader = DatasetLoader(dataset_path)
-        ml_datasets = loader.load_datasets()
-        model = LassoModel()
-        for _, single_ml in ml_datasets.items():
-            pred_df = model.predict(
-                single_ml.train_test_materials.target_test_df,
-                single_ml.train_test_materials.features_test_df,
-                single_ml.ml_object_materials.model,
-                single_ml.ml_object_materials.scaler,
-            )
-            single_ml.archive_pred_result(pred_df)
-            single_ml.save()
-            ml_datasets.replace_model(single_ml_dataset=single_ml)
-        return ml_datasets
+    def _normalize_margin_weights(self) -> None:
+        """Ensure that margin_weight of configs sums to 1."""
+        if not self.configs:
+            return
+        total = sum(cfg.margin_weight for cfg in self.configs)
+        if total <= 0:
+            equal_w = 1 / len(self.configs)
+            for cfg in self.configs:
+                cfg.margin_weight = equal_w
+        elif total != 1:
+            for cfg in self.configs:
+                cfg.margin_weight = cfg.margin_weight / total
 
     async def execute(self) -> None:
         if self.mode == 'none':
@@ -52,7 +51,7 @@ class MultiModelOrderExecutionFacade:
         total_margin = await self.trade_facade.margin_provider.get_available_margin()
 
         for cfg in self.configs:
-            ml_datasets = self._predict_lasso(cfg.dataset_path)
+            ml_datasets = cfg.ml_datasets
             alloc_margin = total_margin * cfg.margin_weight
             await self.trade_facade.take_positions(
                 order_price_df=ml_datasets.get_order_price(),
