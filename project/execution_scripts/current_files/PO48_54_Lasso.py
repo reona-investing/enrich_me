@@ -15,7 +15,6 @@ from facades import (
 )
 from trading import TradingFacade
 
-
 async def main() -> None:
     slack = SlackNotifier(program_name=os.path.basename(__file__))
     slack.start(message="プログラムを開始します。", should_send_program_name=True)
@@ -85,7 +84,7 @@ async def main() -> None:
             sector_csv=sector_csv_48,
         )
         await trade_data_facade.execute()
-
+        
         slack.finish(message="すべての処理が完了しました。")
     except Exception:
         from utils.error_handler import error_handler
