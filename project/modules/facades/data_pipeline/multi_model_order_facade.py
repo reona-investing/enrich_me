@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import List, Literal
-
 from trading import TradingFacade
 from models.machine_learning.ml_dataset import MLDatasets
 
@@ -41,7 +40,6 @@ class MultiModelOrderExecutionFacade:
         elif total != 1:
             for cfg in self.configs:
                 cfg.margin_weight = cfg.margin_weight / total
-
 
     async def execute(self) -> None:
         if self.mode == 'none':
