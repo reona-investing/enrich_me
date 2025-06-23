@@ -81,6 +81,8 @@ class TradingFacade:
             failed_messages = "\n".join([f"{order.message}" for order in failed_orders])
             self.slack.send_message(f'以下の注文の発注に失敗しました。\n{failed_messages}')
 
+        return orders_df
+
     async def take_additionals(self):
         '''
         take_positionsで失敗した注文について、追加で信用新規建を行います。
