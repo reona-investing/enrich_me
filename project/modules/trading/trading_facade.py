@@ -36,13 +36,14 @@ class TradingFacade:
         
         self.Paths = Paths
 
-    async def take_positions(self, 
+    async def take_positions(self,
                              order_price_df: pd.DataFrame,
                              pred_result_df: pd.DataFrame,
-                             SECTOR_REDEFINITIONS_CSV: str, 
-                             num_sectors_to_trade: int = 3, 
-                             num_candidate_sectors: int = 5, 
-                             top_slope: float = 1.0):
+                             SECTOR_REDEFINITIONS_CSV: str,
+                             num_sectors_to_trade: int = 3,
+                             num_candidate_sectors: int = 5,
+                             top_slope: float = 1.0,
+                             margin_power: float | None = None):
         '''
         信用新規建を行います。
         Args:
@@ -64,7 +65,7 @@ class TradingFacade:
                                               num_candidate_sectors = num_candidate_sectors,
                                               top_slope = top_slope)
         
-        orders_df, _ = await stock_selector.select_stocks()
+        orders_df, _ = await stock_selector.select_stocks(margin_power)
         
         # 注文一括発注
         results = await self.batch_order_maker.place_batch_orders(orders_df)
