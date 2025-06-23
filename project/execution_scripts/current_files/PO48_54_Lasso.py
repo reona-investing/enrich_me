@@ -20,17 +20,22 @@ async def main() -> None:
     slack.start(message="プログラムを開始します。", should_send_program_name=True)
 
     # パラメータ設定
-    datasets_48 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250615"
-    datasets_54 = f"{Paths.ML_DATASETS_FOLDER}/54sectors_LASSO_learned_in_250623"
-    sector_csv_48 = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
-    sector_csv_54 = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/54sectors_2024-2025.csv"
+    datasets_2nd_model = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250615"
+    datasets_1st_model = f"{Paths.ML_DATASETS_FOLDER}/54sectors_LASSO_learned_in_250623"
+    sector_csv_1st_model = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/54sectors_2024-2025.csv"
+    sector_csv_2nd_model = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))"
-    trading_sector_num = 2
-    candidate_sector_num = 4
-    top_slope = 1
+    trading_sector_num_1st_model = 2
+    trading_sector_num_2nd_model = 2
+    candidate_sector_num_1st_model = 4
+    candidate_sector_num_2nd_model = 4
+    top_slope_1st_model = 1
+    top_slope_2nd_model = 1
 
     try:
         modes = ModeForStrategy.generate_mode()
+        modes = modes.model_copy(update={'order_execution_mode': 'new',
+                                         'trade_data_fetch_mode': 'none'})
 
         # 1. データ更新
         data_facade = DataUpdateFacade(
@@ -39,33 +44,33 @@ async def main() -> None:
         await data_facade.execute()
 
         # 2. 機械学習
-        ml_48 = LassoLearningFacade(
+        ml_1st_model = LassoLearningFacade(
             mode=modes.machine_learning_mode,
-            dataset_path=datasets_48,
+            dataset_path=datasets_1st_model,
         ).execute()
-        ml_54 = LassoLearningFacade(
+        ml_2nd_model = LassoLearningFacade(
             mode=modes.machine_learning_mode,
-            dataset_path=datasets_54,
+            dataset_path=datasets_2nd_model,
         ).execute()
 
         # 3. 発注
         trade_facade = TradingFacade()
         configs = [
             ModelOrderConfig(
-                ml_datasets=ml_48,
-                sector_csv=sector_csv_48,
-                trading_sector_num=trading_sector_num,
-                candidate_sector_num=candidate_sector_num,
-                top_slope=top_slope,
-                margin_weight=0.5,
+                ml_datasets=ml_1st_model,
+                sector_csv=sector_csv_1st_model,
+                trading_sector_num=trading_sector_num_1st_model,
+                candidate_sector_num=candidate_sector_num_1st_model,
+                top_slope=top_slope_1st_model,
+                margin_weight=0.67,
             ),
             ModelOrderConfig(
-                ml_datasets=ml_54,
-                sector_csv=sector_csv_54,
-                trading_sector_num=trading_sector_num,
-                candidate_sector_num=candidate_sector_num,
-                top_slope=top_slope,
-                margin_weight=0.5,
+                ml_datasets=ml_2nd_model,
+                sector_csv=sector_csv_2nd_model,
+                trading_sector_num=trading_sector_num_2nd_model,
+                candidate_sector_num=candidate_sector_num_2nd_model,
+                top_slope=top_slope_2nd_model,
+                margin_weight=0.33,
             ),
         ]
 
@@ -81,7 +86,7 @@ async def main() -> None:
         trade_data_facade = TradeDataFacade(
             mode=modes.trade_data_fetch_mode,
             trade_facade=trade_facade,
-            sector_csv=sector_csv_48,
+            sector_csv=sector_csv_2nd_model,
         )
         await trade_data_facade.execute()
         

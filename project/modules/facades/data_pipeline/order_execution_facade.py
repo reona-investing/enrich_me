@@ -22,7 +22,13 @@ class OrderExecutionFacade:
         self,
         configs: ModelOrderConfig | Iterable[ModelOrderConfig] | None = None,
     ) -> Optional[pd.DataFrame]:
-        """モデル設定を基に発注を実行する"""
+        """
+        モデル設定を基に発注を実行する。
+        
+        Args:
+            configs (ModelOrderConfig | Iterable[ModelOrderConfig] | None):
+                modeが"new"のときのみ必須。銘柄選択用の情報を格納したインスタンス
+        """
 
         if self.mode == "none":
             return None
