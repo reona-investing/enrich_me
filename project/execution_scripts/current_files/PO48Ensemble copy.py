@@ -12,6 +12,7 @@ from facades import (
     OrderExecutionFacade,
     TradeDataFacade,
     ModeForStrategy,
+    ModelOrderConfig,
 )
 from trading import TradingFacade
 
@@ -70,12 +71,16 @@ async def main() -> None:
         order_facade = OrderExecutionFacade(
             mode=modes.order_execution_mode,
             trade_facade=trading_facade,
+        )
+        config = ModelOrderConfig(
+            ml_datasets=ensembled_dataset,
             sector_csv=sector_redef_csv,
             trading_sector_num=trading_sector_num,
             candidate_sector_num=candidate_sector_num,
             top_slope=top_slope,
+            margin_weight=1.0,
         )
-        await order_facade.execute(ensembled_dataset)
+        await order_facade.execute(config)
 
         # 4. 取引データの取得
         trade_data_facade = TradeDataFacade(mode=modes.trade_data_fetch_mode, 
