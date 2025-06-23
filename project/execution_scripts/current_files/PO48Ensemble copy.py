@@ -23,16 +23,16 @@ async def main() -> None:
     slack.start(message='プログラムを開始します。', should_send_program_name=True)
 
     # パラメータ設定
-    sector_redef_csv = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/50sectors_2024-2025.csv"
-    sector_index_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/50sectors_price.parquet"
-    datasets_path1 = f"{Paths.ML_DATASETS_FOLDER}/50sectors_LASSO_learned_in_250615"
-    datasets_path2 = f"{Paths.ML_DATASETS_FOLDER}/50sectors_LightGBMlearned_in_250615"
-    ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/50sectors_Ensembled_learned_in_250615"
+    sector_redef_csv = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/xxsectors_2024-2025.csv"
+    sector_index_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/xxsectors_price.parquet"
+    datasets_path1 = f"{Paths.ML_DATASETS_FOLDER}/xxsectors_LASSO_learned_in_250618"
+    datasets_path2 = f"{Paths.ML_DATASETS_FOLDER}/xxsectors_LightGBMlearned_in_250618"
+    ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/xxsectors_Ensembled_learned_in_250618"
     model1_weight = 6.7
     model2_weight = 1.3
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))"
-    trading_sector_num = 3
-    candidate_sector_num = 5
+    trading_sector_num = 10
+    candidate_sector_num = 20
     top_slope = 1
     train_start_day = datetime(2014, 1, 1)
     train_end_day = datetime(2021, 12, 31)
