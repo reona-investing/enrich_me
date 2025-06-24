@@ -84,7 +84,6 @@ async def main() -> None:
         trade_data_facade = TradeDataFacade(
             mode=modes.trade_data_fetch_mode,
             trade_facade=trade_facade,
-            sector_csv=sector_csv_2nd_model,
         )
         await trade_data_facade.execute()
         

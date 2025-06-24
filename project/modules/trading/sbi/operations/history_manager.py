@@ -24,7 +24,7 @@ class HistoryManager:
         self.page_navigator = PageNavigator(self.browser_manager)
 
 
-    async def fetch_today_margin_trades(self, sector_list_df:pd.DataFrame=None):
+    async def fetch_today_margin_trades(self, orders_list_df: pd.DataFrame | None = None):
         """
         過去の取引履歴をスクレイピングして取得
         self.today_margin_trades_df: 取引履歴データ
@@ -64,7 +64,7 @@ class HistoryManager:
         # データフレームを表示
         print(df)
 
-        self.today_margin_trades_df = self._format_contracts_df(df, sector_list_df)
+        self.today_margin_trades_df = self._format_contracts_df(df, orders_list_df)
 
 
     def _add_previous_mtext(self, html_list: list) -> list:
@@ -100,7 +100,7 @@ class HistoryManager:
         return df
 
 
-    async def fetch_past_margin_trades(self, sector_list_df:pd.DataFrame=None, mydate:datetime=datetime.today()):
+    async def fetch_past_margin_trades(self, orders_list_df: pd.DataFrame | None = None, mydate: datetime = datetime.today()):
         """
         過去の取引履歴をスクレイピングして取得
         self.past_margin_trades_df: 取引履歴データ
@@ -120,7 +120,7 @@ class HistoryManager:
         settle_df = settle_df.rename(columns={'約定単価': '決済単価'})
         df = pd.merge(take_df, settle_df[['銘柄コード', '決済単価']], how='outer', on='銘柄コード')
 
-        self.past_margin_trades_df = self._format_contracts_df(df, sector_list_df)
+        self.past_margin_trades_df = self._format_contracts_df(df, orders_list_df)
         self.past_margin_trades_df['日付'] = pd.to_datetime(self.past_margin_trades_df['日付']).dt.date
         print(self.past_margin_trades_df)
 
@@ -135,7 +135,7 @@ class HistoryManager:
 
         return df
 
-    def _format_contracts_df(self, df: pd.DataFrame, sector_list_df: pd.DataFrame) -> pd.DataFrame:
+    def _format_contracts_df(self, df: pd.DataFrame, orders_list_df: pd.DataFrame | None) -> pd.DataFrame:
         df['銘柄コード'] = df['銘柄コード'].astype(str)
         df['株数'] = df['株数'].astype(int)
         df['取得単価'] = df['取得単価'].astype(float)
@@ -149,9 +149,15 @@ class HistoryManager:
         df.loc[df['売or買']=='売', '利益（税引前）'] = df['取得価格'] - df['決済価格'] - df['手数料']
         df['利率（税引前）'] = df['利益（税引前）'] / df['取得価格']
 
-        sector_list_df['Code'] = sector_list_df['Code'].astype(str)
-        df = pd.merge(df, sector_list_df[['Code', 'Sector']], left_on='銘柄コード', right_on='Code', how='left')
-        df = df.drop('Code', axis=1).rename(columns={'Sector':'業種'})
+        if orders_list_df is None:
+            try:
+                orders_list_df = pd.read_csv(Paths.ORDERS_CSV)
+            except FileNotFoundError:
+                orders_list_df = pd.DataFrame(columns=['Code', 'Sector'])
+
+        orders_list_df['Code'] = orders_list_df['Code'].astype(str)
+        df = pd.merge(df, orders_list_df[['Code', 'Sector']], left_on='銘柄コード', right_on='Code', how='left')
+        df = df.drop('Code', axis=1).rename(columns={'Sector': '業種'})
         df = df[['日付', '売or買', '業種', '銘柄コード', '社名', '株数', '取得単価', '決済単価', '取得価格', '決済価格', '手数料', '利益（税引前）', '利率（税引前）']]
         return df
     
@@ -267,7 +273,7 @@ if __name__ == '__main__':
     import asyncio
     from datetime import datetime
 
-    async def fetch_today_margin_trades(sector_list_df:pd.DataFrame=None):
+    async def fetch_today_margin_trades(orders_list_df: pd.DataFrame | None = None):
         """
         過去の取引履歴をスクレイピングして取得
         self.today_margin_trades_df: 取引履歴データ
@@ -285,10 +291,9 @@ if __name__ == '__main__':
 
     async def main():
         bm = SBIBrowserManager()
-        sector_list_df = pd.read_csv(f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv')
         '''
         await hm.fetch_cashflow_transactions()
-        await hm.fetch_today_margin_trades(sector_list_df=sector_list_df)
+        await hm.fetch_today_margin_trades()
         await hm.fetch_today_stock_trades()
         '''
 
