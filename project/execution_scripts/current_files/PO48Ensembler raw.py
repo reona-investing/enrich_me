@@ -77,7 +77,7 @@ async def main() -> None:
         )
         config = ModelOrderConfig(
             ml_datasets=ensembled_dataset,
-            sector_csv=sector_redef_csv,
+
             trading_sector_num=trading_sector_num,
             candidate_sector_num=candidate_sector_num,
             top_slope=top_slope,
@@ -86,9 +86,10 @@ async def main() -> None:
         await order_facade.execute(config)
 
         # 4. 取引データの取得
-        trade_data_facade = TradeDataFacade(mode=modes.trade_data_fetch_mode, 
-                                            trade_facade=trading_facade,
-                                            sector_csv=sector_redef_csv)
+        trade_data_facade = TradeDataFacade(
+            mode=modes.trade_data_fetch_mode,
+            trade_facade=trading_facade,
+        )
         await trade_data_facade.execute()
 
         slack.finish(message='すべての処理が完了しました。')
