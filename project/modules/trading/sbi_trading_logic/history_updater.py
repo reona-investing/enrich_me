@@ -10,14 +10,14 @@ from utils.paths import Paths
 
 
 class HistoryUpdater:
-    def __init__(self, history_manager:HistoryManager, margin_provider: IMarginProvider,
-                 sector_list_path: str, 
-                 trade_history_path: str = Paths.TRADE_HISTORY_CSV, 
-                 buying_power_history_path: str = Paths.BUYING_POWER_HISTORY_CSV, 
+    def __init__(self, history_manager: HistoryManager, margin_provider: IMarginProvider,
+                 orders_list_path: str = Paths.ORDERS_CSV,
+                 trade_history_path: str = Paths.TRADE_HISTORY_CSV,
+                 buying_power_history_path: str = Paths.BUYING_POWER_HISTORY_CSV,
                  deposit_history_path: str = Paths.DEPOSIT_HISTORY_CSV):
         self.history_manager = history_manager
         self.margin_provider = margin_provider
-        self.sector_list_path = sector_list_path
+        self.orders_list_path = orders_list_path
         self.trade_history_path = trade_history_path
         self.buying_power_history_path = buying_power_history_path
         self.deposit_history_path = deposit_history_path
@@ -32,7 +32,7 @@ class HistoryUpdater:
             float: 直近の損益額
             str: 直近の損益率
         '''
-        trade_history = await self._update_trade_history(self.trade_history_path, self.sector_list_path, self.history_manager)
+        trade_history = await self._update_trade_history(self.trade_history_path, self.orders_list_path, self.history_manager)
         buying_power_history = await self._update_buying_power_history(self.buying_power_history_path, trade_history, self.history_manager, self.margin_provider)
         deposit_history = await self._update_deposit_history(self.deposit_history_path, buying_power_history, self.history_manager)
 
@@ -60,19 +60,19 @@ class HistoryUpdater:
         rate, amount = self._show_latest_result(trade_history)
         return trade_history, buying_power_history, deposit_history, rate, amount
 
-    async def _update_trade_history(self, trade_history_path: str, sector_list_path: str, 
+    async def _update_trade_history(self, trade_history_path: str, orders_list_path: str,
                                     history_manager: HistoryManager) -> pd.DataFrame:
         '''
         当日の取引結果を取得し、trade_historyのファイルを更新します。
         trade_history_path：過去の取引履歴を記録したdfのファイルパス
-        sector_list：銘柄とセクターとの対応を記録したdf
+        orders_list：発注銘柄と業種の対応を記録したdf
         '''
         print('取引履歴を更新します。')
         # 取引履歴の更新
         trade_history = pd.read_csv(trade_history_path)
-        sector_list = pd.read_csv(sector_list_path)
-        trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date # 後で同じ変換をするが、この処理いる？
-        await history_manager.fetch_today_margin_trades(sector_list)
+        orders_list = pd.read_csv(orders_list_path)
+        trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date  # 後で同じ変換をするが、この処理いる？
+        await history_manager.fetch_today_margin_trades(orders_list)
         trade_history = pd.concat([trade_history, history_manager.today_margin_trades_df], axis=0).reset_index(drop=True)
         trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date
         trade_history = trade_history.sort_values(['日付', '売or買', '業種', '銘柄コード']).reset_index(drop=True)
@@ -177,9 +177,8 @@ if __name__ == '__main__':
     from trading.sbi import LoginHandler
     from trading.sbi.common.provider import SBIMarginProvider
     import asyncio
-    sector_path = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
     lh = LoginHandler()
     hm = HistoryManager(lh)
     mm = SBIMarginProvider(lh)
-    hu = HistoryUpdater(hm, mm, sector_path)
+    hu = HistoryUpdater(hm, mm)
     _, _, _, _, _ = asyncio.run(hu.update_information())
