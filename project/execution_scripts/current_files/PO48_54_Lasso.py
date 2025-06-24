@@ -34,8 +34,6 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
-        modes = modes.model_copy(update={'order_execution_mode': 'new',
-                                         'trade_data_fetch_mode': 'none'})
 
         # 1. データ更新
         data_facade = DataUpdateFacade(

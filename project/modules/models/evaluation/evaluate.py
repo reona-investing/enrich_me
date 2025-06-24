@@ -147,13 +147,15 @@ class MetricsCalculator:
         '''ロング・ショートそれぞれの結果を算出する。'''
         df = self.result_df.copy()
         short_positions = - df.loc[df['Pred_Rank'] <= self.sectors_to_trade_count]
-        short_positions.loc[short_positions['Pred_Rank'] == short_positions['Pred_Rank'].min(), 'Target'] *= self.top_sector_weight
-        short_positions.loc[short_positions['Pred_Rank'] != short_positions['Pred_Rank'].min(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
+        if self.sectors_to_trade_count > 1:
+            short_positions.loc[short_positions['Pred_Rank'] == short_positions['Pred_Rank'].min(), 'Target'] *= self.top_sector_weight
+            short_positions.loc[short_positions['Pred_Rank'] != short_positions['Pred_Rank'].min(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
         short_positions_return = short_positions.groupby('Date')[['Target']].mean()
         short_positions_return = short_positions_return.rename(columns={'Target':'Short'})
         long_positions = df.loc[df['Pred_Rank'] > max(df['Pred_Rank']) - self.sectors_to_trade_count]
-        long_positions.loc[long_positions['Pred_Rank'] == long_positions['Pred_Rank'].max(), 'Target'] *= self.top_sector_weight
-        long_positions.loc[long_positions['Pred_Rank'] != long_positions['Pred_Rank'].max(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
+        if self.sectors_to_trade_count > 1:
+            long_positions.loc[long_positions['Pred_Rank'] == long_positions['Pred_Rank'].max(), 'Target'] *= self.top_sector_weight
+            long_positions.loc[long_positions['Pred_Rank'] != long_positions['Pred_Rank'].max(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
         long_positions_return = long_positions.groupby('Date')[['Target']].mean()
         long_positions_return = long_positions_return.rename(columns={'Target':'Long'})
         performance_df = pd.concat([long_positions_return, short_positions_return], axis=1)
