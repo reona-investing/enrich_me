@@ -86,4 +86,5 @@ class BatchOrderMaker(OrderMaker):
             return
         self.failed_orders = list(map(str, self.failed_orders))
         failed_orders_df = orders_df.loc[orders_df['Code'].astype(str).isin(self.failed_orders), :]
-        failed_orders_df.to_csv(Paths.FAILED_ORDERS_CSV)
+        # インデックス列が不要なため、index=Falseで保存する
+        failed_orders_df.to_csv(Paths.FAILED_ORDERS_CSV, index=False)
