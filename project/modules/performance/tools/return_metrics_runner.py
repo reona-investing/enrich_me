@@ -73,6 +73,13 @@ class ReturnMetricsRunner:
         return base
 
     def calculate(self) -> Dict[str, pd.DataFrame]:
+        final_dict = {}
+        final_dict.update(self.calculate_aggregate())
+        final_dict.update(self.calculate_series())
+
+        return final_dict
+
+    def calculate_aggregate(self) -> Dict[str, pd.DataFrame]:
         """3パターンのリターンに対する指標を計算して返す"""
         base = self._get_base_returns()
 
