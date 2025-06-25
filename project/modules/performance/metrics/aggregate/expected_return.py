@@ -11,6 +11,5 @@ class ExpectedReturn(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("期待リターン")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
-        self.value = returns.mean()
-        return self.value
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
+        self._value = returns.mean()

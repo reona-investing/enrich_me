@@ -13,7 +13,6 @@ class AnnualizedReturn(AggregateMetric):
         super().__init__("年率リターン")
         self.annualizer = Annualizer(trading_days_per_year)
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         mean_daily = returns.mean()
-        self.value = self.annualizer.annualize_return(mean_daily)
-        return self.value
+        self._value = self.annualizer.annualize_return(mean_daily)

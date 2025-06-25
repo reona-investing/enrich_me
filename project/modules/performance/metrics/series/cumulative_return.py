@@ -11,9 +11,8 @@ class CumulativeReturn(SeriesMetric):
     def __init__(self) -> None:
         super().__init__("累積リターン")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> pd.DataFrame:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         cumulative = (1 + returns).cumprod() - 1
         df = cumulative.to_frame("CumulativeReturn")
         df.index.name = returns.index.name or "Date"
-        self.value = df
-        return self.value
+        self._value = df

@@ -13,7 +13,6 @@ class AnnualizedStandardDeviation(AggregateMetric):
         super().__init__("年率標準偏差")
         self.annualizer = Annualizer(trading_days_per_year)
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         std = returns.std(ddof=0)
-        self.value = self.annualizer.annualize_volatility(std)
-        return self.value
+        self._value = self.annualizer.annualize_volatility(std)

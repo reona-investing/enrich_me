@@ -11,11 +11,10 @@ class SharpeRatio(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("シャープレシオ")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         mean = returns.mean()
         std = returns.std(ddof=0)
         if std == 0:
-            self.value = float("nan")
+            self._value = float("nan")
         else:
-            self.value = mean / std
-        return self.value
+            self._value = mean / std

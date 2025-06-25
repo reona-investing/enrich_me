@@ -11,7 +11,7 @@ class LongestDrawdownPeriod(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("最長ドローダウン期間")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         cumulative = (1 + returns).cumprod()
         peaks = cumulative.cummax()
         drawdown = cumulative < peaks
@@ -24,5 +24,4 @@ class LongestDrawdownPeriod(AggregateMetric):
                 longest = max(longest, current)
                 current = 0
         longest = max(longest, current)
-        self.value = float(longest)
-        return self.value
+        self._value = float(longest)

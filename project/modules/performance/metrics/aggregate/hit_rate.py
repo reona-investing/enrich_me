@@ -11,6 +11,5 @@ class HitRate(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("勝率")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
-        self.value = float((returns > 0).mean())
-        return self.value
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
+        self._value = float((returns > 0).mean())
