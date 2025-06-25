@@ -98,7 +98,7 @@ class DatasetLoader:
         combined_df = pd.concat(results, axis=0)
         if 'Date' in combined_df.index.names:
             combined_df = combined_df.sort_index()
-        return combined_df
+        return combined_df.dropna().drop_duplicates(keep='last')
 
     def load_pred_results(self) -> pd.DataFrame:
         """dataset_root内に保存された全モデルの ``pred_result_df`` を結合して返す."""
