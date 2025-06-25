@@ -13,13 +13,12 @@ class AnnualizedSharpeRatio(AggregateMetric):
         super().__init__("年率シャープレシオ")
         self.annualizer = Annualizer(trading_days_per_year)
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         mean_daily = returns.mean()
         std_daily = returns.std(ddof=0)
         if std_daily == 0:
-            self.value = float("nan")
+            self._value = float("nan")
         else:
             ann_ret = self.annualizer.annualize_return(mean_daily)
             ann_std = self.annualizer.annualize_volatility(std_daily)
-            self.value = ann_ret / ann_std
-        return self.value
+            self._value = ann_ret / ann_std

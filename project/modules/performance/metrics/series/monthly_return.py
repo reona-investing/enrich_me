@@ -11,9 +11,8 @@ class MonthlyReturn(SeriesMetric):
     def __init__(self) -> None:
         super().__init__("月次リターン")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> pd.DataFrame:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         monthly = (1 + returns).resample("ME").prod() - 1
         df = monthly.to_frame("MonthlyReturn")
         df.index.name = "Date"
-        self.value = df
-        return self.value
+        self._value = df

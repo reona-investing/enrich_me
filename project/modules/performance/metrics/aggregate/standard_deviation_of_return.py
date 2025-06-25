@@ -11,6 +11,5 @@ class StandardDeviationOfReturn(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("標準偏差")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
-        self.value = returns.std(ddof=0)
-        return self.value
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
+        self._value = returns.std(ddof=0)

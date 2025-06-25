@@ -37,7 +37,7 @@ class NumeraiCorrelation(RankMetric):
             processed.append(p15)
         return float(np.corrcoef(processed[0], processed[1])[0, 1])
 
-    def calculate(self, series1: pd.Series, **kwargs) -> pd.DataFrame:
+    def calculate(self, series1: pd.Series, **kwargs) -> None:
         """予測順位と実際順位から Numerai 相関を計算し統計量を返す。"""
         series2: pd.Series = kwargs.get("series2")
         if series2 is None:
@@ -56,8 +56,8 @@ class NumeraiCorrelation(RankMetric):
             )
             result = pd.concat([daily_corr, daily_rank_corr], axis=1)
             result.columns = ["NumeraiCorr", "Rank_NumeraiCorr"]
-            self.value = result.describe().T
-            return self.value
+            self._value = result.describe().T
+            return
 
         pred_rank = series1.rank()
         actual_rank = series2.rank()
@@ -67,8 +67,7 @@ class NumeraiCorrelation(RankMetric):
             "NumeraiCorr": [corr],
             "Rank_NumeraiCorr": [rank_corr],
         })
-        self.value = df_out.describe().T
-        return self.value
+        self._value = df_out.describe().T
 
     def get_name(self) -> str:
         return "NumeraiCorrelation"

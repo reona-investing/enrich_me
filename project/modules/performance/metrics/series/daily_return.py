@@ -11,8 +11,7 @@ class DailyReturn(SeriesMetric):
     def __init__(self) -> None:
         super().__init__("日次リターン")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> pd.DataFrame:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         df = returns.to_frame("DailyReturn")
         df.index.name = returns.index.name or "Date"
-        self.value = df
-        return self.value
+        self._value = df

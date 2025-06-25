@@ -57,7 +57,8 @@ class PredictionReturnAnalyzer:
             result = self.manager.evaluate_all(transformed)
             # 相関は別途計算し平均値を格納
             corr_metric = SpearmanCorrelation()
-            corr_df = corr_metric.calculate(transformed, series2=self.actual)
+            corr_metric.calculate(transformed, series2=self.actual)
+            corr_df = corr_metric.value
             corr_mean = float("nan")
             if "SpearmanCorr" in corr_df.index:
                 corr_mean = corr_df.loc["SpearmanCorr", "mean"]

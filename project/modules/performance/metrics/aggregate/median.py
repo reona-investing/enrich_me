@@ -11,6 +11,5 @@ class Median(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("中央値")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
-        self.value = returns.median()
-        return self.value
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
+        self._value = returns.median()

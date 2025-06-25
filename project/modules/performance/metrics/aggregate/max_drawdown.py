@@ -11,8 +11,7 @@ class MaxDrawdown(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("最大ドローダウン")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         cumulative = (1 + returns).cumprod()
         dd = 1 - cumulative / cumulative.cummax()
-        self.value = dd.max()
-        return self.value
+        self._value = dd.max()

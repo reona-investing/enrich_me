@@ -11,7 +11,7 @@ class TheoreticalMaxDrawdown(AggregateMetric):
     def __init__(self) -> None:
         super().__init__("理論上最大ドローダウン")
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         mean = kwargs.get("expected_return")
         std = kwargs.get("std_return")
         if mean is None:
@@ -19,7 +19,6 @@ class TheoreticalMaxDrawdown(AggregateMetric):
         if std is None:
             std = returns.std(ddof=0)
         if mean == 0:
-            self.value = float("nan")
+            self._value = float("nan")
         else:
-            self.value = (std ** 2) / mean * 9 / 4
-        return self.value
+            self._value = (std ** 2) / mean * 9 / 4

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Any, Dict
 
 import pandas as pd
 
@@ -18,8 +18,8 @@ class EvaluationMetricsManager:
     def add_metric(self, metric_instance: EvaluationMetric) -> None:
         self.metrics.append(metric_instance)
 
-    def evaluate_all(self, returns: pd.Series, **kwargs) -> Dict[str, float]:
-        results: Dict[str, float] = {}
+    def evaluate_all(self, returns: pd.Series, **kwargs) -> Dict[str, Any]:
+        results: Dict[str, Any] = {}
         extra = {}
         for metric in self.metrics:
             if isinstance(metric, TheoreticalMaxDrawdown):
@@ -28,6 +28,6 @@ class EvaluationMetricsManager:
                     "expected_return": returns.mean(),
                     "std_return": returns.std(ddof=0),
                 }
-            value = metric.calculate(returns, **extra)
-            results[metric.get_name()] = value
+            metric.calculate(returns, **extra)
+            results[metric.get_name()] = metric.value
         return results

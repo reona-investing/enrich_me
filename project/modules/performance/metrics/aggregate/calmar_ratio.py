@@ -13,13 +13,12 @@ class CalmarRatio(AggregateMetric):
         super().__init__("カルマーレシオ")
         self.annualizer = Annualizer(trading_days_per_year)
 
-    def calculate(self, returns: pd.Series, **kwargs) -> float:
+    def calculate(self, returns: pd.Series, **kwargs) -> None:
         ann_ret = self.annualizer.annualize_return(returns.mean())
         cumulative = (1 + returns).cumprod()
         dd = 1 - cumulative / cumulative.cummax()
         mdd = dd.max()
         if mdd == 0:
-            self.value = float("nan")
+            self._value = float("nan")
         else:
-            self.value = ann_ret / mdd
-        return self.value
+            self._value = ann_ret / mdd
