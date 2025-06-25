@@ -14,13 +14,13 @@ class TaxRate:
     def apply_tax(self, returns: pd.Series) -> pd.Series:
         """税引後リターンを計算する。"""
         taxed = returns.copy()
-        taxed[taxed > 0] = taxed[taxed > 0] * (1 - self.tax_rate)
+        taxed = taxed * (1 - self.tax_rate)
         return taxed
 
     def remove_tax(self, returns: pd.Series) -> pd.Series:
         """税引後リターンから税引前リターンを推定する。"""
         untaxed = returns.copy()
-        untaxed[untaxed > 0] = untaxed[untaxed > 0] / (1 - self.tax_rate)
+        untaxed = untaxed / (1 - self.tax_rate)
         return untaxed
 
 

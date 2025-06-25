@@ -67,10 +67,11 @@ class ReturnMetricsRunner:
         base = self._get_base_returns()
 
         patterns = {
-            "PreTax_PreLeverage": base,
-            "PreTax_PostLeverage": self.leverage_obj.apply_leverage(base),
+            "集計（税引前・レバ無）": base,
+            "集計（税引前・レバ有）": self.leverage_obj.apply_leverage(base),
         }
-        patterns["PostTax_PostLeverage"] = self.tax_rate_obj.apply_tax(patterns["PreTax_PostLeverage"])
+        patterns["集計（税引後・レバ有）"] = self.tax_rate_obj.apply_tax(patterns["集計（税引前・レバ有）"])
+
 
         results: Dict[str, pd.DataFrame] = {}
         for name, series in patterns.items():
