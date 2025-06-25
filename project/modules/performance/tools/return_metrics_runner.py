@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 import pandas as pd
 
 from .. import (
@@ -72,45 +72,26 @@ class ReturnMetricsRunner:
             base = self.tax_rate_obj.remove_tax(base)
         return base
 
-    def calculate(self) -> Dict[str, pd.DataFrame]:
-        final_dict = {}
-        final_dict.update(self.calculate_aggregate())
-        final_dict.update(self.calculate_series())
-
-        return final_dict
-
-    def calculate_aggregate(self) -> Dict[str, pd.DataFrame]:
-        """3パターンのリターンに対する指標を計算して返す"""
+    def calculate(self) -> Dict[str, Dict[str, pd.DataFrame]]:
+        """3パターンのリターンに対する指標を階層的な辞書で返す"""
         base = self._get_base_returns()
 
         patterns = {
-            "集計（税引前・レバ無）": base,
-            "集計（税引前・レバ有）": self.leverage_obj.apply_leverage(base),
+            "税引前・レバレッジ無": base,
+            "税引前・レバレッジ有": self.leverage_obj.apply_leverage(base),
         }
-        patterns["集計（税引後・レバ有）"] = self.tax_rate_obj.apply_tax(patterns["集計（税引前・レバ有）"])
+        patterns["税引後・レバレッジ有"] = self.tax_rate_obj.apply_tax(patterns["税引前・レバレッジ有"])
 
+        results: Dict[str, Dict[str, pd.DataFrame]] = {name: {} for name in patterns.keys()}
 
-        results: Dict[str, pd.DataFrame] = {}
         for name, series in patterns.items():
             agg = self.aggregate_metrics_manager.evaluate_all(series)
             df = pd.DataFrame({"指標": agg.keys(), "値": agg.values()}).set_index("指標", drop=True)
-            results[name] = df
-        # TODO: Spearman相関やNumerai相関などのRank特徴量を
-        return results
+            results[name]["集計"] = df
 
-    def calculate_series(self) -> Dict[str, pd.DataFrame]:
-        """日次・月次・年次リターンの DataFrame をフラットな辞書で返す"""
-        base = self._get_base_returns()
-
-        patterns = {
-            "集計（税引前・レバ無）": base,
-            "集計（税引前・レバ有）": self.leverage_obj.apply_leverage(base),
-        }
-        patterns["集計（税引後・レバ有）"] = self.tax_rate_obj.apply_tax(patterns["集計（税引前・レバ有）"])
-
-        results: Dict[str, pd.DataFrame] = {}
-        for pattern_name, series in patterns.items():
+        for name, series in patterns.items():
             series_metrics = self.series_metrics_manager.evaluate_all(series)
             for metric_name, df in series_metrics.items():
-                results[f"{pattern_name}：{metric_name}"] = df
+                results[name][metric_name] = df
+
         return results
