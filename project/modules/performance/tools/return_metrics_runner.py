@@ -98,8 +98,8 @@ class ReturnMetricsRunner:
         # TODO: Spearman相関やNumerai相関などのRank特徴量を
         return results
 
-    def calculate_series(self) -> Dict[str, Dict[str, pd.DataFrame]]:
-        """日次・月次・年次リターンの DataFrame を返す"""
+    def calculate_series(self) -> Dict[str, pd.DataFrame]:
+        """日次・月次・年次リターンの DataFrame をフラットな辞書で返す"""
         base = self._get_base_returns()
 
         patterns = {
@@ -108,8 +108,9 @@ class ReturnMetricsRunner:
         }
         patterns["集計（税引後・レバ有）"] = self.tax_rate_obj.apply_tax(patterns["集計（税引前・レバ有）"])
 
-        results: Dict[str, Dict[str, pd.DataFrame]] = {}
-        for name, series in patterns.items():
+        results: Dict[str, pd.DataFrame] = {}
+        for pattern_name, series in patterns.items():
             series_metrics = self.series_metrics_manager.evaluate_all(series)
-            results[name] = series_metrics
+            for metric_name, df in series_metrics.items():
+                results[f"{pattern_name}：{metric_name}"] = df
         return results
