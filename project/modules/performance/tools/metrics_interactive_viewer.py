@@ -23,7 +23,11 @@ class MetricsInteractiveViewer:
             metric = dropdown.value
             with output:
                 output.clear_output()
-                print(f"{metric}: {self.metrics[metric]}")
+                if type(self.metrics[metric]) == pd.DataFrame:
+                    print(metric)
+                    display(self.metrics[metric])
+                else:
+                    print(f"{metric}: {self.metrics[metric]}")
 
         button.on_click(on_click)
         display(widgets.HBox([dropdown, button]), output)

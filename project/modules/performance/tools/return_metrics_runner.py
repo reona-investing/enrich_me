@@ -44,6 +44,9 @@ class ReturnMetricsRunner:
         self.aggregate_metrics_manager.add_metric(TheoreticalMaxDrawdown())
 
     def calculate(self) -> Dict[str, float]:
-        results = self.aggregate_metrics_manager.evaluate_all(self.return_series)
+        aggregate_results = self.aggregate_metrics_manager.evaluate_all(self.return_series)
+        aggregate_results = pd.DataFrame({'指標':aggregate_results.keys(),
+                                          '値': aggregate_results.values()}).set_index('指標', drop=True)
+        aggregate_results = {'集計指標': aggregate_results}
         #TODO Spearman相関やNumerai相関などのRank特徴量を
-        return results
+        return aggregate_results
