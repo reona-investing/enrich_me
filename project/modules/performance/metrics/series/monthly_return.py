@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import SeriesMetric
+from ..evaluation_metric import SeriesMetric
 
 
 class MonthlyReturn(SeriesMetric):
@@ -15,4 +15,5 @@ class MonthlyReturn(SeriesMetric):
         monthly = (1 + returns).resample("ME").prod() - 1
         df = monthly.to_frame("MonthlyReturn")
         df.index.name = "Date"
-        return df
+        self.value = df
+        return self.value

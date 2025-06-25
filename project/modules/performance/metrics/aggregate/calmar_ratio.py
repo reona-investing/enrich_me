@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..annualizer import Annualizer
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class CalmarRatio(AggregateMetric):
@@ -19,5 +19,7 @@ class CalmarRatio(AggregateMetric):
         dd = 1 - cumulative / cumulative.cummax()
         mdd = dd.max()
         if mdd == 0:
-            return float("nan")
-        return ann_ret / mdd
+            self.value = float("nan")
+        else:
+            self.value = ann_ret / mdd
+        return self.value

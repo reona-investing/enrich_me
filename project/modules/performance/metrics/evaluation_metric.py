@@ -9,6 +9,7 @@ class EvaluationMetric(ABC):
 
     def __init__(self, metric_name: str) -> None:
         self._metric_name = metric_name
+        self.value = None
 
     @abstractmethod
     def calculate(self, returns: pd.Series, **kwargs):

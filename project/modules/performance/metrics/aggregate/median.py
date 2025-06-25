@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class Median(AggregateMetric):
@@ -12,4 +12,5 @@ class Median(AggregateMetric):
         super().__init__("中央値")
 
     def calculate(self, returns: pd.Series, **kwargs) -> float:
-        return returns.median()
+        self.value = returns.median()
+        return self.value

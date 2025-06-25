@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..annualizer import Annualizer
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class AnnualizedReturn(AggregateMetric):
@@ -15,4 +15,5 @@ class AnnualizedReturn(AggregateMetric):
 
     def calculate(self, returns: pd.Series, **kwargs) -> float:
         mean_daily = returns.mean()
-        return self.annualizer.annualize_return(mean_daily)
+        self.value = self.annualizer.annualize_return(mean_daily)
+        return self.value

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class ExpectedReturn(AggregateMetric):
@@ -12,4 +12,5 @@ class ExpectedReturn(AggregateMetric):
         super().__init__("期待リターン")
 
     def calculate(self, returns: pd.Series, **kwargs) -> float:
-        return returns.mean()
+        self.value = returns.mean()
+        return self.value

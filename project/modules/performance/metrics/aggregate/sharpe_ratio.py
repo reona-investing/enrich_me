@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class SharpeRatio(AggregateMetric):
@@ -15,5 +15,7 @@ class SharpeRatio(AggregateMetric):
         mean = returns.mean()
         std = returns.std(ddof=0)
         if std == 0:
-            return float("nan")
-        return mean / std
+            self.value = float("nan")
+        else:
+            self.value = mean / std
+        return self.value

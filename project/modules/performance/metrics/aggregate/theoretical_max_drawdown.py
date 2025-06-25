@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class TheoreticalMaxDrawdown(AggregateMetric):
@@ -19,5 +19,7 @@ class TheoreticalMaxDrawdown(AggregateMetric):
         if std is None:
             std = returns.std(ddof=0)
         if mean == 0:
-            return float("nan")
-        return (std ** 2) / mean * 9 / 4
+            self.value = float("nan")
+        else:
+            self.value = (std ** 2) / mean * 9 / 4
+        return self.value

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from .evaluation_metric import RankMetric
+from ..evaluation_metric import RankMetric
 
 
 class NumeraiCorrelation(RankMetric):
@@ -56,7 +56,8 @@ class NumeraiCorrelation(RankMetric):
             )
             result = pd.concat([daily_corr, daily_rank_corr], axis=1)
             result.columns = ["NumeraiCorr", "Rank_NumeraiCorr"]
-            return result.describe().T
+            self.value = result.describe().T
+            return self.value
 
         pred_rank = series1.rank()
         actual_rank = series2.rank()
@@ -66,7 +67,8 @@ class NumeraiCorrelation(RankMetric):
             "NumeraiCorr": [corr],
             "Rank_NumeraiCorr": [rank_corr],
         })
-        return df_out.describe().T
+        self.value = df_out.describe().T
+        return self.value
 
     def get_name(self) -> str:
         return "NumeraiCorrelation"

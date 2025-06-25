@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class MaxDrawdown(AggregateMetric):
@@ -14,4 +14,5 @@ class MaxDrawdown(AggregateMetric):
     def calculate(self, returns: pd.Series, **kwargs) -> float:
         cumulative = (1 + returns).cumprod()
         dd = 1 - cumulative / cumulative.cummax()
-        return dd.max()
+        self.value = dd.max()
+        return self.value

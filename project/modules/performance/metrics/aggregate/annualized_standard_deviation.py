@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..annualizer import Annualizer
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class AnnualizedStandardDeviation(AggregateMetric):
@@ -15,4 +15,5 @@ class AnnualizedStandardDeviation(AggregateMetric):
 
     def calculate(self, returns: pd.Series, **kwargs) -> float:
         std = returns.std(ddof=0)
-        return self.annualizer.annualize_volatility(std)
+        self.value = self.annualizer.annualize_volatility(std)
+        return self.value
