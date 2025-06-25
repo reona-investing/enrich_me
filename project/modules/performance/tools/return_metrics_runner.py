@@ -13,6 +13,9 @@ from .. import (
     EvaluationMetricsManager,
     SpearmanCorrelation,
     Median,
+    DailyReturn,
+    MonthlyReturn,
+    AnnualReturn,
     TaxRate,
     Leverage,
 )
@@ -43,6 +46,7 @@ class ReturnMetricsRunner:
         self.tax_rate_obj = TaxRate(tax_rate)
         self.leverage_obj = Leverage(leverage_ratio)
         self._setup_aggregate_metrics_manager()
+        self._setup_series_metrics_manager()
 
     def _setup_aggregate_metrics_manager(self) -> None:
         self.aggregate_metrics_manager = EvaluationMetricsManager(Annualizer())
@@ -52,6 +56,12 @@ class ReturnMetricsRunner:
         self.aggregate_metrics_manager.add_metric(SharpeRatio())
         self.aggregate_metrics_manager.add_metric(MaxDrawdown())
         self.aggregate_metrics_manager.add_metric(TheoreticalMaxDrawdown())
+
+    def _setup_series_metrics_manager(self) -> None:
+        self.series_metrics_manager = EvaluationMetricsManager(Annualizer())
+        self.series_metrics_manager.add_metric(DailyReturn())
+        self.series_metrics_manager.add_metric(MonthlyReturn())
+        self.series_metrics_manager.add_metric(AnnualReturn())
 
     def _get_base_returns(self) -> pd.Series:
         """入力リターンを税引前・レバレッジなしの状態に変換する"""
@@ -79,4 +89,20 @@ class ReturnMetricsRunner:
             df = pd.DataFrame({"指標": agg.keys(), "値": agg.values()}).set_index("指標", drop=True)
             results[name] = df
         # TODO: Spearman相関やNumerai相関などのRank特徴量を
+        return results
+
+    def calculate_series(self) -> Dict[str, Dict[str, pd.DataFrame]]:
+        """日次・月次・年次リターンの DataFrame を返す"""
+        base = self._get_base_returns()
+
+        patterns = {
+            "集計（税引前・レバ無）": base,
+            "集計（税引前・レバ有）": self.leverage_obj.apply_leverage(base),
+        }
+        patterns["集計（税引後・レバ有）"] = self.tax_rate_obj.apply_tax(patterns["集計（税引前・レバ有）"])
+
+        results: Dict[str, Dict[str, pd.DataFrame]] = {}
+        for name, series in patterns.items():
+            series_metrics = self.series_metrics_manager.evaluate_all(series)
+            results[name] = series_metrics
         return results

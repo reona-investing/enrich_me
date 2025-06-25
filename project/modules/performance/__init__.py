@@ -13,6 +13,9 @@ from .metrics import (
     SpearmanCorrelation,
     EvaluationMetricsManager,
     Median,
+    DailyReturn,
+    MonthlyReturn,
+    AnnualReturn,
 )
 from .analyzers import (
     ReturnSeriesTransformer,
