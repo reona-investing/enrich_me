@@ -10,6 +10,13 @@ from .. import (
     SharpeRatio,
     MaxDrawdown,
     TheoreticalMaxDrawdown,
+    CumulativeReturn,
+    HitRate,
+    AnnualizedReturn,
+    AnnualizedStandardDeviation,
+    LongestDrawdownPeriod,
+    AnnualizedSharpeRatio,
+    CalmarRatio,
     EvaluationMetricsManager,
     Median,
     DailyReturn,
@@ -50,12 +57,19 @@ class ReturnMetricsRunner:
         self.aggregate_metrics_manager.add_metric(SharpeRatio())
         self.aggregate_metrics_manager.add_metric(MaxDrawdown())
         self.aggregate_metrics_manager.add_metric(TheoreticalMaxDrawdown())
+        self.aggregate_metrics_manager.add_metric(HitRate())
+        self.aggregate_metrics_manager.add_metric(AnnualizedReturn())
+        self.aggregate_metrics_manager.add_metric(AnnualizedStandardDeviation())
+        self.aggregate_metrics_manager.add_metric(LongestDrawdownPeriod())
+        self.aggregate_metrics_manager.add_metric(AnnualizedSharpeRatio())
+        self.aggregate_metrics_manager.add_metric(CalmarRatio())
 
     def _setup_series_metrics_manager(self) -> None:
         self.series_metrics_manager = EvaluationMetricsManager(Annualizer())
         self.series_metrics_manager.add_metric(DailyReturn())
         self.series_metrics_manager.add_metric(MonthlyReturn())
         self.series_metrics_manager.add_metric(AnnualReturn())
+        self.series_metrics_manager.add_metric(CumulativeReturn())
 
     def _get_base_returns(self) -> pd.Series:
         """入力リターンを税引前・レバレッジなしの状態に変換する"""
