@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import SeriesMetric
+from ..evaluation_metric import SeriesMetric
 
 
 class CumulativeReturn(SeriesMetric):
@@ -15,4 +15,5 @@ class CumulativeReturn(SeriesMetric):
         cumulative = (1 + returns).cumprod() - 1
         df = cumulative.to_frame("CumulativeReturn")
         df.index.name = returns.index.name or "Date"
-        return df
+        self.value = df
+        return self.value

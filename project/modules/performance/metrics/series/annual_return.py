@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import SeriesMetric
+from ..evaluation_metric import SeriesMetric
 
 
 class AnnualReturn(SeriesMetric):
@@ -15,4 +15,5 @@ class AnnualReturn(SeriesMetric):
         annual = (1 + returns).resample("YE").prod() - 1
         df = annual.to_frame("AnnualReturn")
         df.index.name = "Date"
-        return df
+        self.value = df
+        return self.value

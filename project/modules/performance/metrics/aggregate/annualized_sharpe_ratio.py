@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..annualizer import Annualizer
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class AnnualizedSharpeRatio(AggregateMetric):
@@ -17,7 +17,9 @@ class AnnualizedSharpeRatio(AggregateMetric):
         mean_daily = returns.mean()
         std_daily = returns.std(ddof=0)
         if std_daily == 0:
-            return float("nan")
-        ann_ret = self.annualizer.annualize_return(mean_daily)
-        ann_std = self.annualizer.annualize_volatility(std_daily)
-        return ann_ret / ann_std
+            self.value = float("nan")
+        else:
+            ann_ret = self.annualizer.annualize_return(mean_daily)
+            ann_std = self.annualizer.annualize_volatility(std_daily)
+            self.value = ann_ret / ann_std
+        return self.value

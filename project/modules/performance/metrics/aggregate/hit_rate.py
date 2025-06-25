@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class HitRate(AggregateMetric):
@@ -12,4 +12,5 @@ class HitRate(AggregateMetric):
         super().__init__("勝率")
 
     def calculate(self, returns: pd.Series, **kwargs) -> float:
-        return float((returns > 0).mean())
+        self.value = float((returns > 0).mean())
+        return self.value

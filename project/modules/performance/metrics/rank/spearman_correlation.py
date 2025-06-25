@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 from scipy.stats import spearmanr
 
-from .evaluation_metric import RankMetric
+from ..evaluation_metric import RankMetric
 
 
 class SpearmanCorrelation(RankMetric):
@@ -26,7 +26,9 @@ class SpearmanCorrelation(RankMetric):
             daily_corr = df.groupby("Date").apply(
                 lambda x: spearmanr(x["pred_rank"], x["actual_rank"])[0]
             )
-            return daily_corr.to_frame("SpearmanCorr").describe().T
+            self.value = daily_corr.to_frame("SpearmanCorr").describe().T
+            return self.value
 
         corr, _ = spearmanr(df["pred"], df["actual"])
-        return pd.DataFrame({"SpearmanCorr": [corr]}).describe().T
+        self.value = pd.DataFrame({"SpearmanCorr": [corr]}).describe().T
+        return self.value

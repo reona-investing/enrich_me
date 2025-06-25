@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class StandardDeviationOfReturn(AggregateMetric):
@@ -12,4 +12,5 @@ class StandardDeviationOfReturn(AggregateMetric):
         super().__init__("標準偏差")
 
     def calculate(self, returns: pd.Series, **kwargs) -> float:
-        return returns.std(ddof=0)
+        self.value = returns.std(ddof=0)
+        return self.value

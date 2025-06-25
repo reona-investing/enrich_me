@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .evaluation_metric import AggregateMetric
+from ..evaluation_metric import AggregateMetric
 
 
 class LongestDrawdownPeriod(AggregateMetric):
@@ -24,4 +24,5 @@ class LongestDrawdownPeriod(AggregateMetric):
                 longest = max(longest, current)
                 current = 0
         longest = max(longest, current)
-        return float(longest)
+        self.value = float(longest)
+        return self.value
