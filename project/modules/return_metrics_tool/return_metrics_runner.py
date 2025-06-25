@@ -31,9 +31,9 @@ class ReturnMetricsRunner:
         self.return_series = return_series
         self.label_series = correction_label_series
         self.sector_series = sector_series
-        self._setup_manager()
+        self._setup_aggregate_metrics_manager()
 
-    def _setup_manager(self) -> None:
+    def _setup_aggregate_metrics_manager(self) -> None:
         self.aggregate_metrics_manager = EvaluationMetricsManager(Annualizer())
         self.aggregate_metrics_manager.add_metric(ExpectedReturn())
         self.aggregate_metrics_manager.add_metric(StandardDeviationOfReturn())
