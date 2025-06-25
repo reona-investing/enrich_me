@@ -75,6 +75,33 @@ class DatasetLoader:
                 ml_datasets.append_model(SingleMLDataset(path, name))
         return ml_datasets
 
+    def load_pred_results(self) -> pd.DataFrame:
+        """dataset_root内に保存された全モデルの ``pred_result_df`` を結合して返す."""
+        if not os.path.isdir(self.dataset_root):
+            raise FileNotFoundError(f"{self.dataset_root} が存在しません")
+
+        results = []
+        for name in sorted(os.listdir(self.dataset_root)):
+            pred_path = os.path.join(
+                self.dataset_root, name, "post_processing_data", "pred_result_df.parquet"
+            )
+            if os.path.isfile(pred_path):
+                try:
+                    df = pd.read_parquet(pred_path)
+                    results.append(df)
+                except Exception as e:
+                    print(f"{pred_path} の読み込みに失敗しました。: {e}")
+            else:
+                print(f"警告: {pred_path} が存在しません。スキップします。")
+
+        if not results:
+            raise ValueError("有効な予測結果データが見つかりませんでした。")
+
+        combined_df = pd.concat(results, axis=0)
+        if 'Date' in combined_df.index.names:
+            combined_df = combined_df.sort_index()
+        return combined_df
+
 
 if __name__ == "__main__":
     from utils.paths import Paths
