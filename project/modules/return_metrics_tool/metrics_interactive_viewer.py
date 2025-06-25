@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Dict
-import pandas as pd
 import ipywidgets as widgets
 from IPython.display import display
 

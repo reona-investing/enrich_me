@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Dict
 import pandas as pd
 
-from modules.performance import (
+from performance import (
     Annualizer,
     ExpectedReturn,
     StandardDeviationOfReturn,
@@ -27,29 +27,21 @@ class ReturnMetricsRunner:
         sector_series: Optional[pd.Series] = None,
         correction_label_series: Optional[pd.Series] = None,
     ) -> None:
-        self.generator = DailyReturnGenerator(date_series, return_series, sector_series)
+        self.date_series = date_series
+        self.return_series = return_series
         self.label_series = correction_label_series
         self.sector_series = sector_series
         self._setup_manager()
 
     def _setup_manager(self) -> None:
-        self.manager = EvaluationMetricsManager(Annualizer())
-        self.manager.add_metric(ExpectedReturn())
-        self.manager.add_metric(StandardDeviationOfReturn())
-        self.manager.add_metric(SharpeRatio())
-        self.manager.add_metric(MaxDrawdown())
-        self.manager.add_metric(TheoreticalMaxDrawdown())
+        self.aggregate_metrics_manager = EvaluationMetricsManager(Annualizer())
+        self.aggregate_metrics_manager.add_metric(ExpectedReturn())
+        self.aggregate_metrics_manager.add_metric(StandardDeviationOfReturn())
+        self.aggregate_metrics_manager.add_metric(SharpeRatio())
+        self.aggregate_metrics_manager.add_metric(MaxDrawdown())
+        self.aggregate_metrics_manager.add_metric(TheoreticalMaxDrawdown())
 
     def calculate(self) -> Dict[str, float]:
-        daily_returns = self.generator.generate()
-        results = self.manager.evaluate_all(daily_returns)
-        if self.sector_series is not None and self.label_series is not None:
-            label_gen = DailyReturnGenerator(self.generator.date_series, self.label_series, self.sector_series)
-            daily_labels = label_gen.generate_label_series(self.label_series)
-            corr_metric = SpearmanCorrelation()
-            corr_df = corr_metric.calculate(daily_returns, series2=daily_labels)
-            if "SpearmanCorr" in corr_df.index:
-                results[corr_metric.get_name()] = corr_df.loc["SpearmanCorr", "mean"]
-            else:
-                results[corr_metric.get_name()] = float("nan")
+        results = self.aggregate_metrics_manager.evaluate_all(self.return_series)
+        #TODO Spearman相関やNumerai相関などのRank特徴量を
         return results

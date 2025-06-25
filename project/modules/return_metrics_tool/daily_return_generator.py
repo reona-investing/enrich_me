@@ -1,30 +1,35 @@
 from __future__ import annotations
 
 import pandas as pd
-from typing import Optional
 
 class DailyReturnGenerator:
-    """Create daily return series from raw returns."""
+    """銘柄ごとのリターン実績から、日次リターンを算出する。"""
 
-    def __init__(self, date_series: pd.Series, return_series: pd.Series, sector_series: Optional[pd.Series] = None) -> None:
-        self.date_series = pd.to_datetime(date_series)
-        self.return_series = pd.Series(return_series).astype(float)
-        self.sector_series = pd.Series(sector_series) if sector_series is not None else None
+    def __init__(self, 
+                 date_series: pd.Series, 
+                 acquisition_price_series: pd.Series, 
+                 settlement_price_series: pd.Series,
+                 long_or_short_series: pd.Series,
+                 short_keyphrase: str | bool) -> None:
+        self._date_series = pd.to_datetime(date_series)
+        self._acquisition_price_series = pd.Series(acquisition_price_series).astype(float)
+        self._settlement_price_series = pd.Series(settlement_price_series).astype(float)
+        self._long_or_short_series = pd.Series(long_or_short_series)
+        self._short_keyphrase = short_keyphrase
+        
+        self._daily_return_df = self._generate()
 
-    def generate(self) -> pd.Series:
-        df = pd.DataFrame({'Date': self.date_series, 'Return': self.return_series})
-        if self.sector_series is not None:
-            df['Sector'] = self.sector_series.values
-            daily = df.groupby('Date')['Return'].mean()
-        else:
-            daily = df.set_index('Date')['Return']
-        return daily.sort_index()
+    def get(self) -> pd.DataFrame:
+        return self._daily_return_df
 
-    def generate_label_series(self, label_series: pd.Series) -> pd.Series:
-        df = pd.DataFrame({'Date': self.date_series, 'Label': label_series})
-        if self.sector_series is not None:
-            df['Sector'] = self.sector_series.values
-            daily = df.groupby('Date')['Label'].mean()
-        else:
-            daily = df.set_index('Date')['Label']
-        return daily.sort_index()
+    def _generate(self) -> pd.DataFrame:
+        df = pd.DataFrame({'Date': self._date_series, 
+                           'Acquisition': self._acquisition_price_series,
+                           'Settlement': self._settlement_price_series,
+                           'LongOrShort': self._long_or_short_series})
+        df['Coefficient'] = 1
+        df.loc[df['LongOrShort'] == self._short_keyphrase, 'Coefficient'] = -1
+        df['Profit'] = (df['Settlement'] - df['Acquisition']) * df['Coefficient']
+        daily_return_df = df.groupby('Date')[['Profit', 'Acquisition']].sum()
+        daily_return_df['Return'] = daily_return_df['Profit'] / daily_return_df['Acquisition']
+        return daily_return_df[['Return']].sort_index()
