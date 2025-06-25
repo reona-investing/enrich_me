@@ -12,6 +12,7 @@ from .metrics import (
     TheoreticalMaxDrawdown,
     SpearmanCorrelation,
     EvaluationMetricsManager,
+    Median,
 )
 from .analyzers import (
     ReturnSeriesTransformer,
@@ -19,3 +20,8 @@ from .analyzers import (
     TradeResultAnalyzer,
 )
 from .executor import PredictionReturnExecutor
+from .tools import (
+    DailyReturnGenerator,
+    ReturnMetricsRunner,
+    MetricsInteractiveViewer,
+)

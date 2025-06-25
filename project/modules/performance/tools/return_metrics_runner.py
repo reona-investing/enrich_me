@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Dict
 import pandas as pd
 
-from performance import (
+from .. import (
     Annualizer,
     ExpectedReturn,
     StandardDeviationOfReturn,
@@ -12,6 +12,7 @@ from performance import (
     TheoreticalMaxDrawdown,
     EvaluationMetricsManager,
     SpearmanCorrelation,
+    Median,
 )
 
 from .daily_return_generator import DailyReturnGenerator
@@ -37,6 +38,7 @@ class ReturnMetricsRunner:
         self.aggregate_metrics_manager = EvaluationMetricsManager(Annualizer())
         self.aggregate_metrics_manager.add_metric(ExpectedReturn())
         self.aggregate_metrics_manager.add_metric(StandardDeviationOfReturn())
+        self.aggregate_metrics_manager.add_metric(Median())
         self.aggregate_metrics_manager.add_metric(SharpeRatio())
         self.aggregate_metrics_manager.add_metric(MaxDrawdown())
         self.aggregate_metrics_manager.add_metric(TheoreticalMaxDrawdown())

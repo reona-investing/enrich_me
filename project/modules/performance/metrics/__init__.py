@@ -11,6 +11,7 @@ from .max_drawdown import MaxDrawdown
 from .theoretical_max_drawdown import TheoreticalMaxDrawdown
 from .spearman_correlation import SpearmanCorrelation
 from .numerai_correlation import NumeraiCorrelation
+from .median import Median
 from .evaluation_metrics_manager import EvaluationMetricsManager
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "TheoreticalMaxDrawdown",
     "SpearmanCorrelation",
     "NumeraiCorrelation",
+    "Median",
     "EvaluationMetricsManager",
 ]
