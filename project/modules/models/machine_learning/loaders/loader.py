@@ -75,32 +75,44 @@ class DatasetLoader:
                 ml_datasets.append_model(SingleMLDataset(path, name))
         return ml_datasets
 
-    def load_pred_results(self) -> pd.DataFrame:
-        """dataset_root内に保存された全モデルの ``pred_result_df`` を結合して返す."""
+    def _load_post_processing_dfs(self, filename: str, data_name: str) -> pd.DataFrame:
+        """post_processing_data配下の指定ファイルを結合して返す内部ユーティリティ."""
         if not os.path.isdir(self.dataset_root):
             raise FileNotFoundError(f"{self.dataset_root} が存在しません")
 
         results = []
         for name in sorted(os.listdir(self.dataset_root)):
-            pred_path = os.path.join(
-                self.dataset_root, name, "post_processing_data", "pred_result_df.parquet"
-            )
-            if os.path.isfile(pred_path):
+            file_path = os.path.join(self.dataset_root, name, "post_processing_data", filename)
+            if os.path.isfile(file_path):
                 try:
-                    df = pd.read_parquet(pred_path)
+                    df = pd.read_parquet(file_path)
                     results.append(df)
                 except Exception as e:
-                    print(f"{pred_path} の読み込みに失敗しました。: {e}")
+                    print(f"{file_path} の読み込みに失敗しました。: {e}")
             else:
-                print(f"警告: {pred_path} が存在しません。スキップします。")
+                print(f"警告: {file_path} が存在しません。スキップします。")
 
         if not results:
-            raise ValueError("有効な予測結果データが見つかりませんでした。")
+            raise ValueError(f"有効な{data_name}データが見つかりませんでした。")
 
         combined_df = pd.concat(results, axis=0)
         if 'Date' in combined_df.index.names:
             combined_df = combined_df.sort_index()
         return combined_df
+
+    def load_pred_results(self) -> pd.DataFrame:
+        """dataset_root内に保存された全モデルの ``pred_result_df`` を結合して返す."""
+        return self._load_post_processing_dfs(
+            filename="pred_result_df.parquet",
+            data_name="予測結果"
+        )
+
+    def load_raw_targets(self) -> pd.DataFrame:
+        """dataset_root内の全モデルの ``raw_target_df`` を読み込み結合して返す."""
+        return self._load_post_processing_dfs(
+            filename="raw_target_df.parquet",
+            data_name="生の目的変数",
+        )
 
 
 if __name__ == "__main__":
