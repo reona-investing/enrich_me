@@ -12,6 +12,9 @@ from .theoretical_max_drawdown import TheoreticalMaxDrawdown
 from .spearman_correlation import SpearmanCorrelation
 from .numerai_correlation import NumeraiCorrelation
 from .median import Median
+from .daily_return import DailyReturn
+from .monthly_return import MonthlyReturn
+from .annual_return import AnnualReturn
 from .evaluation_metrics_manager import EvaluationMetricsManager
 
 __all__ = [
@@ -27,5 +30,8 @@ __all__ = [
     "SpearmanCorrelation",
     "NumeraiCorrelation",
     "Median",
+    "DailyReturn",
+    "MonthlyReturn",
+    "AnnualReturn",
     "EvaluationMetricsManager",
 ]
