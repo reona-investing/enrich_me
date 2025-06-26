@@ -3,7 +3,31 @@ from __future__ import annotations
 import pandas as pd
 
 from .transformation import TaxRate, Leverage
-from .analyzers import ReturnSeriesTransformer
+from dataclasses import dataclass
+
+
+@dataclass
+class TimeseriesReturnTransformer:
+    """リターン系列の変換を扱う補助クラス"""
+
+    tax_rate_obj: TaxRate
+    leverage_obj: Leverage
+
+    def get_pre_tax_pre_leverage_returns(self, raw_returns: pd.Series) -> pd.Series:
+        return raw_returns
+
+    def get_pre_tax_post_leverage_returns(self, raw_returns: pd.Series) -> pd.Series:
+        return self.leverage_obj.apply_leverage(raw_returns)
+
+    def get_post_tax_post_leverage_returns(self, raw_returns: pd.Series) -> pd.Series:
+        leveraged = self.leverage_obj.apply_leverage(raw_returns)
+        return self.tax_rate_obj.apply_tax(leveraged)
+
+    def get_pre_tax_pre_leverage_from_post_tax_post_leverage(
+        self, post_tax_post_leverage_returns: pd.Series
+    ) -> pd.Series:
+        untaxed = self.tax_rate_obj.remove_tax(post_tax_post_leverage_returns)
+        return self.leverage_obj.remove_leverage(untaxed)
 
 
 class TimeseriesReturn:
@@ -22,27 +46,25 @@ class TimeseriesReturn:
         self.init_leverage = init_leverage
         self.tax_rate_obj = TaxRate(tax_rate)
         self.leverage_obj = Leverage(leverage_ratio)
-        self.transformer = ReturnSeriesTransformer(self.tax_rate_obj, self.leverage_obj)
+        self.transformer = TimeseriesReturnTransformer(self.tax_rate_obj, self.leverage_obj)
         self._setup_series()
 
     def _setup_series(self) -> None:
         series = self.return_series.copy()
 
-        if self.init_tax:
-            if self.init_leverage:
-                self.post_tax_post_leverage = series
-                self.pre_tax_pre_leverage = (
-                    self.transformer.get_pre_tax_pre_leverage_from_post_tax_post_leverage(series)
-                )
-            else:
-                self.post_tax_pre_leverage = series
-                self.pre_tax_pre_leverage = self.tax_rate_obj.remove_tax(series)
+        if self.init_tax and self.init_leverage:
+            self.post_tax_post_leverage = series
+            self.pre_tax_pre_leverage = (
+                self.transformer.get_pre_tax_pre_leverage_from_post_tax_post_leverage(series)
+            )
+        elif self.init_tax and not self.init_leverage:
+            self.post_tax_pre_leverage = series
+            self.pre_tax_pre_leverage = self.tax_rate_obj.remove_tax(series)
+        elif not self.init_tax and self.init_leverage:
+            self.pre_tax_post_leverage = series
+            self.pre_tax_pre_leverage = self.leverage_obj.remove_leverage(series)
         else:
-            if self.init_leverage:
-                self.pre_tax_post_leverage = series
-                self.pre_tax_pre_leverage = self.leverage_obj.remove_leverage(series)
-            else:
-                self.pre_tax_pre_leverage = series
+            self.pre_tax_pre_leverage = series
 
         # 全ての組み合わせを計算
         self.pre_tax_post_leverage = self.leverage_obj.apply_leverage(self.pre_tax_pre_leverage)

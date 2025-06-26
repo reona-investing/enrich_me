@@ -26,10 +26,7 @@ from .metrics import (
     MonthlyReturn,
     AnnualReturn,
 )
-from .analyzers import (
-    ReturnSeriesTransformer,
-)
-from .timeseries_return import TimeseriesReturn
+from .timeseries_return import TimeseriesReturn, TimeseriesReturnTransformer
 from .tools import (
     DailyReturnGenerator,
     ReturnMetricsRunner,
