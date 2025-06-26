@@ -25,6 +25,7 @@ from .. import (
     MonthlyReturn,
     AnnualReturn,
     Leverage,
+    TaxRate,
 )
 
 
@@ -35,15 +36,16 @@ class ReturnMetricsRunner:
     def __init__(
         self,
         date_series: pd.Series,
-        taxfree_return_series: pd.Series,
-        taxed_return_series: pd.Series,
+        return_series: pd.Series,
+        is_tax_excluded: bool = True,
         is_leverage_applied: bool = False,
         leverage_ratio: float = 3.1,
     ) -> None:
         self.date_series = date_series
-        self.taxfree_return_series = taxfree_return_series
-        self.taxed_return_series = taxed_return_series
+        self.return_series = return_series
+        self.is_tax_excluded = is_tax_excluded
         self.is_leverage_applied = is_leverage_applied
+        self.tax_rate_obj = TaxRate()
         self.leverage_obj = Leverage(leverage_ratio)
         self._setup_aggregate_metrics_manager()
         self._setup_series_metrics_manager()
@@ -79,10 +81,21 @@ class ReturnMetricsRunner:
             base = self.leverage_obj.remove_leverage(base)
         return base
 
+    def _convert_tax_status(self, returns: pd.Series) -> tuple[pd.Series, pd.Series]:
+        """入力リターンから税引前/税引後の系列を取得する"""
+        base = returns.copy()
+        if self.is_tax_excluded:
+            taxfree = base
+            taxed = self.tax_rate_obj.apply_tax(base)
+        else:
+            taxed = base
+            taxfree = self.tax_rate_obj.remove_tax(base)
+        return taxfree, taxed
+
     def calculate(self) -> Dict[str, Dict[str, pd.DataFrame]]:
         """3パターンのリターンに対する指標を階層的な辞書で返す"""
-        base_taxfree = self._remove_leverage(self.taxfree_return_series)
-        base_taxed = self._remove_leverage(self.taxed_return_series)
+        base_returns = self._remove_leverage(self.return_series)
+        base_taxfree, base_taxed = self._convert_tax_status(base_returns)
 
         patterns = {
             "税引前・レバレッジ無": base_taxfree,
@@ -91,8 +104,6 @@ class ReturnMetricsRunner:
         }
 
         total_profit = (1 + base_taxed).prod() - 1
-
-        total_profit = (1 + self.tax_rate_obj.apply_tax(base)).prod() - 1
 
         results: Dict[str, Dict[str, pd.DataFrame]] = {name: {} for name in patterns.keys()}
 
