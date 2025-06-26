@@ -9,7 +9,7 @@ import pandas as pd
 
 from .transformations import TaxRate, Leverage
 from .annualizer import Annualizer
-from .metrics import EvaluationMetricsManager, SpearmanCorrelation
+from .metrics import MetricsCollection, SpearmanCorrelation
 
 
 @dataclass
@@ -38,7 +38,7 @@ class PredictionReturnAnalyzer:
     """予測リターンと実際のリターンを評価するクラス"""
 
     def __init__(self, raw_predicted_returns: pd.Series, actual_returns: pd.Series,
-                 transformer: ReturnSeriesTransformer, evaluation_manager: EvaluationMetricsManager) -> None:
+                 transformer: ReturnSeriesTransformer, evaluation_manager: MetricsCollection) -> None:
         if not raw_predicted_returns.index.equals(actual_returns.index):
             raise ValueError("インデックスが一致していません")
         self.raw_predicted = raw_predicted_returns
@@ -71,7 +71,7 @@ class TradeResultAnalyzer:
     """実際の取引結果を評価するクラス"""
 
     def __init__(self, raw_trade_df: pd.DataFrame, transformer: ReturnSeriesTransformer,
-                 evaluation_manager: EvaluationMetricsManager) -> None:
+                 evaluation_manager: MetricsCollection) -> None:
         if not {"Date", "Symbol", "DailyReturn"}.issubset(raw_trade_df.columns):
             raise ValueError("必要なカラムが存在しません")
         self.raw_trade_df = raw_trade_df.copy()

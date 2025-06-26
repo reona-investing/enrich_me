@@ -10,7 +10,7 @@ from .metrics import (
     SharpeRatio,
     MaxDrawdown,
     TheoreticalMaxDrawdown,
-    EvaluationMetricsManager,
+    MetricsCollection,
 )
 from .analyzers import ReturnSeriesTransformer, PredictionReturnAnalyzer
 
@@ -33,7 +33,7 @@ class PredictionReturnExecutor:
         self.tax_rate_obj = TaxRate(tax_rate)
         self.leverage_obj = Leverage(leverage_ratio)
         self.annualizer = Annualizer(trading_days_per_year)
-        self.manager = EvaluationMetricsManager(self.annualizer)
+        self.manager = MetricsCollection(self.annualizer)
         self.manager.add_metric(ExpectedReturn())
         self.manager.add_metric(StandardDeviationOfReturn())
         self.manager.add_metric(SharpeRatio())
