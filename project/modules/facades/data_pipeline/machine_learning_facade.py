@@ -200,8 +200,8 @@ class MachineLearningFacade:
         single_ml_dataset.archive_pred_result(self.ensembled_pred_df)
         single_ml_dataset.archive_order_price(self.ml_datasets1.get_order_price())
         single_ml_dataset.archive_raw_target(self.ml_datasets1.get_raw_target())
-        single_ml_dataset.save()
         self.ensembled_ml_datasets.append_model(single_ml_dataset=single_ml_dataset)
+        self.ensembled_ml_datasets.save_all()
 
 
     def _get_features_df(self, adopt_features_price: bool, adopt_size_factor: bool, adopt_eps_factor: bool,

@@ -85,8 +85,9 @@ class TrainTestData(BaseDataComponent):
         return features_df
 
     def _align_index(self, features_df: pd.DataFrame, target_df: pd.DataFrame) -> pd.DataFrame:
-        """特徴量のインデックスを目的変数と揃える"""
-        return features_df.loc[target_df.index, :]
+        """特徴量のインデックスを目的変数と揃える（共通部分だけにする）"""
+        common_index = features_df.index.intersection(target_df.index)
+        return features_df.loc[common_index]
 
     def _narrow_period(self, df: pd.DataFrame, start_day: datetime, end_day: datetime) -> pd.DataFrame:
         """指定期間でデータを絞り込み"""

@@ -36,13 +36,14 @@ class TradingFacade:
         
         self.Paths = Paths
 
-    async def take_positions(self, 
+    async def take_positions(self,
                              order_price_df: pd.DataFrame,
                              pred_result_df: pd.DataFrame,
-                             SECTOR_REDEFINITIONS_CSV: str, 
-                             num_sectors_to_trade: int = 3, 
-                             num_candidate_sectors: int = 5, 
-                             top_slope: float = 1.0):
+                             SECTOR_REDEFINITIONS_CSV: str,
+                             num_sectors_to_trade: int = 3,
+                             num_candidate_sectors: int = 5,
+                             top_slope: float = 1.0,
+                             margin_power: float | None = None):
         '''
         信用新規建を行います。
         Args:
@@ -64,7 +65,7 @@ class TradingFacade:
                                               num_candidate_sectors = num_candidate_sectors,
                                               top_slope = top_slope)
         
-        orders_df, _ = await stock_selector.select_stocks()
+        orders_df, _ = await stock_selector.select_stocks(margin_power)
         
         # 注文一括発注
         results = await self.batch_order_maker.place_batch_orders(orders_df)
@@ -79,6 +80,8 @@ class TradingFacade:
         if failed_orders:
             failed_messages = "\n".join([f"{order.message}" for order in failed_orders])
             self.slack.send_message(f'以下の注文の発注に失敗しました。\n{failed_messages}')
+
+        return orders_df
 
     async def take_additionals(self):
         '''
@@ -194,11 +197,11 @@ class TradingFacade:
             failed_messages = "\n".join([f"{order.message}" for order in failed_settlements])
             self.slack.send_message(f'以下の銘柄の決済注文に失敗しました。\n{failed_messages}')
 
-    async def fetch_invest_result(self, SECTOR_REDEFINITIONS_CSV):
+    async def fetch_invest_result(self, ORDERS_CSV_PATH: str = Paths.ORDERS_CSV):
         '''
         当日の取引履歴・入出金履歴・買付余力を取得します。
         '''
-        history_updater = HistoryUpdater(self.history_manager, self.margin_provider, SECTOR_REDEFINITIONS_CSV)
+        history_updater = HistoryUpdater(self.history_manager, self.margin_provider, ORDERS_CSV_PATH)
         trade_history, _, _, _, amount = await history_updater.update_information()
         self.slack.send_result(f'取引履歴等の更新が完了しました。\n{trade_history["日付"].iloc[-1].strftime("%Y-%m-%d")}の取引結果：{amount}円')
 

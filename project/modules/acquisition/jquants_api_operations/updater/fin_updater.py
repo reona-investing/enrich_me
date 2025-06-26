@@ -23,8 +23,6 @@ class FinUpdater:
             raise ValueError("開示番号の列名が設定されていません")
         merged_data = self._merge(existing_data, fetched_data, key=key_col)
         formatted_data = self._format(merged_data)
-        
-        print(formatted_data.tail(2))
         FileHandler.write_parquet(formatted_data, path)
 
 

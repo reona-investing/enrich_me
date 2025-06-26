@@ -42,11 +42,11 @@ class Paths:
 
 
     RAW_STOCK_LIST_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_list.parquet'
-    RAW_STOCK_PRICE_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_price_0000.parquet'
+    RAW_STOCK_PRICE_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_price.parquet'
     RAW_STOCK_FIN_PARQUET = f'{STOCK_RAWDATA_FOLDER}/raw_stock_fin.parquet'
 
     STOCK_LIST_PARQUET = f'{STOCK_PROCESSED_DATA_FOLDER}/stock_list.parquet'
-    STOCK_PRICE_PARQUET = f'{STOCK_PROCESSED_DATA_FOLDER}/stock_price_0000.parquet'
+    STOCK_PRICE_PARQUET = f'{STOCK_PROCESSED_DATA_FOLDER}/stock_price.parquet'
     STOCK_FIN_PARQUET = f'{STOCK_PROCESSED_DATA_FOLDER}/stock_fin.parquet'
 
     ORDERS_CSV = f'{DEBUG_FILES_FOLDER}/orders_list.csv'

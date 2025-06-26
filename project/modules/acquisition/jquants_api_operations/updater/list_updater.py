@@ -19,7 +19,6 @@ class ListUpdater:
             stock_list_df = self._merge(stock_list_df, existing_stock_list_df)
 
         stock_list_df = self._format(stock_list_df)
-        print(stock_list_df.tail(2))
         FileHandler.write_parquet(stock_list_df, path)
 
 

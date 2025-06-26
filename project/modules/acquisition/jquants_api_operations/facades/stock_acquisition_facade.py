@@ -16,11 +16,11 @@ class StockAcquisitionFacade:
             filter (str): 読み込み対象銘柄のフィルタリング条件（クエリ）
             filtered_code_list (list[str]): フィルタリングする銘柄コードのをリストで指定
         """
+        needs_processing = False
         if update:
             ListUpdater()
             FinUpdater()
             PriceUpdater()
-        if process:
             ListProcessor()
             FinProcessor()
             PriceProcessor()
@@ -58,20 +58,8 @@ class StockAcquisitionFacade:
 
 if __name__ == "__main__":
     # Example usage
+    from datetime import datetime
     filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))"
+    start = datetime.now()
     stock_df_dict = StockAcquisitionFacade(update=True, process=True, filter=filter).get_stock_data_dict()
-    
-    '''
-    from utils.paths import Paths
-    data = []
-    for i in range(2013, 2026):
-        path = Paths.RAW_STOCK_PRICE_PARQUET.replace('0000', str(i))
-        df = pd.read_parquet(path)
-        df['Date'] = pd.to_datetime(df['Date'])
-        df['Code'] = df['Code'].astype(str)
-        df = df[df['Code'] == '91010']
-        data.append(df[['Date', 'Code', 'Close', 'Volume', 'TurnoverValue', 'AdjustmentFactor']])
-    df = pd.concat(data, axis=0).sort_values('Date')
-    df.to_csv('test_processed.csv')
-    '''
-    
+    print(datetime.now() - start)
