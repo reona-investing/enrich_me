@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class TimeseriesReturnTransformer:
+class _TimeseriesReturnTransformer:
     """リターン系列の変換を扱う補助クラス"""
 
     tax_rate_obj: TaxRate
@@ -46,7 +46,7 @@ class TimeseriesReturn:
         self.init_leverage = init_leverage
         self.tax_rate_obj = TaxRate(tax_rate)
         self.leverage_obj = Leverage(leverage_ratio)
-        self.transformer = TimeseriesReturnTransformer(self.tax_rate_obj, self.leverage_obj)
+        self.transformer = _TimeseriesReturnTransformer(self.tax_rate_obj, self.leverage_obj)
         self._setup_series()
 
     def _setup_series(self) -> None:
