@@ -11,6 +11,8 @@ from .. import (
     MaxDrawdown,
     TheoreticalMaxDrawdown,
     CumulativeReturn,
+    MonthlyCumulativeReturn,
+    AnnualCumulativeReturn,
     HitRate,
     AnnualizedReturn,
     AnnualizedStandardDeviation,
@@ -70,6 +72,8 @@ class ReturnMetricsRunner:
         self.series_metrics_manager.add_metric(MonthlyReturn())
         self.series_metrics_manager.add_metric(AnnualReturn())
         self.series_metrics_manager.add_metric(CumulativeReturn())
+        self.series_metrics_manager.add_metric(MonthlyCumulativeReturn())
+        self.series_metrics_manager.add_metric(AnnualCumulativeReturn())
 
     def _get_base_returns(self) -> pd.Series:
         """入力リターンを税引前・レバレッジなしの状態に変換する"""
@@ -90,11 +94,14 @@ class ReturnMetricsRunner:
         }
         patterns["税引後・レバレッジ有"] = self.tax_rate_obj.apply_tax(patterns["税引前・レバレッジ有"])
 
+        total_profit = (1 + self.tax_rate_obj.apply_tax(base)).prod() - 1
+
         results: Dict[str, Dict[str, pd.DataFrame]] = {name: {} for name in patterns.keys()}
 
         for name, series in patterns.items():
             agg = self.aggregate_metrics_manager.evaluate_all(series)
             df = pd.DataFrame({"指標": agg.keys(), "値": agg.values()}).set_index("指標", drop=True)
+            df.loc["通算損益"] = total_profit
             results[name]["集計"] = df
 
         for name, series in patterns.items():
