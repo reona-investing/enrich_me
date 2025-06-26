@@ -29,6 +29,7 @@ from .metrics import (
 from .analyzers import (
     ReturnSeriesTransformer,
 )
+from .timeseries_return import TimeseriesReturn
 from .tools import (
     DailyReturnGenerator,
     ReturnMetricsRunner,
