@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..annualizer import Annualizer
+from ...annualizer import Annualizer
 from ..evaluation_metric import AggregateMetric
 
 
