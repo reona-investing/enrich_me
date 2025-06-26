@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .transformation import TaxRate, Leverage
+from ..transformation import TaxRate, Leverage
 from dataclasses import dataclass
 
 
