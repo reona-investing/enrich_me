@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
-
-from .transformation import TaxRate, Leverage
+from ..transformation import TaxRate, Leverage
 
 class TimeseriesReturn:
     """税引前/後・レバレッジ有無のリターン系列を保持するクラス"""
