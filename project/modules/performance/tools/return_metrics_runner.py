@@ -47,8 +47,8 @@ class ReturnMetricsRunner:
         self.is_leverage_applied = is_leverage_applied
         self.timeseries_return = TimeseriesReturn(
             return_series,
-            init_tax=not is_tax_excluded,
-            init_leverage=is_leverage_applied,
+            is_tax_excluded=is_tax_excluded,
+            is_leverage_applied=is_leverage_applied,
             tax_rate=tax_rate,
             leverage_ratio=leverage_ratio,
         )
