@@ -20,7 +20,7 @@ from .metrics import (
     LongestDrawdownPeriod,
     AnnualizedSharpeRatio,
     CalmarRatio,
-    EvaluationMetricsManager,
+    MetricsCollection,
     Median,
     DailyReturn,
     MonthlyReturn,
