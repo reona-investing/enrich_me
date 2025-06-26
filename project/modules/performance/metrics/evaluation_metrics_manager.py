@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 import pandas as pd
 
-from .evaluation_metric import EvaluationMetric
+from .base.evaluation_metric import EvaluationMetric
 from .aggregate.theoretical_max_drawdown import TheoreticalMaxDrawdown
 from ..annualizer import Annualizer
 
