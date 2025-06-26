@@ -12,6 +12,8 @@ from .metrics import (
     TheoreticalMaxDrawdown,
     SpearmanCorrelation,
     CumulativeReturn,
+    MonthlyCumulativeReturn,
+    AnnualCumulativeReturn,
     HitRate,
     AnnualizedReturn,
     AnnualizedStandardDeviation,

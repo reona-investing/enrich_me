@@ -11,6 +11,8 @@ from .. import (
     MaxDrawdown,
     TheoreticalMaxDrawdown,
     CumulativeReturn,
+    MonthlyCumulativeReturn,
+    AnnualCumulativeReturn,
     HitRate,
     AnnualizedReturn,
     AnnualizedStandardDeviation,
@@ -22,7 +24,6 @@ from .. import (
     DailyReturn,
     MonthlyReturn,
     AnnualReturn,
-    TaxRate,
     Leverage,
 )
 
@@ -34,17 +35,15 @@ class ReturnMetricsRunner:
     def __init__(
         self,
         date_series: pd.Series,
-        return_series: pd.Series,
-        is_tax_excluded: bool = True,
+        taxfree_return_series: pd.Series,
+        taxed_return_series: pd.Series,
         is_leverage_applied: bool = False,
-        tax_rate: float = 0.20315,
         leverage_ratio: float = 3.1,
     ) -> None:
         self.date_series = date_series
-        self.return_series = return_series
-        self.is_tax_excluded = is_tax_excluded
+        self.taxfree_return_series = taxfree_return_series
+        self.taxed_return_series = taxed_return_series
         self.is_leverage_applied = is_leverage_applied
-        self.tax_rate_obj = TaxRate(tax_rate)
         self.leverage_obj = Leverage(leverage_ratio)
         self._setup_aggregate_metrics_manager()
         self._setup_series_metrics_manager()
@@ -70,31 +69,35 @@ class ReturnMetricsRunner:
         self.series_metrics_manager.add_metric(MonthlyReturn())
         self.series_metrics_manager.add_metric(AnnualReturn())
         self.series_metrics_manager.add_metric(CumulativeReturn())
+        self.series_metrics_manager.add_metric(MonthlyCumulativeReturn())
+        self.series_metrics_manager.add_metric(AnnualCumulativeReturn())
 
-    def _get_base_returns(self) -> pd.Series:
-        """入力リターンを税引前・レバレッジなしの状態に変換する"""
-        base = self.return_series.copy()
+    def _remove_leverage(self, returns: pd.Series) -> pd.Series:
+        """入力リターンからレバレッジの影響を除去する"""
+        base = returns.copy()
         if self.is_leverage_applied:
             base = self.leverage_obj.remove_leverage(base)
-        if not self.is_tax_excluded:
-            base = self.tax_rate_obj.remove_tax(base)
         return base
 
     def calculate(self) -> Dict[str, Dict[str, pd.DataFrame]]:
         """3パターンのリターンに対する指標を階層的な辞書で返す"""
-        base = self._get_base_returns()
+        base_taxfree = self._remove_leverage(self.taxfree_return_series)
+        base_taxed = self._remove_leverage(self.taxed_return_series)
 
         patterns = {
-            "税引前・レバレッジ無": base,
-            "税引前・レバレッジ有": self.leverage_obj.apply_leverage(base),
+            "税引前・レバレッジ無": base_taxfree,
+            "税引前・レバレッジ有": self.leverage_obj.apply_leverage(base_taxfree),
+            "税引後・レバレッジ有": self.leverage_obj.apply_leverage(base_taxed),
         }
-        patterns["税引後・レバレッジ有"] = self.tax_rate_obj.apply_tax(patterns["税引前・レバレッジ有"])
+
+        total_profit = (1 + base_taxed).prod() - 1
 
         results: Dict[str, Dict[str, pd.DataFrame]] = {name: {} for name in patterns.keys()}
 
         for name, series in patterns.items():
             agg = self.aggregate_metrics_manager.evaluate_all(series)
             df = pd.DataFrame({"指標": agg.keys(), "値": agg.values()}).set_index("指標", drop=True)
+            df.loc["通算損益"] = total_profit
             results[name]["集計"] = df
 
         for name, series in patterns.items():
