@@ -18,6 +18,8 @@ from .series.daily_return import DailyReturn
 from .series.monthly_return import MonthlyReturn
 from .series.annual_return import AnnualReturn
 from .series.cumulative_return import CumulativeReturn
+from .series.monthly_cumulative_return import MonthlyCumulativeReturn
+from .series.annual_cumulative_return import AnnualCumulativeReturn
 from .aggregate.hit_rate import HitRate
 from .aggregate.annualized_return import AnnualizedReturn
 from .aggregate.annualized_standard_deviation import AnnualizedStandardDeviation
@@ -43,6 +45,8 @@ __all__ = [
     "MonthlyReturn",
     "AnnualReturn",
     "CumulativeReturn",
+    "MonthlyCumulativeReturn",
+    "AnnualCumulativeReturn",
     "HitRate",
     "AnnualizedReturn",
     "AnnualizedStandardDeviation",
