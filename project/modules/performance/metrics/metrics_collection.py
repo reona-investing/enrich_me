@@ -9,7 +9,7 @@ from .aggregate.theoretical_max_drawdown import TheoreticalMaxDrawdown
 from ..annualizer import Annualizer
 
 
-class EvaluationMetricsManager:
+class MetricsCollection:
     """複数の指標を一括管理するマネージャ"""
 
     def __init__(self, annualizer: 'Annualizer') -> None:

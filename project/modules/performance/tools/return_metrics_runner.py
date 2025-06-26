@@ -19,7 +19,7 @@ from .. import (
     LongestDrawdownPeriod,
     AnnualizedSharpeRatio,
     CalmarRatio,
-    EvaluationMetricsManager,
+    MetricsCollection,
     Median,
     DailyReturn,
     MonthlyReturn,
@@ -51,7 +51,7 @@ class ReturnMetricsRunner:
         self._setup_series_metrics_manager()
 
     def _setup_aggregate_metrics_manager(self) -> None:
-        self.aggregate_metrics_manager = EvaluationMetricsManager(Annualizer())
+        self.aggregate_metrics_manager = MetricsCollection(Annualizer())
         self.aggregate_metrics_manager.add_metric(ExpectedReturn())
         self.aggregate_metrics_manager.add_metric(StandardDeviationOfReturn())
         self.aggregate_metrics_manager.add_metric(Median())
@@ -66,7 +66,7 @@ class ReturnMetricsRunner:
         self.aggregate_metrics_manager.add_metric(CalmarRatio())
 
     def _setup_series_metrics_manager(self) -> None:
-        self.series_metrics_manager = EvaluationMetricsManager(Annualizer())
+        self.series_metrics_manager = MetricsCollection(Annualizer())
         self.series_metrics_manager.add_metric(DailyReturn())
         self.series_metrics_manager.add_metric(MonthlyReturn())
         self.series_metrics_manager.add_metric(AnnualReturn())

@@ -26,7 +26,7 @@ from .aggregate.annualized_standard_deviation import AnnualizedStandardDeviation
 from .aggregate.longest_drawdown_period import LongestDrawdownPeriod
 from .aggregate.annualized_sharpe_ratio import AnnualizedSharpeRatio
 from .aggregate.calmar_ratio import CalmarRatio
-from .evaluation_metrics_manager import EvaluationMetricsManager
+from .metrics_collection import MetricsCollection
 
 __all__ = [
     "EvaluationMetric",
@@ -53,5 +53,5 @@ __all__ = [
     "LongestDrawdownPeriod",
     "AnnualizedSharpeRatio",
     "CalmarRatio",
-    "EvaluationMetricsManager",
+    "MetricsCollection",
 ]
