@@ -92,6 +92,8 @@ class ReturnMetricsRunner:
 
         total_profit = (1 + base_taxed).prod() - 1
 
+        total_profit = (1 + self.tax_rate_obj.apply_tax(base)).prod() - 1
+
         results: Dict[str, Dict[str, pd.DataFrame]] = {name: {} for name in patterns.keys()}
 
         for name, series in patterns.items():
