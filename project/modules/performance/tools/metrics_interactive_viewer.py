@@ -37,8 +37,7 @@ class MetricsInteractiveViewer:
                 data = self.metrics[group][metric]
                 with pd.option_context("display.max_rows", None):
                     if isinstance(data, pd.DataFrame):
-                        print(f"{group}：{metric}")
-                        display(data)
+                        display(data.style.set_caption(f"{group}：{metric}"))
                     else:
                         print(f"{group}：{metric}: {data}")
 
