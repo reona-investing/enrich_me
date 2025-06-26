@@ -24,8 +24,7 @@ from .. import (
     DailyReturn,
     MonthlyReturn,
     AnnualReturn,
-    Leverage,
-    TaxRate,
+    TimeseriesReturn,
 )
 
 
@@ -40,13 +39,19 @@ class ReturnMetricsRunner:
         is_tax_excluded: bool = True,
         is_leverage_applied: bool = False,
         leverage_ratio: float = 3.1,
+        tax_rate: float = 0.20315,
     ) -> None:
         self.date_series = date_series
         self.return_series = return_series
         self.is_tax_excluded = is_tax_excluded
         self.is_leverage_applied = is_leverage_applied
-        self.tax_rate_obj = TaxRate()
-        self.leverage_obj = Leverage(leverage_ratio)
+        self.timeseries_return = TimeseriesReturn(
+            return_series,
+            init_tax=not is_tax_excluded,
+            init_leverage=is_leverage_applied,
+            tax_rate=tax_rate,
+            leverage_ratio=leverage_ratio,
+        )
         self._setup_aggregate_metrics_manager()
         self._setup_series_metrics_manager()
 
@@ -74,34 +79,14 @@ class ReturnMetricsRunner:
         self.series_metrics_manager.add_metric(MonthlyCumulativeReturn())
         self.series_metrics_manager.add_metric(AnnualCumulativeReturn())
 
-    def _remove_leverage(self, returns: pd.Series) -> pd.Series:
-        """入力リターンからレバレッジの影響を除去する"""
-        base = returns.copy()
-        if self.is_leverage_applied:
-            base = self.leverage_obj.remove_leverage(base)
-        return base
-
-    def _convert_tax_status(self, returns: pd.Series) -> tuple[pd.Series, pd.Series]:
-        """入力リターンから税引前/税引後の系列を取得する"""
-        base = returns.copy()
-        if self.is_tax_excluded:
-            taxfree = base
-            taxed = self.tax_rate_obj.apply_tax(base)
-        else:
-            taxed = base
-            taxfree = self.tax_rate_obj.remove_tax(base)
-        return taxfree, taxed
-
     def calculate(self) -> Dict[str, Dict[str, pd.DataFrame]]:
         """3パターンのリターンに対する指標を階層的な辞書で返す"""
-        base_returns = self._remove_leverage(self.return_series)
-        base_taxfree, base_taxed = self._convert_tax_status(base_returns)
-
         patterns = {
-            "税引前・レバレッジ無": base_taxfree,
-            "税引前・レバレッジ有": self.leverage_obj.apply_leverage(base_taxfree),
-            "税引後・レバレッジ有": self.leverage_obj.apply_leverage(base_taxed),
+            "税引前・レバレッジ無": self.timeseries_return.get_returns(taxed=False, leveraged=False),
+            "税引前・レバレッジ有": self.timeseries_return.get_returns(taxed=False, leveraged=True),
+            "税引後・レバレッジ有": self.timeseries_return.get_returns(taxed=True, leveraged=True),
         }
+        base_taxed = self.timeseries_return.get_returns(taxed=True, leveraged=False)
 
         total_profit = (1 + base_taxed).prod() - 1
 
