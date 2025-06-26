@@ -1,4 +1,4 @@
-from .evaluation_metric import (
+from .base.evaluation_metric import (
     EvaluationMetric,
     AggregateMetric,
     SeriesMetric,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ...annualizer import Annualizer
-from ..evaluation_metric import AggregateMetric
+from ..base.evaluation_metric import AggregateMetric
 
 
 class AnnualizedStandardDeviation(AggregateMetric):

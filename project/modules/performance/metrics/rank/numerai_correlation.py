@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 
-from ..evaluation_metric import RankMetric
+from ..base.evaluation_metric import RankMetric
 
 
 class NumeraiCorrelation(RankMetric):

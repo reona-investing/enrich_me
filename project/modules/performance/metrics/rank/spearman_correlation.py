@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 from scipy.stats import spearmanr
 
-from ..evaluation_metric import RankMetric
+from ..base.evaluation_metric import RankMetric
 
 
 class SpearmanCorrelation(RankMetric):
