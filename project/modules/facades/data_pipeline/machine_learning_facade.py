@@ -59,39 +59,9 @@ class MachineLearningFacade:
             self._update_ensembled_model()
             result = self.ensembled_ml_datasets
         elif self.mode == 'predict_only':
-            self.features_df1 = self._get_features_df(
-                adopt_features_price=False,
-                adopt_size_factor=False,
-                adopt_eps_factor=False,
-                adopt_sector_categorical=False,
-                add_rank=False,
-            )
             self.ml_datasets1 = self._load_model(dataset_root=self.datasets1_path)
-            self._refresh_test_data(
-                self.ml_datasets1,
-                self.features_df1,
-                outlier_threshold=3,
-            )
             self._predict_1st_model()
-
-            self.features_df2 = self._get_features_df(
-                adopt_features_price=True,
-                adopt_size_factor=True,
-                adopt_eps_factor=True,
-                adopt_sector_categorical=True,
-                add_rank=True,
-                mom_duration=[5, 21],
-                vola_duration=[5, 21],
-            )
-            self._append_pred_in_1st_model()
             self.ml_datasets2 = self._load_model(dataset_root=self.datasets2_path)
-            self._refresh_test_data(
-                self.ml_datasets2,
-                self.features_df2,
-                outlier_threshold=3,
-                no_shift_features=['1stModel_pred'],
-                reuse_features_df=True,
-            )
             self._predict_2nd_model()
             self._ensemble()
             self._update_ensembled_model()
@@ -127,37 +97,6 @@ class MachineLearningFacade:
     def _load_model(self, dataset_root: str) -> MLDatasets:
         dsl = DatasetLoader(dataset_root = dataset_root)
         return dsl.load_datasets()
-
-    def _refresh_test_data(
-        self,
-        ml_datasets: MLDatasets,
-        features_df: pd.DataFrame,
-        *,
-        outlier_threshold: float = 0,
-        no_shift_features: list | None = None,
-        reuse_features_df: bool = False,
-    ) -> None:
-        if no_shift_features is None:
-            no_shift_features = []
-
-        for name, single_ml in ml_datasets.items():
-            target_single = self.target_df.xs(name, level="Sector")
-            features_single = features_df.xs(name, level="Sector")
-            single_ml.archive_train_test_data(
-                target_df=target_single,
-                features_df=features_single,
-                train_start_day=self.train_start_day,
-                train_end_day=self.train_end_day,
-                test_start_day=self.test_start_day,
-                test_end_day=self.test_end_day,
-                outlier_threshold=outlier_threshold,
-                no_shift_features=no_shift_features,
-                reuse_features_df=reuse_features_df,
-            )
-            single_ml.archive_raw_target(self.raw_target_df)
-            single_ml.archive_order_price(self.order_price_df)
-            single_ml.save()
-            ml_datasets.replace_model(single_ml_dataset=single_ml)
 
 
     def _train_1st_model(self):
