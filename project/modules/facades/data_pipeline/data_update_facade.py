@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Optional, Literal, Any
 import pandas as pd
 
 from acquisition.jquants_api_operations import StockAcquisitionFacade
 from acquisition.features_updater.facades import FeaturesUpdateFacade
+from utils.notifier import SlackNotifier
+import os
 
 
 class DataUpdateFacade:
@@ -17,6 +19,26 @@ class DataUpdateFacade:
         self.mode = mode
         self.universe_filter = universe_filter
         self.filtered_code_list = filtered_code_list
+        self.slack = SlackNotifier(program_name=os.path.basename(__file__))
+
+    @staticmethod
+    def _build_summary_message(summary: Dict[str, Any]) -> str:
+        lines = [
+            '=' * 50,
+            '全データのスクレイピングが完了しました。',
+            f"総数: {summary['total']}",
+            f"成功: {summary['successful']}",
+            f"失敗: {summary['failed']}",
+        ]
+        if summary['failed'] > 0:
+            lines.append('')
+            lines.append('失敗した特徴量:')
+            for failure in summary['failure_details']:
+                lines.append(
+                    f"  - {failure['feature_name']}: {failure.get('error', '不明なエラー')}"
+                )
+        lines.append('=' * 50)
+        return '\n'.join(lines)
 
     async def execute(self) -> Optional[Dict[str, pd.DataFrame]]:
         if self.mode == 'none':
@@ -30,7 +52,9 @@ class DataUpdateFacade:
             stock_dict = StockAcquisitionFacade(update=update, process=process, filtered_code_list=self.filtered_code_list).get_stock_data_dict()
         if update:
             fu = FeaturesUpdateFacade()
-            await fu.update_all()
+            summary = await fu.update_all()
+            message = self._build_summary_message(summary)
+            self.slack.send_message(f"\n{message}")
         return stock_dict
 
 
