@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from typing import Literal
+import os
 
 from models.machine_learning.loaders.loader import DatasetLoader
 from models.machine_learning.models.lasso_model import LassoModel
 from models.machine_learning.ml_dataset.ml_datasets import MLDatasets
+from utils.notifier import SlackNotifier
 
 
 class LassoLearningFacade:
@@ -17,6 +19,8 @@ class LassoLearningFacade:
     ) -> None:
         self.mode = mode
         self.dataset_path = dataset_path
+        # Slack通知用
+        self.slack = SlackNotifier(program_name=os.path.basename(__file__))
 
     def execute(self) -> MLDatasets | None:
         if self.mode == "none":
@@ -35,6 +39,7 @@ class LassoLearningFacade:
         else:
             raise NotImplementedError
 
+        self._notify_latest_prediction_date(ml_datasets)
         return ml_datasets
 
     def _train(self, ml_datasets: MLDatasets) -> None:
@@ -60,3 +65,8 @@ class LassoLearningFacade:
             single_ml.archive_pred_result(pred_df)
             single_ml.save()
             ml_datasets.replace_model(single_ml_dataset=single_ml)
+
+    def _notify_latest_prediction_date(self, ml_datasets: MLDatasets) -> None:
+        df = ml_datasets.get_pred_result()
+        latest_date = df.index.get_level_values('Date')[-1]
+        self.slack.send_message(f'最新予測日: {latest_date}')

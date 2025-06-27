@@ -1,12 +1,14 @@
 from typing import Dict, List, Literal
 import pandas as pd
 from datetime import datetime
+import os
 
 from calculation import TargetCalculator, FeaturesCalculator, SectorIndex
 from models.machine_learning.ml_dataset import MLDatasets, SingleMLDataset
 from models.machine_learning.ensembles import EnsembleMethodFactory
 from models.machine_learning.models import LassoModel, LgbmModel
 from models.machine_learning.loaders import DatasetLoader
+from utils.notifier import SlackNotifier
 
 
 class MachineLearningFacade:
@@ -30,6 +32,9 @@ class MachineLearningFacade:
         self.test_start_day = test_start_day
         self.test_end_day = test_end_day
 
+        # Slack通知用
+        self.slack = SlackNotifier(program_name=os.path.basename(__file__))
+
         self.necessary_dfs_dict: Dict[str, pd.DataFrame] | None = None
         self.target_df: pd.DataFrame | None = None
         self.raw_target_df: pd.DataFrame | None = None
@@ -52,7 +57,7 @@ class MachineLearningFacade:
             self._predict_2nd_model()
             self._ensemble()
             self._update_ensembled_model()
-            return self.ensembled_ml_datasets
+            result = self.ensembled_ml_datasets
         elif self.mode == 'predict_only':
             self.ml_datasets1 = self._load_model(dataset_root=self.datasets1_path)
             self._predict_1st_model()
@@ -60,13 +65,18 @@ class MachineLearningFacade:
             self._predict_2nd_model()
             self._ensemble()
             self._update_ensembled_model()
-            return self.ensembled_ml_datasets
+            result = self.ensembled_ml_datasets
         elif self.mode == 'load_only':
             self.ml_datasets1 = self._load_model(dataset_root=self.datasets1_path)
             self.ml_datasets2 = self._load_model(dataset_root=self.datasets2_path)
             self.ensembled_ml_datasets = self._load_model(dataset_root=self.ensembled_datasets_path)
+            result = self.ensembled_ml_datasets
         else:
             return None
+
+        if result is not None:
+            self._notify_latest_prediction_date(result)
+        return result
 
 
     def _get_necessary_dfs(self):
@@ -202,6 +212,11 @@ class MachineLearningFacade:
         single_ml_dataset.archive_raw_target(self.ml_datasets1.get_raw_target())
         self.ensembled_ml_datasets.append_model(single_ml_dataset=single_ml_dataset)
         self.ensembled_ml_datasets.save_all()
+
+    def _notify_latest_prediction_date(self, ml_datasets: MLDatasets) -> None:
+        df = ml_datasets.get_pred_result()
+        latest_date = df.index.get_level_values('Date')[-1]
+        self.slack.send_message(f'最新予測日: {latest_date}')
 
 
     def _get_features_df(self, adopt_features_price: bool, adopt_size_factor: bool, adopt_eps_factor: bool,
