@@ -2,7 +2,6 @@ from utils.paths import Paths
 from utils.browser.browser_manager import BrowserManager
 from utils.timekeeper import timekeeper
 from acquisition.features_updater.updaters import FeatureUpdater
-from utils.notifier import SlackNotifier
 import pandas as pd
 import asyncio
 import logging
@@ -20,7 +19,6 @@ class FeaturesUpdateFacade:
         """
         self.max_concurrent_tasks = max_concurrent_tasks
         self.logger = logging.getLogger(__name__)
-        self.slack = SlackNotifier(program_name=os.path.basename(__file__))
         
         # 進捗管理
         self.completed_count = 0
@@ -261,7 +259,6 @@ class FeaturesUpdateFacade:
         message = '\n'.join(lines)
 
         print(message)
-        self.slack.send_message(f"\n{message}")
     
     async def update_specific_features(self, 
                                        feature_names: List[str],
