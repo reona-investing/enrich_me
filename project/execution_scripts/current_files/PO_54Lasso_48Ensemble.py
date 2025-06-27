@@ -53,8 +53,6 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
-        if modes.machine_learning_mode == 'predict_only':
-            modes = modes.model_copy(update={'machine_learning_mode': 'train_and_predict'})
 
         # 1. データ更新
         data_facade = DataUpdateFacade(

@@ -204,6 +204,8 @@ class MachineLearningFacade:
     def _predict_2nd_model(self):
         lgbm_model = LgbmModel()
         for _, single_ml in self.ml_datasets2.items():
+            print(single_ml.train_test_materials.target_test_df)
+            print(single_ml.train_test_materials.features_test_df)
             pred_result_df = lgbm_model.predict(
                 single_ml.train_test_materials.target_test_df,
                 single_ml.train_test_materials.features_test_df,
