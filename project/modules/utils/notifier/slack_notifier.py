@@ -1,5 +1,6 @@
 import time
 import os
+import inspect
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from dotenv import load_dotenv
@@ -19,11 +20,28 @@ class SlackNotifier:
     def send_message(self, message: str, channel: str = ''):
         '''
         SLACKにメッセージを送ります。
+        
+        クラスメソッドから呼び出された場合、呼び出し元のクラス名を``[ClassName]``の
+        形式でメッセージ冒頭に付加します。関数やスクリプトから直接呼び出された
+        場合は付加しません。
+
         Args:
             message (str): 送信するメッセージ
             channel (str): 送信先のチャンネルID (NoneのときはGeneralが指定される)
         '''
         try:
+            caller_class = None
+            frame = inspect.currentframe()
+            if frame and frame.f_back:
+                caller_locals = frame.f_back.f_locals
+                if 'self' in caller_locals:
+                    caller_class = caller_locals['self'].__class__.__name__
+                elif 'cls' in caller_locals and isinstance(caller_locals['cls'], type):
+                    caller_class = caller_locals['cls'].__name__
+
+            if caller_class:
+                message = f'[{caller_class}] {message}'
+
             if channel == '':
                 channel = self.SLACK_GENERAL
             # Slack APIを使用してメッセージを送信
