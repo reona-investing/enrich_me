@@ -2,6 +2,7 @@ from utils.paths import Paths
 from utils.browser.browser_manager import BrowserManager
 from utils.timekeeper import timekeeper
 from acquisition.features_updater.updaters import FeatureUpdater
+from utils.notifier import SlackNotifier
 import pandas as pd
 import asyncio
 import logging
@@ -19,6 +20,7 @@ class FeaturesUpdateFacade:
         """
         self.max_concurrent_tasks = max_concurrent_tasks
         self.logger = logging.getLogger(__name__)
+        self.slack = SlackNotifier(program_name=os.path.basename(__file__))
         
         # 進捗管理
         self.completed_count = 0
@@ -241,18 +243,25 @@ class FeaturesUpdateFacade:
     
     def _display_final_summary(self, summary: Dict[str, Any]):
         """最終結果の表示"""
-        print('=' * 50)
-        print('全データのスクレイピングが完了しました。')
-        print(f"総数: {summary['total']}")
-        print(f"成功: {summary['successful']}")
-        print(f"失敗: {summary['failed']}")
-        
+        lines = [
+            '=' * 50,
+            '全データのスクレイピングが完了しました。',
+            f"総数: {summary['total']}",
+            f"成功: {summary['successful']}",
+            f"失敗: {summary['failed']}",
+        ]
+
         if summary['failed'] > 0:
-            print("\n失敗した特徴量:")
+            lines.append('')
+            lines.append('失敗した特徴量:')
             for failure in summary['failure_details']:
-                print(f"  - {failure['feature_name']}: {failure.get('error', '不明なエラー')}")
-        
-        print('=' * 50)
+                lines.append(f"  - {failure['feature_name']}: {failure.get('error', '不明なエラー')}")
+
+        lines.append('=' * 50)
+        message = '\n'.join(lines)
+
+        print(message)
+        self.slack.send_message(f"\n{message}")
     
     async def update_specific_features(self, 
                                        feature_names: List[str],
