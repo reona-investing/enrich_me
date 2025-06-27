@@ -53,9 +53,6 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
-        modes = modes.model_copy(update={'data_update_mode': 'update_and_load',
-                                         'machine_learning_mode': 'predict_only',
-                                         'order_execution_mode': 'none'})
 
         # 1. データ更新
         data_facade = DataUpdateFacade(
@@ -68,13 +65,6 @@ async def main() -> None:
         ml_54_lasso = LassoLearningFacade(
             mode=modes.machine_learning_mode,
             dataset_path=datasets_54_lasso,
-            stock_dfs_dict=stock_dict,
-            sector_redef_csv_path=sector_csv_54_lasso,
-            sector_index_parquet_path=sector_index_parquet,
-            train_start_day=train_start_day,
-            train_end_day=train_end_day,
-            test_start_day=test_start_day,
-            test_end_day=test_end_day,
         ).execute()
 
         ml_48_ensemble = MachineLearningFacade(
