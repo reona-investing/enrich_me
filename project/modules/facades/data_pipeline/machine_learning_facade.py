@@ -60,8 +60,27 @@ class MachineLearningFacade:
             result = self.ensembled_ml_datasets
         elif self.mode == 'predict_only':
             self.ml_datasets1 = self._load_model(dataset_root=self.datasets1_path)
+            self.features_df1 = self._get_features_df(
+                adopt_features_price=False,
+                adopt_size_factor=False,
+                adopt_eps_factor=False,
+                adopt_sector_categorical=False,
+                add_rank=False,
+            )
+            self._update_test_data(self.ml_datasets1, self.target_df, self.features_df1)
             self._predict_1st_model()
             self.ml_datasets2 = self._load_model(dataset_root=self.datasets2_path)
+            self.features_df2 = self._get_features_df(
+                adopt_features_price=True,
+                adopt_size_factor=True,
+                adopt_eps_factor=True,
+                adopt_sector_categorical=True,
+                add_rank=True,
+                mom_duration=[5, 21],
+                vola_duration=[5, 21],
+            )
+            self._append_pred_in_1st_model()
+            self._update_test_data(self.ml_datasets2, self.target_df, self.features_df2)
             self._predict_2nd_model()
             self._ensemble()
             self._update_ensembled_model()
@@ -246,7 +265,20 @@ class MachineLearningFacade:
             pred_in_1st_model = self.ml_datasets1.get_pred_result()
             self.features_df2 = pd.merge(self.features_df2, pred_in_1st_model[['Pred']], how='outer',
                                 left_index=True, right_index=True) # LASSOでの予測結果をlightGBMの特徴量として追加
-            self.features_df2 = self.features_df2.rename(columns={'Pred':'1stModel_pred'})        
+            self.features_df2 = self.features_df2.rename(columns={'Pred':'1stModel_pred'})
+
+    def _update_test_data(self, ml_datasets: MLDatasets, target_df: pd.DataFrame, features_df: pd.DataFrame) -> None:
+        for name, single_ml in ml_datasets.items():
+            sector_target = target_df[target_df.index.get_level_values('Sector') == name]
+            sector_features = features_df[features_df.index.get_level_values('Sector') == name]
+            sector_target = sector_target[(sector_target.index.get_level_values('Date') >= self.test_start_day) &
+                                         (sector_target.index.get_level_values('Date') <= self.test_end_day)]
+            sector_features = sector_features[(sector_features.index.get_level_values('Date') >= self.test_start_day) &
+                                             (sector_features.index.get_level_values('Date') <= self.test_end_day)]
+            single_ml.train_test_data._target_test_df = sector_target
+            single_ml.train_test_data._features_test_df = sector_features
+            single_ml.save()
+            ml_datasets.replace_model(single_ml_dataset=single_ml)
     
 
 if __name__ == '__main__':
