@@ -282,6 +282,10 @@ class MachineLearningFacade:
                                          (sector_target.index.get_level_values('Date') <= self.test_end_day)]
             sector_features = sector_features[(sector_features.index.get_level_values('Date') >= self.test_start_day) &
                                              (sector_features.index.get_level_values('Date') <= self.test_end_day)]
+
+            if sector_target.empty or sector_features.empty:
+                continue
+
             single_ml.train_test_data._target_test_df = sector_target
             single_ml.train_test_data._features_test_df = sector_features
             single_ml.save()
