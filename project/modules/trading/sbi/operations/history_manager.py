@@ -106,10 +106,13 @@ class HistoryManager:
         self.past_margin_trades_df: 取引履歴データ
         """
         await self.browser_manager.launch()
-        df = await self.page_navigator.fetch_past_margin_trades_csv(mydate=mydate)
+        _ = await self.page_navigator.fetch_past_margin_trades_csv(mydate=mydate)
+        download_path = FileUtils.get_downloaded_csv(download_folder=Paths.DOWNLOAD_FOLDER)
+        df = pd.read_csv(download_path, encoding='shift_jis', header=4)
         df[['手数料/諸経費等', '税額', '受渡金額/決済損益']] = df[['手数料/諸経費等', '税額', '受渡金額/決済損益']].replace({'--':'0'}).astype(int)
         df = df.groupby(['約定日', '銘柄', '銘柄コード', '市場', '取引']).sum().reset_index(drop=False)
         take_df = df[(df['取引']=='信用新規買')|(df['取引']=='信用新規売')]
+        
         take_df['売or買'] = '買'
         take_df = take_df.rename(columns={'約定日': '日付',
                                           '銘柄': '社名',
@@ -124,14 +127,7 @@ class HistoryManager:
         self.past_margin_trades_df['日付'] = pd.to_datetime(self.past_margin_trades_df['日付']).dt.date
         print(self.past_margin_trades_df)
 
-        csvs = list(Path(Paths.DOWNLOAD_FOLDER).glob("*.csv"))
-        if not csvs:
-            raise FileNotFoundError("取引可能情報のCSVが見つかりません。")
-        
-        newest_csv, _ = FileUtils.get_newest_two_csvs(Paths.DOWNLOAD_FOLDER)
-        df = pd.read_csv(newest_csv, header=0, skiprows=8, encoding='shift_jis')
-        for csv in csvs:
-            os.remove(csv)
+        self.past_margin_trades_df.to_csv('test.csv', index=None)
 
         return df
 
@@ -291,10 +287,7 @@ if __name__ == '__main__':
 
     async def main():
         bm = SBIBrowserManager()
-        '''
-        await hm.fetch_cashflow_transactions()
-        await hm.fetch_today_margin_trades()
-        await hm.fetch_today_stock_trades()
-        '''
+        hm = HistoryManager(bm)
+        await hm.fetch_past_margin_trades(mydate = datetime(2025, 6, 27))
 
     asyncio.get_event_loop().run_until_complete(main())

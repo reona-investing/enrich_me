@@ -270,9 +270,14 @@ class MachineLearningFacade:
             self.features_df2 = self.features_df2.rename(columns={'Pred':'1stModel_pred'})
 
     def _update_test_data(self, ml_datasets: MLDatasets, target_df: pd.DataFrame, features_df: pd.DataFrame) -> None:
+        item_num = len(ml_datasets.items())
         for name, single_ml in ml_datasets.items():
-            sector_target = target_df[target_df.index.get_level_values('Sector') == name]
-            sector_features = features_df[features_df.index.get_level_values('Sector') == name]
+            if item_num == 1:
+                sector_target = target_df
+                sector_features = features_df
+            else:
+                sector_target = target_df[target_df.index.get_level_values('Sector') == name]
+                sector_features = features_df[features_df.index.get_level_values('Sector') == name]
             sector_target = sector_target[(sector_target.index.get_level_values('Date') >= self.test_start_day) &
                                          (sector_target.index.get_level_values('Date') <= self.test_end_day)]
             sector_features = sector_features[(sector_features.index.get_level_values('Date') >= self.test_start_day) &

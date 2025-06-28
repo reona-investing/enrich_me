@@ -22,12 +22,12 @@ async def main() -> None:
     slack.start(message="プログラムを開始します。", should_send_program_name=True)
 
     # パラメータ設定
-    # 54業種LASSO用設定
-    datasets_54_lasso = f"{Paths.ML_DATASETS_FOLDER}/54sectors_LASSO_learned_in_250623"
-    sector_csv_54_lasso = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/54sectors_2024-2025.csv"
-    trading_sector_num_54_lasso = 2
-    candidate_sector_num_54_lasso = 4
-    top_slope_54_lasso = 1
+    # 56業種LASSO用設定
+    datasets_56_lasso = f"{Paths.ML_DATASETS_FOLDER}/56sectors_LASSO_learned_in_250623"
+    sector_csv_56_lasso = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/56sectors_2024-2025.csv"
+    trading_sector_num_56_lasso = 2
+    candidate_sector_num_56_lasso = 4
+    top_slope_56_lasso = 1
 
     # 48業種LASSO+LightGBMアンサンブル用設定
     sector_csv_48_ensemble = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
@@ -42,7 +42,7 @@ async def main() -> None:
     top_slope_48_ensemble = 1
 
     # 各モデルへの資金配分
-    fund_allocation_54_lasso = 0.67
+    fund_allocation_56_lasso = 0.67
     fund_allocation_48_ensemble = 0.33
 
     universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400')|(ScaleCategory=='TOPIX Small 1'))"
@@ -62,9 +62,9 @@ async def main() -> None:
         stock_dict = await data_facade.execute()
 
         # 2. 機械学習
-        ml_54_lasso = LassoLearningFacade(
+        ml_56_lasso = LassoLearningFacade(
             mode=modes.machine_learning_mode,
-            dataset_path=datasets_54_lasso,
+            dataset_path=datasets_56_lasso,
         ).execute()
 
         ml_48_ensemble = MachineLearningFacade(
@@ -87,12 +87,12 @@ async def main() -> None:
         trade_facade = TradingFacade()
         configs = [
             ModelOrderConfig(
-                ml_datasets=ml_54_lasso,
-                sector_csv=sector_csv_54_lasso,
-                trading_sector_num=trading_sector_num_54_lasso,
-                candidate_sector_num=candidate_sector_num_54_lasso,
-                top_slope=top_slope_54_lasso,
-                margin_weight=fund_allocation_54_lasso,
+                ml_datasets=ml_56_lasso,
+                sector_csv=sector_csv_56_lasso,
+                trading_sector_num=trading_sector_num_56_lasso,
+                candidate_sector_num=candidate_sector_num_56_lasso,
+                top_slope=top_slope_56_lasso,
+                margin_weight=fund_allocation_56_lasso,
             ),
             ModelOrderConfig(
                 ml_datasets=ml_48_ensemble,
