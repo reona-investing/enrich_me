@@ -7,6 +7,8 @@ import os # ファイル存在チェック用
 from utils.timeseries import Duration
 from machine_learning.ml_dataset.components import MachineLearningAsset
 from machine_learning.models import BaseTrainer
+from .ml_data_pipeline import MLDataPipeline
+from .preprocessing_config import PreprocessingConfig
 
 @dataclass
 class MLDataset:
@@ -24,6 +26,13 @@ class MLDataset:
     model_division_column: Optional[str] = None #モデルを分割する場合、どの列の値をキーに分割するか？
 
     ml_assets: Union[MachineLearningAsset, List[MachineLearningAsset]] = field(default_factory=list)
+    preprocessing_config: PreprocessingConfig | None = None
+    data_pipeline: MLDataPipeline = field(init=False)
+
+    def __post_init__(self):
+        if self.preprocessing_config is None:
+            self.preprocessing_config = PreprocessingConfig()
+        self.data_pipeline = MLDataPipeline(self)
 
     def update_dataframes(self, new_target_data: pd.DataFrame, new_features_data: pd.DataFrame, new_raw_returns_data: pd.DataFrame):
         """
@@ -37,6 +46,10 @@ class MLDataset:
         # ここで更新されたDataFrameをファイルに保存するロジックを追加することも可能
         # 例: self.target_df.to_parquet("path/to/updated_target.parquet")
 
+    def apply_preprocessing(self, config: PreprocessingConfig | None = None):
+        """手動で前処理を実行"""
+        self.data_pipeline.prepare_for_training(config)
+
     def train(self, trainer: BaseTrainer, **kwargs):
         """
         学習期間のデータを使用してモデルを学習させます。
@@ -45,6 +58,9 @@ class MLDataset:
         Args:
             trainer (BaseTrainer): 任意の機械学習トレーナークラス
         """
+        # 前処理を自動実行
+        self.data_pipeline.prepare_for_training()
+
         if self.model_division_column not in self.target_df.columns:
             raise ValueError(f"モデル分割列 '{self.model_division_column}' が学習データに存在しません。")
         
@@ -93,6 +109,9 @@ class MLDataset:
         model_load_pathが指定されていれば、そこからモデルをロードします。
         予測結果はpred_result_dfに格納され、pred_result_save_pathが指定されていればファイルに保存されます。
         """
+        # 予測前の前処理を実行
+        self.data_pipeline.prepare_for_prediction()
+
         print("予測を開始します...")
         
         # モデルがml_assetsにロードされていない場合、または明示的にパスが指定された場合にロードを試みる
