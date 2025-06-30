@@ -25,13 +25,14 @@ async def main() -> None:
     # 56業種LASSO用設定
     datasets_56_lasso = f"{Paths.ML_DATASETS_FOLDER}/56sectors_LASSO_learned_in_250623"
     sector_csv_56_lasso = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/56sectors_2024-2025.csv"
+    sector_index_56_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/56sectors_price.parquet"
     trading_sector_num_56_lasso = 2
     candidate_sector_num_56_lasso = 4
     top_slope_56_lasso = 1
 
     # 48業種LASSO+LightGBMアンサンブル用設定
     sector_csv_48_ensemble = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
-    sector_index_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet"
+    sector_index_48_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet"
     datasets_path1 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250615"
     datasets_path2 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250615"
     ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250615"
@@ -53,6 +54,9 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
+        if modes.machine_learning_mode == 'predict_only':
+            modes = modes.model_copy(update={'machine_learning_mode': 'train_and_predict'})
+
 
         # 1. データ更新
         data_facade = DataUpdateFacade(
@@ -64,14 +68,21 @@ async def main() -> None:
         # 2. 機械学習
         ml_56_lasso = LassoLearningFacade(
             mode=modes.machine_learning_mode,
-            dataset_path=datasets_56_lasso,
+            stock_dfs_dict=stock_dict,
+            datasets_path=datasets_56_lasso,
+            sector_redef_csv_path=sector_csv_56_lasso,
+            sector_index_parquet_path=sector_index_56_parquet,
+            train_start_day=train_start_day,
+            train_end_day=train_end_day,
+            test_start_day=test_start_day,
+            test_end_day=test_end_day,
         ).execute()
 
         ml_48_ensemble = MachineLearningFacade(
             mode=modes.machine_learning_mode,
             stock_dfs_dict=stock_dict,
             sector_redef_csv_path=sector_csv_48_ensemble,
-            sector_index_parquet_path=sector_index_parquet,
+            sector_index_parquet_path=sector_index_48_parquet,
             datasets1_path=datasets_path1,
             datasets2_path=datasets_path2,
             ensembled_datasets_path=ensembled_datasets_path,
