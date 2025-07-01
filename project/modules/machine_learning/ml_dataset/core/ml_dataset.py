@@ -178,7 +178,9 @@ class MLDataset:
         with open(ml_dataset_storage.model_division_column, 'wb') as f:
             pickle.dump(self.model_division_column, f)
         with open(ml_dataset_storage.ml_assets, 'wb') as f:
-            pickle.dump(self.ml_assets, f) 
+            pickle.dump(self.ml_assets, f)
+        with open(ml_dataset_storage.preprocessing_config, 'wb') as f:
+            pickle.dump(self.preprocessing_config, f)
 
 
 @dataclass
@@ -223,3 +225,8 @@ class MLDatasetStorage:
     @property
     def ml_assets(self):
         return f'{self.base_path}/ml_assets.pickle'
+
+    @property
+    def preprocessing_config(self):
+        return f'{self.base_path}/preprocessing_config.pickle'
+
