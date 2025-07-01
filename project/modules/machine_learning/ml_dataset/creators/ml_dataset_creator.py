@@ -6,8 +6,7 @@ from datetime import datetime
 import pickle
 
 from utils.timeseries import Duration
-from machine_learning.ml_dataset.core import MLDataset
-from machine_learning.ml_dataset.core import MLDatasetStorage
+from machine_learning.ml_dataset.core import MLDataset, MLDatasetStorage, PreprocessingConfig
 from machine_learning.ml_dataset.components import MachineLearningAsset
 
 # MLDataset, Duration, MachineLearningAssets は適切なパスからインポート
@@ -24,7 +23,8 @@ class MLDatasetCreator:
                test_duration: Duration,
                date_column: str,
                ml_asset: MachineLearningAsset,
-               model_division_column: Optional[str] = None) -> MLDataset:
+               model_division_column: Optional[str] = None,
+               preprocessing_config: PreprocessingConfig | None = None) -> MLDataset:
         """
         既存のDataFrameと期間情報からMLDatasetインスタンスを生成します。
         """
@@ -38,7 +38,8 @@ class MLDatasetCreator:
             test_duration=test_duration,
             date_column=date_column,
             model_division_column=model_division_column,
-            ml_assets=ml_asset
+            ml_assets=ml_asset,
+            preprocessing_config=preprocessing_config,
         )
 
     @staticmethod
@@ -58,7 +59,9 @@ class MLDatasetCreator:
         with open(ml_dataset_storage.model_division_column, 'rb') as f:
             model_division_column = pickle.load(f)
         with open(ml_dataset_storage.ml_assets, 'rb') as f:
-            ml_asset = pickle.load(f) 
+            ml_asset = pickle.load(f)
+        with open(ml_dataset_storage.preprocessing_config, 'rb') as f:
+            preprocessing_config = pickle.load(f)
         
         ml_dataset = MLDataset(
             dataset_path=dataset_path,
@@ -70,7 +73,8 @@ class MLDatasetCreator:
             test_duration=test_duration,
             date_column=date_column,
             model_division_column=model_division_column,
-            ml_assets=ml_asset
+            ml_assets=ml_asset,
+            preprocessing_config=preprocessing_config
         )
 
         return ml_dataset
