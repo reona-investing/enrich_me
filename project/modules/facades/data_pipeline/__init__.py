@@ -1,6 +1,5 @@
 from .data_update_facade import DataUpdateFacade
 from .machine_learning_facade import MachineLearningFacade
-from .machine_learning_facade_new import MachineLearningFacadeNew
 from .order_execution_facade import OrderExecutionFacade
 from .model_order_config import ModelOrderConfig, normalize_margin_weights
 from .lasso_learning_facade import LassoLearningFacade

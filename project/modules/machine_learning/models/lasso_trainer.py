@@ -33,8 +33,8 @@ class LassoTrainer(BaseTrainer):
         """
         # 欠損値のある行を削除
         not_na_indices = target_df.dropna(how='any').index
-        y = features_df.loc[not_na_indices, :]
-        X = target_df.loc[not_na_indices, :]
+        X = features_df.loc[not_na_indices, :]
+        y = target_df.loc[not_na_indices, :]
 
         # 特徴量の標準化
         scaler = StandardScaler().fit(X)

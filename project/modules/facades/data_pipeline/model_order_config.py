@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
-from models.machine_learning.ml_dataset import MLDatasets
+from machine_learning.ml_dataset.core import MLDataset
 
 @dataclass
 class ModelOrderConfig:
     """設定オブジェクト。margin_weightの合計は normalize_margin_weights() で調整する"""
-    ml_datasets: MLDatasets
+    ml_dataset: MLDataset
     sector_csv: str
     trading_sector_num: int
     candidate_sector_num: int

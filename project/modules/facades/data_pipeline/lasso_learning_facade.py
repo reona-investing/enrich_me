@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Dict, List
 import pandas as pd
 import os
 from datetime import datetime
 
-from models.machine_learning.loaders.loader import DatasetLoader
-from models.machine_learning.models.lasso_model import LassoModel
-from models.machine_learning.ml_dataset.ml_datasets import MLDatasets
+from calculation import SectorIndex, TargetCalculator, FeaturesCalculator
+#from models.machine_learning.loaders.loader import DatasetLoader
+#from models.machine_learning.models.lasso_model import LassoModel
+#from models.machine_learning.ml_dataset.ml_datasets import MLDatasets
+from machine_learning.ml_dataset.core import MLDataset
+from machine_learning.models import LassoTrainer
 from utils.notifier import SlackNotifier
+from utils.timeseries import Duration
 
 
 class LassoLearningFacade:
@@ -17,109 +21,125 @@ class LassoLearningFacade:
     def __init__(
         self,
         mode: Literal["train_and_predict", "predict_only", "load_only", "none"],
+        stock_dfs_dict: Dict[pd.DataFrame],
         dataset_path: str,
-        target_df: pd.DataFrame | None = None,
-        features_df: pd.DataFrame | None = None,
+        sector_redef_csv_path: str,
+        sector_index_parquet_path: str,
         train_start_day: datetime | None = None,
         train_end_day: datetime | None = None,
         test_start_day: datetime | None = None,
         test_end_day: datetime | None = None,
     ) -> None:
+            
         self.mode = mode
+        self.stock_dfs_dict = stock_dfs_dict
         self.dataset_path = dataset_path
-        self.target_df = target_df
-        self.features_df = features_df
-        self.train_start_day = train_start_day
-        self.train_end_day = train_end_day
-        self.test_start_day = test_start_day
-        self.test_end_day = test_end_day
-        self.ml_datasets: MLDatasets | None = None
+        self.sector_redef_csv_path = sector_redef_csv_path
+        self.sector_index_parquet_path = sector_index_parquet_path
+        self.train_duration = Duration(start=train_start_day, end=train_end_day)
+        self.test_duration = Duration(start=test_start_day, end=test_end_day)
+        self.ml_dataset: MLDataset | None = None
 
         # Slack通知用
         self.slack = SlackNotifier(program_name=os.path.basename(__file__))
 
-    def execute(self) -> MLDatasets | None:
+        #クラス内で計算するプロパティ
+        self.target_df = None
+        self.raw_returns_df = None
+        self.order_price_df = None
+        self.new_sector_price_df = None
+
+    def execute(self) -> MLDataset | None:
         if self.mode == "none":
             return None
-
-        loader = DatasetLoader(self.dataset_path)
-
+        self._get_necessary_dfs()
+        self._get_features_df(
+            adopt_features_price = False, adopt_size_factor = False,
+            adopt_eps_factor = False, adopt_sector_categorical = False, add_rank = False
+            )
         if self.mode == "train_and_predict":
-            if self.target_df is not None and self.features_df is not None:
-                self.ml_datasets = loader.create_grouped_datasets(
-                    target_df=self.target_df,
-                    features_df=self.features_df,
-                    train_start_day=self.train_start_day,
-                    train_end_day=self.train_end_day,
-                    test_start_day=self.test_start_day,
-                    test_end_day=self.test_end_day,
-                    raw_target_df=None,
-                    order_price_df=None,
-                    outlier_threshold=3,
-                )
-            else:
-                self.ml_datasets = loader.load_datasets()
-            self._train(self.ml_datasets)
-            self._predict(self.ml_datasets)
+            self._create_dataset()
+            self._train()
+            self._predict()
         elif self.mode == "predict_only":
-            self.ml_datasets = loader.load_datasets()
-            self._update_test_data(self.ml_datasets)
-            self._predict(self.ml_datasets)
+            self._update_dataset()
+            self._predict()
         elif self.mode == "load_only":
-            self.ml_datasets = loader.load_datasets()
+            self._load_dataset()
         else:
             raise NotImplementedError
 
-        if self.ml_datasets is not None:
-            self._notify_latest_prediction_date(self.ml_datasets)
-        return self.ml_datasets
+        if self.ml_dataset is not None:
+            self._notify_latest_prediction_date(self.ml_dataset)
+        return self.ml_dataset
 
-    def _train(self, ml_datasets: MLDatasets) -> None:
-        model = LassoModel()
-        for _, single_ml in ml_datasets.items():
-            trainer_outputs = model.train(
-                single_ml.train_test_materials.target_train_df,
-                single_ml.train_test_materials.features_train_df,
+    def _get_necessary_dfs(self):
+        sic = SectorIndex(self.stock_dfs_dict, self.sector_redef_csv_path, self.sector_index_parquet_path)
+        new_sector_price_df, order_price_df = sic.calc_sector_index()
+        raw_returns_df, target_df = TargetCalculator.daytime_return_PCAresiduals(
+            new_sector_price_df,
+            reduce_components=1,
+            train_start_day=self.train_duration.start,
+            train_end_day=self.train_duration.end,
+        )
+        self.target_df = target_df
+        self.raw_returns_df = raw_returns_df
+        self.order_price_df = order_price_df
+        self.new_sector_price_df = new_sector_price_df
+
+    def _get_features_df(self, adopt_features_price: bool, adopt_size_factor: bool, adopt_eps_factor: bool,
+                         adopt_sector_categorical: bool, add_rank: bool,
+                         mom_duration: List[int] | None = None, 
+                         vola_duration: List[int] | None = None) -> pd.DataFrame:
+        self.features_df = \
+              FeaturesCalculator.calculate_features(
+                new_sector_price = self.new_sector_price_df,
+                new_sector_list = pd.read_csv(self.sector_redef_csv_path),
+                stock_dfs_dict = self.stock_dfs_dict,
+                adopts_features_indices=True,
+                adopts_features_price=adopt_features_price, #TODO LASSO: False, LightGBM: True
+                groups_setting=None,
+                names_setting=None,
+                currencies_type='relative',
+                adopt_1d_return=True,
+                mom_duration=mom_duration, #TODO LightGBM [5, 21]
+                vola_duration=vola_duration, #TODO LightGBM [5, 21]
+                adopt_size_factor=adopt_size_factor, #TODO LASSO: False, LightGBM: True
+                adopt_eps_factor=adopt_eps_factor, #TODO LASSO: False, LightGBM: True
+                adopt_sector_categorical=adopt_sector_categorical, #TODO LASSO: False, LightGBM: True
+                add_rank=add_rank, #TODO LASSO: False, LightGBM: True
+                )
+
+    def _create_dataset(self):
+            self.ml_dataset = MLDataset.from_raw(
+                dataset_path=self.dataset_path,
+                target_df=self.target_df,
+                features_df=self.features_df,
+                raw_returns_df=self.raw_returns_df,
+                order_price_df=self.order_price_df,
+                pred_return_df=None,
+                train_duration=self.train_duration,
+                test_duration=self.test_duration,
+                date_column='Date',
+                model_division_column='Sector',
+                ml_assets=None,
+                outlier_threshold=3
             )
-            single_ml.archive_ml_objects(trainer_outputs.model, trainer_outputs.scaler)
-            single_ml.save()
-            ml_datasets.replace_model(single_ml_dataset=single_ml)
 
-    def _predict(self, ml_datasets: MLDatasets) -> None:
-        model = LassoModel()
-        for _, single_ml in ml_datasets.items():
-            pred_df = model.predict(
-                single_ml.train_test_materials.target_test_df,
-                single_ml.train_test_materials.features_test_df,
-                single_ml.ml_object_materials.model,
-                single_ml.ml_object_materials.scaler,
-            )
-            single_ml.archive_pred_result(pred_df)
-            single_ml.save()
-            ml_datasets.replace_model(single_ml_dataset=single_ml)
+    def _update_dataset(self):
+        self.ml_dataset = MLDataset.from_files(self.dataset_path)
+        self.ml_dataset.update_data(self.target_df, self.features_df, self.raw_returns_df, self.order_price_df)
 
-    def _update_test_data(self, ml_datasets: MLDatasets) -> None:
-        if self.target_df is None or self.features_df is None:
-            return
-        for name, single_ml in ml_datasets.items():
-            sector_target = self.target_df[self.target_df.index.get_level_values('Sector') == name]
-            sector_features = self.features_df[self.features_df.index.get_level_values('Sector') == name]
-            if self.test_start_day is not None and self.test_end_day is not None:
-                sector_target = sector_target[(sector_target.index.get_level_values('Date') >= self.test_start_day) &
-                                             (sector_target.index.get_level_values('Date') <= self.test_end_day)]
-                sector_features = sector_features[(sector_features.index.get_level_values('Date') >= self.test_start_day) &
-                                                 (sector_features.index.get_level_values('Date') <= self.test_end_day)]
+    def _load_dataset(self):
+        self.ml_dataset = MLDataset.from_files(self.dataset_path)
 
-            # データが空のときは更新しない
-            if sector_target.empty or sector_features.empty:
-                continue
+    def _train(self):
+        # 学習
+        self.ml_dataset.train(trainer=LassoTrainer())
+    
+    def _predict(self):
+        self.ml_dataset.predict()
 
-            single_ml.train_test_data._target_test_df = sector_target
-            single_ml.train_test_data._features_test_df = sector_features
-            single_ml.save()
-            ml_datasets.replace_model(single_ml_dataset=single_ml)
-
-    def _notify_latest_prediction_date(self, ml_datasets: MLDatasets) -> None:
-        df = ml_datasets.get_pred_result()
-        latest_date = df.index.get_level_values('Date')[-1]
+    def _notify_latest_prediction_date(self, ml_dataset: MLDataset) -> None:
+        latest_date = ml_dataset.pred_result_df.index.get_level_values('Date')[-1]
         self.slack.send_message(f'最新予測日: {latest_date}')
