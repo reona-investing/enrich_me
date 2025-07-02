@@ -9,7 +9,8 @@ class FileUtils:
         """ダウンロードフォルダから最新のCSVファイルを取得"""
         for i in range(retry):
             newest_file, _ = FileUtils.get_newest_two_csvs(download_folder)
-            if newest_file and newest_file.endswith('.csv'):
+            print(newest_file)
+            if newest_file and newest_file.__str__().endswith('.csv'):
                 return newest_file
             if wait_func:
                 wait_func(1)

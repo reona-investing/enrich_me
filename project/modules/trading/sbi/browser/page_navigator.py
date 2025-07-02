@@ -156,9 +156,11 @@ class PageNavigator:
         for key, value in element_num.items():
             pulldown_selector = f'select[name="ref_{key}"] option[value="{value}"]'
             await named_tab.tab.utils.select_pulldown(pulldown_selector)
-        await named_tab.tab.utils.click_element('照会')
+        await named_tab.tab.utils.click_element('input[value="照会"]', is_css=True)
         await named_tab.tab.utils.set_download_path(Path(Paths.DOWNLOAD_FOLDER))
-        button = await named_tab.tab.utils.wait_for('CSVダウンロード')
+        button_parent = await named_tab.tab.utils.wait_for('td[id="csvlink"]')
+        button = button_parent.children[2]
+        await named_tab.tab.utils.wait(3)
         await button.click()
         await named_tab.tab.utils.wait(5)
         return named_tab

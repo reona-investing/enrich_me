@@ -49,8 +49,8 @@ class OrderExecutionFacade:
             for cfg in configs:
                 alloc_margin = total_margin * cfg.margin_weight
                 df = await self.trade_facade.take_positions(
-                    order_price_df=cfg.ml_datasets.get_order_price(),
-                    pred_result_df=cfg.ml_datasets.get_pred_result(),
+                    order_price_df=cfg.ml_dataset.order_price_df,
+                    pred_result_df=cfg.ml_dataset.pred_result_df,
                     SECTOR_REDEFINITIONS_CSV=cfg.sector_csv,
                     num_sectors_to_trade=cfg.trading_sector_num,
                     num_candidate_sectors=cfg.candidate_sector_num,

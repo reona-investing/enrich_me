@@ -10,16 +10,17 @@ from calculation import SectorIndex, TargetCalculator, FeaturesCalculator
 #from models.machine_learning.models.lasso_model import LassoModel
 #from models.machine_learning.ml_dataset.ml_datasets import MLDatasets
 from machine_learning.ml_dataset.core import MLDataset
-from machine_learning.models import LassoTrainer
+from machine_learning.models import LgbmTrainer
 from utils.notifier import SlackNotifier
 from utils.timeseries import Duration
 
 
-class LassoLearningFacade:
-    """LASSOモデルによる学習・予測を担当するファサード"""
+class SubseqLgbmLearningFacade:
+    """後続モデルとしてLGBMモデルによる学習・予測を担当するファサード"""
 
     def __init__(
         self,
+        preliminary_model: MLDataset,
         mode: Literal["train_and_predict", "predict_only", "load_only", "none"],
         stock_dfs_dict: Dict[pd.DataFrame],
         dataset_path: str,
@@ -30,7 +31,8 @@ class LassoLearningFacade:
         test_start_day: datetime | None = None,
         test_end_day: datetime | None = None,
     ) -> None:
-            
+        
+        self.preliminary_model = preliminary_model
         self.mode = mode
         self.stock_dfs_dict = stock_dfs_dict
         self.dataset_path = dataset_path
@@ -48,15 +50,18 @@ class LassoLearningFacade:
         self.raw_returns_df = None
         self.order_price_df = None
         self.new_sector_price_df = None
+        self.no_shift_features = None
 
     def execute(self) -> MLDataset | None:
         if self.mode == "none":
             return None
         self._get_necessary_dfs()
         self._get_features_df(
-            adopt_features_price = False, adopt_size_factor = False,
-            adopt_eps_factor = False, adopt_sector_categorical = False, add_rank = False
+            adopt_features_price = True, adopt_size_factor = True,
+            adopt_eps_factor = True, adopt_sector_categorical = True,
+            add_rank = True, mom_duration = [5, 21], vola_duration = [5, 21]
             )
+        self._append_pre_pred_to_features_df()
         if self.mode == "train_and_predict":
             self._create_dataset()
             self._train()
@@ -110,6 +115,11 @@ class LassoLearningFacade:
                 add_rank=add_rank, #TODO LASSO: False, LightGBM: True
                 )
 
+    def _append_pre_pred_to_features_df(self):
+        pre_pred = self.preliminary_model.pred_result_df.rename(columns={'Pred': 'PreliminaryModelPred'})
+        self.features_df = pd.merge(self.features_df, pre_pred[['PreliminaryModelPred']], how='left', left_index=True, right_index=True)
+        self.no_shift_features = ['PreliminaryModelPred']
+
     def _create_dataset(self):
             self.ml_dataset = MLDataset.from_raw(
                 dataset_path=self.dataset_path,
@@ -122,9 +132,9 @@ class LassoLearningFacade:
                 test_duration=self.test_duration,
                 date_column='Date',
                 sector_column='Sector',
-                is_model_divided=True,
+                is_model_divided=False,
+                no_shift_features=self.no_shift_features,
                 ml_assets=None,
-                no_shift_features=[],
                 outlier_threshold=3
             )
 
@@ -137,7 +147,7 @@ class LassoLearningFacade:
 
     def _train(self):
         # 学習
-        self.ml_dataset.train(trainer=LassoTrainer())
+        self.ml_dataset.train(trainer=LgbmTrainer())
     
     def _predict(self):
         self.ml_dataset.predict()

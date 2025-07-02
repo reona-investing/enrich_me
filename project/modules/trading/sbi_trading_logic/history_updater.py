@@ -60,6 +60,33 @@ class HistoryUpdater:
         rate, amount = self._show_latest_result(trade_history)
         return trade_history, buying_power_history, deposit_history, rate, amount
 
+
+    async def update_past_trade_history(self, day: datetime,
+                                        trade_history_path: str, orders_list_path: str,
+                                        history_manager: HistoryManager) -> pd.DataFrame:
+        '''
+        当日の取引結果を取得し、trade_historyのファイルを更新します。
+        trade_history_path：過去の取引履歴を記録したdfのファイルパス
+        orders_list：発注銘柄と業種の対応を記録したdf
+        '''
+        print(f'{day.date()}の取引履歴を更新します。')
+        # 取引履歴の更新
+        trade_history = pd.read_csv(trade_history_path)
+        orders_list = pd.read_csv(orders_list_path)
+        trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date  # 後で同じ変換をするが、この処理いる？
+        await history_manager.fetch_past_margin_trades(orders_list, day)
+        trade_history = pd.concat([trade_history, history_manager.today_margin_trades_df], axis=0).reset_index(drop=True)
+        trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date
+        trade_history = trade_history.sort_values(['日付', '売or買', '業種', '銘柄コード']).reset_index(drop=True)
+
+        trade_history.to_csv(trade_history_path, index=False)
+        trade_history = pd.read_csv(trade_history_path).drop_duplicates(keep='last') # なぜか読み込み直さないとdrop_duplicatesが効かない（データ型の問題？要検討）
+        trade_history['日付'] = pd.to_datetime(trade_history['日付']).dt.date
+        trade_history.to_csv(trade_history_path, index=False)
+        shutil.copy(trade_history_path, Paths.TRADE_HISTORY_BACKUP)
+
+        return trade_history
+
     async def _update_trade_history(self, trade_history_path: str, orders_list_path: str,
                                     history_manager: HistoryManager) -> pd.DataFrame:
         '''
@@ -174,11 +201,14 @@ class HistoryUpdater:
     
 
 if __name__ == '__main__':
-    from trading.sbi import LoginHandler
     from trading.sbi.common.provider import SBIMarginProvider
+    from trading.sbi import SBIBrowserManager
     import asyncio
-    lh = LoginHandler()
-    hm = HistoryManager(lh)
-    mm = SBIMarginProvider(lh)
+    bm = SBIBrowserManager()
+    hm = HistoryManager(bm)
+    mm = SBIMarginProvider(bm)
     hu = HistoryUpdater(hm, mm)
-    _, _, _, _, _ = asyncio.run(hu.update_information())
+    _, _, _, _, _ = asyncio.run(hu.update_past_trade_history(day=datetime(2025,6,27), 
+                                                             trade_history_path=Paths.TRADE_HISTORY_CSV,
+                                                             orders_list_path=Paths.ORDERS_CSV,
+                                                             history_manager=hm))

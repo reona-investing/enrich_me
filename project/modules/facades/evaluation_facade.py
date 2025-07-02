@@ -1,4 +1,4 @@
-from models.evaluation import LSDataHandler, MetricsCalculator, Visualizer
+from machine_learning.evaluation import LSDataHandler, MetricsCalculator, Visualizer
 from datetime import datetime
 import pandas as pd
 
