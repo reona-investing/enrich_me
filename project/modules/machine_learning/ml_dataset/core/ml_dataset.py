@@ -24,12 +24,14 @@ class MLDataset:
     train_duration: Duration = field(repr=False)
     test_duration: Duration = field(repr=False)
     date_column: str = field(repr=False)
+    sector_column: str = field(repr=False)
+    is_model_divided: bool = field(repr=False)
     outlier_threshold: int | float = field(repr=False)
     no_shift_features: list[str] = field(default_factory=list)
 
+
     ml_assets: Union[MachineLearningAsset, List[MachineLearningAsset]] = field(default_factory=list)
 
-    model_division_column: Optional[str] = None
     
 
     def __post_init__(self) -> None:
@@ -55,9 +57,11 @@ class MLDataset:
         train_duration: Duration,
         test_duration: Duration,
         date_column: str,
-        model_division_column: str,
+        sector_column: str,
+        is_model_divided: bool,
         ml_assets: MachineLearningAsset,
         outlier_threshold: int | float,
+        no_shift_features: list[str],
         save: bool = True,
     ) -> "MLDataset":
         """ファクトリ：既存オブジェクトからインスタンスを構築する。"""
@@ -70,13 +74,15 @@ class MLDataset:
                  train_duration=train_duration,
                  test_duration=test_duration,
                  date_column=date_column,
-                 model_division_column=model_division_column,
+                 sector_column=sector_column,
+                 is_model_divided=is_model_divided,
                  outlier_threshold=outlier_threshold,
+                 no_shift_features=no_shift_features,
                  ml_assets=ml_assets,
                  )
         # 必要に応じて永続化
         if save:
-            ds._save()
+            ds.save()
         return ds
 
     # ---------------------------------------------------------------------
@@ -92,17 +98,14 @@ class MLDataset:
         save: bool = True,
     ) -> None:
         """新しい日次データを追加し、必要に応じてデータセットを保存する。"""
-        # --- 1. 目的変数と特徴量のインデックス整合性を確認 -------------------------------
-        TrainTestData().archive
-
-        # --- 2. 内部データを更新 -----------------------------------------------------------
+        # 内部データを更新
         self.target_df = new_targets.sort_index()
         self.features_df = new_features.sort_index()
         self.order_price_df = new_order_price.sort_index()
         self.raw_returns_df = new_raw_returns.sort_index()
         
         if save:
-            self._save()
+            self.save()
 
     def train(self, trainer: BaseTrainer, save: bool = True, **kwargs):
         """
@@ -112,29 +115,26 @@ class MLDataset:
         Args:
             trainer (BaseTrainer): 任意のトレーナークラス（fit/predict を実装しているもの）
         """
-        
-        if self.model_division_column and self.model_division_column not in self.target_df.index.names:
-            raise ValueError(f"モデル分割列 '{self.model_division_column}' が学習データに存在しません。")
 
         print("学習を開始します...")
         index_cols = [self.date_column]
-        if self.model_division_column:
-            index_cols.append(self.model_division_column)
+        if self.sector_column:
+            index_cols.append(self.sector_column)
 
         ttd = self._split_train_test()
         target_train = ttd.target_train_df.reset_index(drop=False).set_index(index_cols, drop=True)
         features_train = ttd.features_train_df.reset_index(drop=False).set_index(index_cols, drop=True)
 
         # ---- モデル学習 ------------------------------------------------------------------
-        if self.model_division_column:
+        if self.is_model_divided:
             # セクター別モデル
             self.ml_assets = []  # 初期化
-            sectors = target_train.index.get_level_values(self.model_division_column).unique()
+            sectors = target_train.index.get_level_values(self.sector_column).unique()
 
             for sector in sectors:
                 print(f"セクター '{sector}' のモデルを学習中...")
-                sector_target = target_train[target_train.index.get_level_values(self.model_division_column) == sector].copy()
-                sector_features = features_train[features_train.index.get_level_values(self.model_division_column) == sector].copy()
+                sector_target = target_train[target_train.index.get_level_values(self.sector_column) == sector].copy()
+                sector_features = features_train[features_train.index.get_level_values(self.sector_column) == sector].copy()
                 ml_asset = trainer.train(model_name=sector, target_df=sector_target, features_df=sector_features, **kwargs)
                 self.ml_assets.append(ml_asset)
         else:
@@ -143,7 +143,7 @@ class MLDataset:
             ml_asset = trainer.train(model_name='Grobal', target_df=target_train, features_df=features_train, **kwargs)
             self.ml_assets = ml_asset
         if save:
-            self._save()
+            self.save()
         print("学習が完了しました。")
 
     def predict(self, save: bool = True):
@@ -157,11 +157,8 @@ class MLDataset:
         if not self.ml_assets:
             raise ValueError("モデルが学習されていません。またはロードパスが指定されていません。")
 
-        index_cols = [self.date_column]
-        if self.model_division_column:
-            index_cols.append(self.model_division_column)
-
         ttd = self._split_train_test()
+        index_cols = ttd.target_test_df.index.names
         target_test = ttd.target_test_df.reset_index(drop=False).set_index(index_cols, drop=True)
         features_test = ttd.features_test_df.reset_index(drop=False).set_index(index_cols, drop=True)
 
@@ -172,7 +169,7 @@ class MLDataset:
             print(self.features_df)
             for ml_asset_item in self.ml_assets:
                 print(f"セクター '{ml_asset_item.name}' で予測中...")
-                sector_mask = target_test.index.get_level_values(self.model_division_column) == ml_asset_item.name
+                sector_mask = target_test.index.get_level_values(self.sector_column) == ml_asset_item.name
                 target_sector = target_test[sector_mask].copy()
                 features_sector = features_test[sector_mask].copy()
                 predictions_sector = ml_asset_item.predict(features_sector)
@@ -182,17 +179,19 @@ class MLDataset:
             self.pred_result_df = pd.concat(all_predictions_df, axis=0).sort_index()
         else:  # 単一モデル
             print("単一モデルで予測中...")
+            #TODO セクター列を除去できていない
+
             predictions = self.ml_assets.predict(features_test)
             self.pred_result_df = pd.concat([target_test, predictions], axis=1).sort_index()
         if save:
-            self._save()
+            self.save()
         print("予測が完了しました。")
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _save(self) -> None:
+    def save(self) -> None:
         """現在のインスタンスを ``dataset_path`` 配下に保存する。"""
         MLDatasetStorage(self.dataset_path).save(self)
 
@@ -277,7 +276,8 @@ class MLDatasetStorage:
             test_duration =  Duration(start=pd.to_datetime(metadata["test_start"], unit='ms'), 
                                       end=pd.to_datetime(metadata["test_end"], unit='ms')),
             date_column = metadata["date_column"],
-            model_division_column = metadata["model_division_column"],
+            sector_column = metadata["sector_column"],
+            is_model_divided = metadata["is_model_divided"],
             outlier_threshold = metadata["outlier_threshold"],
             no_shift_features = metadata["no_shift_features"],
             ml_assets = ml_assets,
@@ -289,7 +289,7 @@ class MLDatasetStorage:
         self._atomic_write(ds.features_df, self.path["features_df"])
         self._atomic_write(ds.raw_returns_df, self.path["raw_returns_df"])
         self._atomic_write(ds.pred_result_df, self.path["pred_result_df"])
-        self._atomic_write(ds.pred_result_df, self.path["order_price_df"])
+        self._atomic_write(ds.order_price_df, self.path["order_price_df"])
         # Optional: write minimal metadata
         meta = {
             "train_start": ds.train_duration.start,
@@ -297,7 +297,8 @@ class MLDatasetStorage:
             "test_start": ds.test_duration.start,
             "test_end": ds.test_duration.end,
             "date_column": ds.date_column,
-            "model_division_column": ds.model_division_column,
+            "sector_column": ds.sector_column,
+            "is_model_divided": ds.is_model_divided,
             "outlier_threshold": ds.outlier_threshold,
             "no_shift_features": ds.no_shift_features,
         }

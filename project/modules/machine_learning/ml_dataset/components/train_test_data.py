@@ -1,6 +1,5 @@
 import pandas as pd
 
-from models.machine_learning.outputs import TrainTestDatasets
 from utils.jquants_api_utils import get_next_open_date
 from utils.timeseries import Duration
 
@@ -131,12 +130,3 @@ class TrainTestData:
         lower_bound = mean - coef * std
         upper_bound = mean + coef * std
         return group[(group[column_name] >= lower_bound) & (group[column_name] <= upper_bound)]
-
-    def getter(self) -> TrainTestDatasets:
-        """データクラスとして返却"""
-        return TrainTestDatasets(
-            target_train_df=self._target_train_df,
-            target_test_df=self._target_test_df,
-            features_train_df=self._features_train_df,
-            features_test_df=self._features_test_df
-        )

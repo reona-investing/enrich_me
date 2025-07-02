@@ -1,8 +1,8 @@
 from typing import List, Dict
-from models.machine_learning.ensembles.base_ensemble_method import BaseEnsembleMethod
-from models.machine_learning.ensembles.by_rank import ByRankMethod
-from models.machine_learning.ensembles.by_predict_value import ByPredictValueMethod
-from models.machine_learning.ensembles.by_voting import ByVotingMethod
+from machine_learning.ensembles.base_ensemble_method import BaseEnsembleMethod
+from machine_learning.ensembles.by_rank import ByRankMethod
+from machine_learning.ensembles.by_predict_value import ByPredictValueMethod
+from machine_learning.ensembles.by_voting import ByVotingMethod
 
 class EnsembleMethodFactory:
     """

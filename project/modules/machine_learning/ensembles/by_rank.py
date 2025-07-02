@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List, Tuple
-from models.machine_learning.ensembles.base_ensemble_method import BaseEnsembleMethod
+from machine_learning.ensembles.base_ensemble_method import BaseEnsembleMethod
 
 class ByRankMethod(BaseEnsembleMethod):
     """予測順位ベースでのアンサンブル手法"""

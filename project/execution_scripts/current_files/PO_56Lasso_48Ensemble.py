@@ -8,10 +8,11 @@ from utils.notifier import SlackNotifier
 from utils.paths import Paths
 from facades import (
     DataUpdateFacade,
-    MachineLearningFacade,
     OrderExecutionFacade,
     TradeDataFacade,
     LassoLearningFacade,
+    SubseqLgbmLearningFacade,
+    RankEnsembleFacade,
     ModeForStrategy,
     ModelOrderConfig,
 )
@@ -23,7 +24,7 @@ async def main() -> None:
 
     # パラメータ設定
     # 56業種LASSO用設定
-    datasets_56_lasso = f"{Paths.ML_DATASETS_FOLDER}/56sectors_LASSO_learned_in_250623"
+    dataset_56_lasso = f"{Paths.ML_DATASETS_FOLDER}/56sectors_LASSO_learned_in_250702"
     sector_csv_56_lasso = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/56sectors_2024-2025.csv"
     sector_index_56_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/56sectors_price.parquet"
     trading_sector_num_56_lasso = 2
@@ -31,15 +32,15 @@ async def main() -> None:
     top_slope_56_lasso = 1
 
     # 48業種LASSO+LightGBMアンサンブル用設定
-    sector_csv_48_ensemble = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
-    sector_index_48_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet"
-    datasets_path1 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250615"
-    datasets_path2 = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250615"
-    ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250615"
-    model1_weight = 6.7
-    model2_weight = 1.3
-    trading_sector_num_48_ensemble = 2
-    candidate_sector_num_48_ensemble = 4
+    dataset_48_lasso = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LASSO_learned_in_250702"
+    dataset_48_lgbm = f"{Paths.ML_DATASETS_FOLDER}/48sectors_LightGBMlearned_in_250702"
+    sector_csv_48 = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv"
+    sector_index_48_parquet = f"{Paths.SECTOR_PRICE_FOLDER}/48sectors_price.parquet"
+    ensembled_datasets_path = f"{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250702"
+    lasso48_weight = 6.7
+    lgbm48_weight = 1.3
+    trading_sector_num_48 = 2
+    candidate_sector_num_48 = 4
     top_slope_48_ensemble = 1
 
     # 各モデルへの資金配分
@@ -54,8 +55,6 @@ async def main() -> None:
 
     try:
         modes = ModeForStrategy.generate_mode()
-        if modes.machine_learning_mode == 'predict_only':
-            modes = modes.model_copy(update={'machine_learning_mode': 'train_and_predict'})
 
 
         # 1. データ更新
@@ -69,7 +68,7 @@ async def main() -> None:
         ml_56_lasso = LassoLearningFacade(
             mode=modes.machine_learning_mode,
             stock_dfs_dict=stock_dict,
-            datasets_path=datasets_56_lasso,
+            dataset_path=dataset_56_lasso,
             sector_redef_csv_path=sector_csv_56_lasso,
             sector_index_parquet_path=sector_index_56_parquet,
             train_start_day=train_start_day,
@@ -78,27 +77,41 @@ async def main() -> None:
             test_end_day=test_end_day,
         ).execute()
 
-        ml_48_ensemble = MachineLearningFacade(
+        ml_48_lasso = LassoLearningFacade(
             mode=modes.machine_learning_mode,
             stock_dfs_dict=stock_dict,
-            sector_redef_csv_path=sector_csv_48_ensemble,
+            dataset_path=dataset_48_lasso,
+            sector_redef_csv_path=sector_csv_48,
             sector_index_parquet_path=sector_index_48_parquet,
-            datasets1_path=datasets_path1,
-            datasets2_path=datasets_path2,
-            ensembled_datasets_path=ensembled_datasets_path,
-            model1_weight=model1_weight,
-            model2_weight=model2_weight,
             train_start_day=train_start_day,
             train_end_day=train_end_day,
             test_start_day=test_start_day,
             test_end_day=test_end_day,
         ).execute()
 
+        ml_48_lgbm = SubseqLgbmLearningFacade(
+            preliminary_model=ml_48_lasso,
+            mode=modes.machine_learning_mode,
+            stock_dfs_dict=stock_dict,
+            dataset_path=dataset_48_lgbm,
+            sector_redef_csv_path=sector_csv_48,
+            sector_index_parquet_path=sector_index_48_parquet,
+            train_start_day=train_start_day,
+            train_end_day=train_end_day,
+            test_start_day=test_start_day,
+            test_end_day=test_end_day,
+        ).execute()
+
+        ml_48_ensemble = RankEnsembleFacade(
+            ensembled_dataset_path=ensembled_datasets_path,
+            datasets=[ml_48_lasso, ml_48_lgbm],
+            ensemble_rates=[lasso48_weight, lgbm48_weight]
+        ).execute()
+
         # 3. 発注
-        trade_facade = TradingFacade()
         configs = [
             ModelOrderConfig(
-                ml_datasets=ml_56_lasso,
+                ml_dataset=ml_56_lasso,
                 sector_csv=sector_csv_56_lasso,
                 trading_sector_num=trading_sector_num_56_lasso,
                 candidate_sector_num=candidate_sector_num_56_lasso,
@@ -106,15 +119,16 @@ async def main() -> None:
                 margin_weight=fund_allocation_56_lasso,
             ),
             ModelOrderConfig(
-                ml_datasets=ml_48_ensemble,
-                sector_csv=sector_csv_48_ensemble,
-                trading_sector_num=trading_sector_num_48_ensemble,
-                candidate_sector_num=candidate_sector_num_48_ensemble,
+                ml_dataset=ml_48_ensemble,
+                sector_csv=sector_csv_48,
+                trading_sector_num=trading_sector_num_48,
+                candidate_sector_num=candidate_sector_num_48,
                 top_slope=top_slope_48_ensemble,
                 margin_weight=fund_allocation_48_ensemble,
             ),
         ]
 
+        trade_facade = TradingFacade()
         order_facade = OrderExecutionFacade(
             mode=modes.order_execution_mode,
             trade_facade=trade_facade,
