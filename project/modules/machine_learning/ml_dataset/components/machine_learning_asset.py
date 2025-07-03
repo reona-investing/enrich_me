@@ -4,6 +4,12 @@ from typing import Optional
 
 @dataclass
 class MachineLearningAsset:
+    '''
+    モデルとスケーラーを対応させて管理するデータクラス
+    name (str): インスタンスの名称
+    model (any): 機械学習モデル
+    scaler (Optional[any]): 機械学習スケーラー（任意）
+    '''
     name: str
     model: any # MLModelのインスタンスを想定
     scaler: Optional[any] # スケーラーのインスタンスを想定

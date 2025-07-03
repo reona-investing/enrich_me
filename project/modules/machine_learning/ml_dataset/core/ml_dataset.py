@@ -12,9 +12,17 @@ from utils.timeseries import Duration
 
 @dataclass
 class MLDataset:
-    """機械学習用データセットを統合的に管理するクラス"""
+    """
+    機械学習用データセットを統合的に管理するクラス
+    
+    Args:
+        dataset_path (Path | str): データセットの保存先パス
+        target_df (pd.DataFrame): 目的変数データフレーム
+        features_df (pd.DataFrame): 特徴量データフレーム
+        raw_returns_df (pd.DataFrame):
+    """
 
-    dataset_path: Path
+    dataset_path: Path | str
     target_df: pd.DataFrame = field(repr=False)
     features_df: pd.DataFrame = field(repr=False)
     raw_returns_df: pd.DataFrame = field(repr=False)
@@ -29,20 +37,19 @@ class MLDataset:
     outlier_threshold: int | float = field(repr=False)
     no_shift_features: list[str] = field(default_factory=list)
 
-
     ml_assets: Union[MachineLearningAsset, List[MachineLearningAsset]] = field(default_factory=list)
-
-    
-
-    def __post_init__(self) -> None:
-        self._validate()
 
     # ---------------------------------------------------------------------
     # ファクトリメソッド
     # ---------------------------------------------------------------------
     @classmethod
     def from_files(cls, dataset_path: str | Path) -> "MLDataset":
-        """ファクトリ：指定パスからファイルを読み込み、インスタンスを生成する。"""
+        """
+        ファクトリ：指定パスからファイルを読み込み、インスタンスを生成する。
+        
+        Args:
+            dataset_path (str): データセットの保存先パス
+        """
         return MLDatasetStorage(dataset_path).load()
 
     @classmethod
@@ -64,7 +71,26 @@ class MLDataset:
         no_shift_features: list[str],
         save: bool = True,
     ) -> "MLDataset":
-        """ファクトリ：既存オブジェクトからインスタンスを構築する。"""
+        """
+        ファクトリ：既存オブジェクトからインスタンスを構築する。
+        
+        Args:
+            dataset_path (str | Path): データセットの保存先パス
+            target_df (pd.DataFrame): 目的変数データフレーム
+            features_df (pd.DataFrame): 特徴量データフレーム
+            raw_returns_df (pd.DataFrame): 生リターンのデータフレーム
+            pred_return_df (pd.DataFrame): リターン予測結果のデータフレーム
+            order_price_df (pd.DataFrame): 銘柄別の見込み発注価格のデータフレーム
+            train_duration (Duration): 学習に使用する期間
+            test_duration (Duration): 予測に使用する期間
+            date_column (str): 日付列の列名
+            sector_column (str): セクター列の列名
+            is_model_divided (bool): モデルをセクターごとに分割するかどうか
+            ml_assets (MachineLearningAsset): モデルとスケーラーを格納したオブジェクト
+            outlier_threshold (int | float): 外れ値除去の閾値。0のときは除外なし
+            no_shift_features (list[str]): 1日シフトの対象外とする特徴量を指定
+            save (bool): 生成したクラスを保存するか（デフォルト：保存する）
+        """
         ds = cls(dataset_path=Path(dataset_path),
                  target_df=target_df,
                  features_df=features_df,
@@ -97,8 +123,16 @@ class MLDataset:
         new_order_price: Optional[pd.DataFrame] = None,
         save: bool = True,
     ) -> None:
-        """新しい日次データを追加し、必要に応じてデータセットを保存する。"""
-        # 内部データを更新
+        """
+        新しい日次データを追加する。
+
+        Args:
+            new_targets (pd.DataFrame):アップデート後の目的変数データフレーム
+            new_features (pd.DataFrame):アップデート後の特徴量データフレーム
+            new_raw_returns (pd.DataFrame):アップデート後の生リターンデータフレーム
+            new_order_price (pd.DataFrame):アップデート後の銘柄別発注価格データフレーム
+            save (bool): 生成したクラスを保存するか（デフォルト：保存する）
+        """
         self.target_df = new_targets.sort_index()
         self.features_df = new_features.sort_index()
         self.order_price_df = new_order_price.sort_index()
@@ -114,13 +148,16 @@ class MLDataset:
 
         Args:
             trainer (BaseTrainer): 任意のトレーナークラス（fit/predict を実装しているもの）
+            save (bool): 生成したクラスを保存するか（デフォルト：保存する）
         """
 
         print("学習を開始します...")
+
+        # ---- 事前準備 --------------------------------------------------------------------
+        # 日付とセクターをインデックスに指定
         index_cols = [self.date_column]
         if self.sector_column:
             index_cols.append(self.sector_column)
-
         ttd = self._split_train_test()
         target_train = ttd.target_train_df.reset_index(drop=False).set_index(index_cols, drop=True)
         features_train = ttd.features_train_df.reset_index(drop=False).set_index(index_cols, drop=True)
@@ -133,8 +170,9 @@ class MLDataset:
 
             for sector in sectors:
                 print(f"セクター '{sector}' のモデルを学習中...")
-                sector_target = target_train[target_train.index.get_level_values(self.sector_column) == sector].copy()
-                sector_features = features_train[features_train.index.get_level_values(self.sector_column) == sector].copy()
+                sector_mask = target_train.index.get_level_values(self.sector_column) == sector
+                sector_target = target_train[sector_mask].copy()
+                sector_features = features_train[sector_mask].copy()
                 ml_asset = trainer.train(model_name=sector, target_df=sector_target, features_df=sector_features, **kwargs)
                 self.ml_assets.append(ml_asset)
         else:
@@ -151,6 +189,9 @@ class MLDataset:
         テスト期間のデータを用いて予測を行う。
         事前に ``ml_assets`` にモデルが存在する必要がある。
         完了後、結果は ``pred_result_df`` に格納される。
+
+        Args:
+            save (bool): 生成したクラスを保存するか（デフォルト：保存する）
         """
         print("予測を開始します...")
 
@@ -163,7 +204,8 @@ class MLDataset:
         features_test = ttd.features_test_df.reset_index(drop=False).set_index(index_cols, drop=True)
 
         # ---- 予測 ------------------------------------------------------------------------
-        if isinstance(self.ml_assets, list):  # 複数モデル
+        if isinstance(self.ml_assets, list):
+            # セクター別モデル
             print("複数モデルで予測中...")
             all_predictions_df = []
             print(self.features_df)
@@ -175,12 +217,10 @@ class MLDataset:
                 predictions_sector = ml_asset_item.predict(features_sector)
                 predictions_sector = pd.concat([target_sector, predictions_sector], axis=1)
                 all_predictions_df.append(predictions_sector)
-            # すべての予測結果を結合
             self.pred_result_df = pd.concat(all_predictions_df, axis=0).sort_index()
-        else:  # 単一モデル
+        else:  
+            # 単一モデル
             print("単一モデルで予測中...")
-            #TODO セクター列を除去できていない
-
             predictions = self.ml_assets.predict(features_test)
             self.pred_result_df = pd.concat([target_test, predictions], axis=1).sort_index()
         if save:
@@ -188,7 +228,7 @@ class MLDataset:
         print("予測が完了しました。")
 
     # ------------------------------------------------------------------
-    # Private helpers
+    # ヘルパーメソッド
     # ------------------------------------------------------------------
 
     def save(self) -> None:
@@ -196,28 +236,17 @@ class MLDataset:
         MLDatasetStorage(self.dataset_path).save(self)
 
     def _split_train_test(self) -> TrainTestData:
+        """
+        訓練期間・テスト期間にデータを分割し、外れ値処理等の前処理を行います。
+
+        Returns:
+            TrainTestData: target_train, target_test, features_train, features_testを保持するインスタンス
+        """
         return TrainTestData().archive(
             target_df=self.target_df, features_df=self.features_df,
             train_duration=self.train_duration, test_duration=self.test_duration,
             datetime_column=self.date_column, outlier_threshold=self.outlier_threshold,
             no_shift_features=self.no_shift_features, reuse_features_df=False)
-
-    # ------------------------------------------------------------------
-    # Validation & augmentation
-    # ------------------------------------------------------------------
-
-    def _validate(self) -> None:
-        """target_df と features_df のインデックスが一致しているか検証する。"""
-        if not self.target_df.index.equals(self.features_df.index):
-            raise ValueError("target_df と features_df のインデックスが一致しません。")
-
-    @staticmethod
-    def _check_alignment(*dfs: pd.DataFrame) -> None:
-        """全ての DataFrame が同一のインデックスを共有していることを確認する。"""
-        indexes = [df.index for df in dfs]
-        if any(not idx.equals(indexes[0]) for idx in indexes[1:]):
-            raise ValueError("与えられた DataFrame のインデックスが揃っていません。")
-
 
 #=====================================
 #以下、セーブ・ロード用のクラス。
@@ -243,6 +272,7 @@ class MLDatasetStorage:
         self.base_path = Path(base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
 
+
     @property
     def path(self) -> Dict[str, Path]:
         return {
@@ -257,12 +287,17 @@ class MLDatasetStorage:
 
 
     def load(self) -> "MLDataset":
-        """外部ファイルをロードしてMLDatasetを作成します。"""
+        """
+        外部ファイルをロードしてMLDatasetを作成します。
+        
+        Returns:
+            MLdataset: 機械学習のデータセットインスタンス
+        """
         with self.path["metadata"].open(encoding="utf-8") as f:
             metadata = json.load(f)
 
-        with self.path["ml_assets"].open("rb") as f:       # ← ★ 読み込みなので "rb"
-            ml_assets = pickle.load(f)             # ← ★ dump の逆は load
+        with self.path["ml_assets"].open("rb") as f:
+            ml_assets = pickle.load(f)
 
         return MLDataset(
             dataset_path=self.base_path,
@@ -284,13 +319,18 @@ class MLDatasetStorage:
         )
 
     def save(self, ds: "MLDataset") -> None:
-        """Atomically write dataset artefacts to disk."""
-        self._atomic_write(ds.target_df, self.path["target_df"])
-        self._atomic_write(ds.features_df, self.path["features_df"])
-        self._atomic_write(ds.raw_returns_df, self.path["raw_returns_df"])
-        self._atomic_write(ds.pred_result_df, self.path["pred_result_df"])
-        self._atomic_write(ds.order_price_df, self.path["order_price_df"])
-        # Optional: write minimal metadata
+        """
+        MLDatasetのプロパティを外部ファイルに出力します。
+        
+        Args:
+            ds (MLDataset): 機械学習のデータセットインスタンス
+        """
+        self._atomic_write_parquet(ds.target_df, self.path["target_df"])
+        self._atomic_write_parquet(ds.features_df, self.path["features_df"])
+        self._atomic_write_parquet(ds.raw_returns_df, self.path["raw_returns_df"])
+        self._atomic_write_parquet(ds.pred_result_df, self.path["pred_result_df"])
+        self._atomic_write_parquet(ds.order_price_df, self.path["order_price_df"])
+
         meta = {
             "train_start": ds.train_duration.start,
             "train_end": ds.train_duration.end,
@@ -303,14 +343,23 @@ class MLDatasetStorage:
             "no_shift_features": ds.no_shift_features,
         }
         pd.Series(meta).to_json(self.path["metadata"], indent=2, force_ascii=False)
-        if ds.ml_assets is not None:
-            with self.path["ml_assets"].open("wb") as f:
-                pickle.dump(ds.ml_assets, f, protocol=pickle.HIGHEST_PROTOCOL)
 
+        if ds.ml_assets is not None:
+            # 一時ファイルとして保存することで、中断したときのファイル破損を防ぐ。
+            tmp_path = self.path["ml_assets"].with_suffix(self.path["ml_assets"].suffix + ".tmp")
+            with tmp_path.open("wb") as f:
+                pickle.dump(ds.ml_assets, f, protocol=pickle.HIGHEST_PROTOCOL)
+            tmp_path.replace(self.path["ml_assets"])
+
+    # ------------------------------------------------------------------
+    # ヘルパーメソッド
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def _atomic_write(obj: pd.DataFrame, dest: Path, compression: str = "zstd") -> None:
-        """Write to a temporary file then *replace* to guarantee atomicity."""
+    def _atomic_write_parquet(obj: pd.DataFrame, dest: Path, compression: str = "zstd") -> None:
+        """
+        一時ファイルとして保存し、保存中断した場合のファイル破損を防ぎます。
+        """
         if obj is not None:
             tmp_path = dest.with_suffix(dest.suffix + ".tmp")
             obj.to_parquet(tmp_path, compression=compression)
