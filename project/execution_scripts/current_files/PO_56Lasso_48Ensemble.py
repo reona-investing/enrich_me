@@ -103,6 +103,7 @@ async def main() -> None:
         ).execute()
 
         ml_48_ensemble = RankEnsembleFacade(
+            mode=modes.machine_learning_mode,
             ensembled_dataset_path=ensembled_datasets_path,
             datasets=[ml_48_lasso, ml_48_lgbm],
             ensemble_rates=[lasso48_weight, lgbm48_weight]
