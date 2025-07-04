@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
-from machine_learning.ml_dataset.core import MLDataset
+from machine_learning.ml_dataset import MLDataset
 
 @dataclass
 class ModelOrderConfig:

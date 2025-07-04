@@ -124,4 +124,3 @@ class MLResourceStorage:
             tmp_path = dest.with_suffix(dest.suffix + ".tmp")
             obj.to_parquet(tmp_path, compression=compression)
             tmp_path.replace(dest)
-

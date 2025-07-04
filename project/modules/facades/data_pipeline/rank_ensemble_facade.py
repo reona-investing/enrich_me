@@ -1,5 +1,6 @@
 from machine_learning.ensembles import EnsembleMethodFactory
-from machine_learning.ml_dataset.core import MLDataset
+#from machine_learning.ml_dataset.core import MLDataset
+from machine_learning.ml_dataset import MLDataset
 from typing import List, Literal
 
 class RankEnsembleFacade:
@@ -12,9 +13,9 @@ class RankEnsembleFacade:
             self.inputs = [(dataset.pred_result_df, ensemble_rate) for dataset, ensemble_rate in zip(datasets, ensemble_rates) if dataset]
 
     def execute(self) -> MLDataset | None:
-        if self.mode == "train_and_prdict" or self.mode == "predict_only":
+        if self.mode == "train_and_predict" or self.mode == "predict_only":
             pred_result_df = self.ensemble_method.ensemble(self.inputs)
-            self.main_ml_dataset.pred_result_df = pred_result_df
+            self.main_ml_dataset.output_collection.pred_result_df = pred_result_df
             self.main_ml_dataset.dataset_path = self.ensemble_dataset_path
             self.main_ml_dataset.save()
             return self.main_ml_dataset

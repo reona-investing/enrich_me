@@ -20,8 +20,8 @@ class MLAssetsMetadata:
 class MLAssetsContainer:
     """MLModelの管理を担当するクラス"""
 
-    assets: Union[MLModel, List[MLModel]] = field(default_factory=list)
     metadata: MLAssetsMetadata = field(repr=False)
+    assets: Union[MLModel, List[MLModel]] = field(default_factory=list)
 
     def train_models(
         self,
@@ -122,4 +122,3 @@ class MLAssetsContainerStorage:
             "is_model_divided": ml_assets_container.metadata.is_model_divided,
         }
         pd.Series(metadata_dict).to_json(self.path["metadata"], indent=2, force_ascii=False)
-

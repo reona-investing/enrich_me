@@ -6,10 +6,8 @@ import os
 from datetime import datetime
 
 from calculation import SectorIndex, TargetCalculator, FeaturesCalculator
-#from models.machine_learning.loaders.loader import DatasetLoader
-#from models.machine_learning.models.lasso_model import LassoModel
-#from models.machine_learning.ml_dataset.ml_datasets import MLDatasets
-from machine_learning.ml_dataset.core import MLDataset
+#from machine_learning.ml_dataset.core import MLDataset
+from machine_learning.ml_dataset import MLDataset
 from machine_learning.models import LassoTrainer
 from utils.notifier import SlackNotifier
 from utils.timeseries import Duration

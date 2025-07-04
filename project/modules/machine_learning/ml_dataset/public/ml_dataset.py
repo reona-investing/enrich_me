@@ -6,9 +6,9 @@ import pandas as pd
 from machine_learning.ml_dataset.components import MLModel, TrainTestData
 from machine_learning.models import BaseTrainer
 
-from ..resources import MLResource, MLResourceMetadata, MLResourceStorage
-from ..outputs import MLOutputCollection, MLOutputCollectionStorage
-from ..models import (
+from machine_learning.ml_dataset.resources import MLResource, MLResourceMetadata, MLResourceStorage
+from machine_learning.ml_dataset.outputs import MLOutputCollection, MLOutputCollectionStorage
+from machine_learning.ml_dataset.models import (
     MLAssetsContainer,
     MLAssetsMetadata,
     MLAssetsContainerStorage,
@@ -266,4 +266,3 @@ class MLDatasetStorage:
         self.resource_storage.save(ds.resource_data)
         self.output_storage.save(ds.output_collection)
         self.assets_storage.save(ds.ml_assets_container)
-
