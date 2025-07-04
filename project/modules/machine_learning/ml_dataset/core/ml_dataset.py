@@ -5,7 +5,7 @@ from typing import Optional, Union, List, Dict
 import json
 import pickle
 
-from machine_learning.ml_dataset.components import MachineLearningAsset, TrainTestData
+from machine_learning.ml_dataset.components import MLModel, TrainTestData
 from machine_learning.models import BaseTrainer
 from utils.timeseries import Duration
 
@@ -37,7 +37,7 @@ class MLDataset:
     outlier_threshold: int | float = field(repr=False)
     no_shift_features: list[str] = field(default_factory=list)
 
-    ml_assets: Union[MachineLearningAsset, List[MachineLearningAsset]] = field(default_factory=list)
+    ml_assets: Union[MLModel, List[MLModel]] = field(default_factory=list)
 
     # ---------------------------------------------------------------------
     # ファクトリメソッド
@@ -66,7 +66,7 @@ class MLDataset:
         date_column: str,
         sector_column: str,
         is_model_divided: bool,
-        ml_assets: MachineLearningAsset,
+        ml_assets: MLModel,
         outlier_threshold: int | float,
         no_shift_features: list[str],
         save: bool = True,
@@ -86,7 +86,7 @@ class MLDataset:
             date_column (str): 日付列の列名
             sector_column (str): セクター列の列名
             is_model_divided (bool): モデルをセクターごとに分割するかどうか
-            ml_assets (MachineLearningAsset): モデルとスケーラーを格納したオブジェクト
+            ml_assets (MLModel): モデルとスケーラーを格納したオブジェクト
             outlier_threshold (int | float): 外れ値除去の閾値。0のときは除外なし
             no_shift_features (list[str]): 1日シフトの対象外とする特徴量を指定
             save (bool): 生成したクラスを保存するか（デフォルト：保存する）

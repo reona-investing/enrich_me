@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import pandas as pd
-from machine_learning.ml_dataset.components import MachineLearningAsset
+from machine_learning.ml_dataset.components import MLModel
 
 
 class BaseTrainer(ABC):
@@ -10,7 +10,7 @@ class BaseTrainer(ABC):
         pass
     
     @abstractmethod
-    def train(self, model_name: str, target_df: pd.DataFrame, features_df: pd.DataFrame, **kwargs) -> MachineLearningAsset:
+    def train(self, model_name: str, target_df: pd.DataFrame, features_df: pd.DataFrame, **kwargs) -> MLModel:
         """
         モデルの学習を行う抽象メソッド
         

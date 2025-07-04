@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass
-class MachineLearningAsset:
+class MLModel:
     '''
     モデルとスケーラーを対応させて管理するデータクラス
     name (str): インスタンスの名称
@@ -11,8 +11,8 @@ class MachineLearningAsset:
     scaler (Optional[any]): 機械学習スケーラー（任意）
     '''
     name: str
-    model: any # MLModelのインスタンスを想定
-    scaler: Optional[any] # スケーラーのインスタンスを想定
+    model: any  # 実際の機械学習モデル
+    scaler: Optional[any]  # スケーラーのインスタンスを想定
 
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         """

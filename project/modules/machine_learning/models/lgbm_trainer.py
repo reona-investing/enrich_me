@@ -3,7 +3,7 @@ import numpy as np
 import lightgbm as lgb
 from typing import List, Optional
 from scipy.stats import norm
-from machine_learning.ml_dataset.components import MachineLearningAsset
+from machine_learning.ml_dataset.components import MLModel
 from machine_learning.models import BaseTrainer
 
 
@@ -11,7 +11,7 @@ class LgbmTrainer(BaseTrainer):
     """LightGBMモデルのトレーナークラス"""
     
     def train(self, model_name: str, target_df: pd.DataFrame, features_df: pd.DataFrame, 
-              categorical_features: Optional[List[str]] = None, **kwargs) -> MachineLearningAsset:
+              categorical_features: Optional[List[str]] = None, **kwargs) -> MLModel:
         """
         lightGBMによる学習を行います。シングルセクターとマルチセクターの双方に対応しています。
         
@@ -49,7 +49,7 @@ class LgbmTrainer(BaseTrainer):
             num_boost_round=100000
         )
         
-        return MachineLearningAsset(name=model_name, model=model, scaler=None)
+        return MLModel(name=model_name, model=model, scaler=None)
 
     def _numerai_corr_lgbm(self, preds, data):
         """
