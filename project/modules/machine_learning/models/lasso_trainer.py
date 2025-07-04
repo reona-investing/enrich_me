@@ -7,7 +7,7 @@ from sklearn.model_selection import RandomizedSearchCV
 import scipy
 from IPython.display import display
 
-from machine_learning.ml_dataset.components import MachineLearningAsset
+from machine_learning.ml_dataset.components import MLModel
 from machine_learning.models import BaseTrainer
 
 
@@ -16,7 +16,7 @@ class LassoTrainer(BaseTrainer):
     
     def train(self, model_name: str, 
               target_df: pd.DataFrame, features_df: pd.DataFrame, 
-              max_features: int = 5, min_features: int = 3, **kwargs) -> MachineLearningAsset:
+              max_features: int = 5, min_features: int = 3, **kwargs) -> MLModel:
         """
         LASSOによる学習を行います。シングルセクターとマルチセクターの双方に対応しています。
         
@@ -29,7 +29,7 @@ class LassoTrainer(BaseTrainer):
             **kwargs: LASSOのハイパーパラメータを任意で設定可能
             
         Returns:
-            MachineLearningAsset: 機械学習のデータセットを格納したデータクラス
+            MLModel: 機械学習のデータセットを格納したデータクラス
         """
         # 欠損値のある行を削除
         not_na_indices = target_df.dropna(how='any').index
@@ -52,7 +52,7 @@ class LassoTrainer(BaseTrainer):
         print(alpha)
         display(feature_importances_df)
 
-        return MachineLearningAsset(name=model_name, model=model, scaler=scaler)
+        return MLModel(name=model_name, model=model, scaler=scaler)
     
 
     def _search_alpha(self, X: np.array, y: pd.DataFrame, max_features: int, min_features: int) -> float:
