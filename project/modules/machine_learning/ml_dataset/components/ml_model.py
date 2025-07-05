@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass
-class MLModel:
+class MLModelAsset:
     '''
     モデルとスケーラーを対応させて管理するデータクラス
     name (str): インスタンスの名称
@@ -23,7 +23,7 @@ class MLModel:
         else:
             X_scaled = X
         
-        # モデルのpredictメソッドを呼び出す（MLModel抽象クラスの規約に依存）
+        # モデルのpredictメソッドを呼び出す（MLModelAsset抽象クラスの規約に依存）
         predictions = self.model.predict(X_scaled)
         
         # 予測結果をDataFrameとして返す（列名などを考慮）
@@ -45,5 +45,5 @@ class MLModel:
         else:
             X_train_scaled = X_train
         
-        # モデルのtrainメソッドを呼び出す（MLModel抽象クラスの規約に依存）
+        # モデルのtrainメソッドを呼び出す（MLModelAsset抽象クラスの規約に依存）
         self.model.train(X_train_scaled, y_train)
