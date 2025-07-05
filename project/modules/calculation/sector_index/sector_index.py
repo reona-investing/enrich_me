@@ -7,6 +7,7 @@ from typing import Tuple
 from .calculators.marketcap_calculator import MarketCapCalculator
 from .preparers.sector_data_preparer import SectorDataPreparer
 from .calculators.index_calculator import SectorIndexCalculator
+from calculation.order_price_calculator import OrderPriceCalculator
 
 
 class SectorIndex:
@@ -32,6 +33,7 @@ class SectorIndex:
         self._marketcap_calc = MarketCapCalculator()
         self._data_preparer = SectorDataPreparer()
         self._index_calc = SectorIndexCalculator()
+        self._order_price_calc = OrderPriceCalculator()
 
     _col_names = None
     
@@ -52,8 +54,8 @@ class SectorIndex:
     # パブリックメソッド（外部から呼び出し可能）
     # ========================================
 
-    def calc_sector_index(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """セクターインデックスを算出して ``order_price_df`` も返す。
+    def calculate_sector_index(self) -> pd.DataFrame:
+        """セクターインデックスを算出する。
 
         ``stock_dfs_dict`` で渡された株価データと財務データを用いて
         時価総額を計算し、CSV で指定されたセクター定義を結合して
@@ -61,12 +63,11 @@ class SectorIndex:
         に保存される。
 
         Returns:
-            tuple[pd.DataFrame, pd.DataFrame]:
-                計算したセクターインデックスと発注処理用株価データ。
+            pd.DataFrame: 計算したセクターインデックス
         """
 
         if self.sector_index_df is not None and self.order_price_df is not None:
-            return self.sector_index_df, self.order_price_df
+            return self.sector_index_df
 
         if (
             self.stock_dfs_dict is None
@@ -83,7 +84,11 @@ class SectorIndex:
         stock_fin = self.stock_dfs_dict['fin']
 
         # 価格情報に発行済み株式数の情報を結合
-        order_price_df = self.calc_marketcap(stock_price, stock_fin)
+        order_price_df = self._order_price_calc.calculate_order_price(
+            stock_price,
+            stock_fin,
+            self._get_column_names,
+        )
 
         # セクター定義を読み込み、株価データと結合
         sector_price_data = self._data_preparer.from_csv(
@@ -100,17 +105,13 @@ class SectorIndex:
         new_sector_price.to_parquet(self.sector_index_parquet)
         new_sector_price = new_sector_price.set_index([sector_col['日付'], sector_col['セクター']])
 
-        order_price_df = order_price_df[[
-            sector_col['日付'], sector_col['銘柄コード'], sector_col['終値時価総額'], 
-            sector_col['終値'], price_col['取引高']
-        ]]
         self.sector_index_df = new_sector_price
         self.order_price_df = order_price_df
         print('セクターのインデックス値の算出が完了しました。')
         
-        return new_sector_price, order_price_df
+        return new_sector_price
 
-    def calc_sector_index_by_dict(self, sector_stock_dict: dict, stock_price_data: pd.DataFrame) -> pd.DataFrame:
+    def calculate_sector_index_by_dict(self, sector_stock_dict: dict, stock_price_data: pd.DataFrame) -> pd.DataFrame:
         """辞書形式のセクター定義からインデックスを計算する。
 
         Args:
@@ -118,7 +119,7 @@ class SectorIndex:
                 セクター名をキー、銘柄コードのリストを値とする辞書。
                 例: ``{"JPY感応株": ["6758", "6501"], "JPbond感応株": ["6751", ...]}``
             stock_price_data (pd.DataFrame):
-                ``calc_marketcap`` の結果と同じ形式の株価データ。
+                ``calculate_marketcap`` の結果と同じ形式の株価データ。
 
         Returns:
             pd.DataFrame: セクターインデックスのデータフレーム。
@@ -132,26 +133,25 @@ class SectorIndex:
 
         return sector_index
 
-    def get_sector_index_dict(self) -> tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame]]:
+    def get_sector_index_dict(self) -> dict[str, pd.DataFrame]:
         """セクター別のデータフレーム辞書を取得する。
 
-        :meth:`calc_sector_index` が未実行の場合は内部で呼び出して
+        :meth:`calculate_sector_index` が未実行の場合は内部で呼び出して
         計算結果をキャッシュする。
 
         Returns
         -------
-        tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame]]
-            セクターインデックスと発注処理用の価格データを、それぞれセクター別に分割した辞書を返す。
+        dict[str, pd.DataFrame]
+            セクターインデックスをセクター別に分割した辞書を返す。
         """
 
-        if self.sector_index_dict is not None and self.order_price_dict is not None:
-            return self.sector_index_dict, self.order_price_dict
+        if self.sector_index_dict is not None:
+            return self.sector_index_dict
 
-        if self.sector_index_df is None or self.order_price_df is None:
-            self.calc_sector_index()
+        if self.sector_index_df is None:
+            self.calculate_sector_index()
 
         sector_index_df = self.sector_index_df
-        order_price_df = self.order_price_df
 
         if sector_index_df is None or not isinstance(sector_index_df.index, pd.MultiIndex):
             raise ValueError("sector_index_df must be MultiIndex")
@@ -166,24 +166,11 @@ class SectorIndex:
             df.index.name = date_name
             sector_dict[sec] = df
 
-        # 発注用株価データをセクター別に分割
-        order_price_data = self._data_preparer.from_csv(
-            order_price_df,
-            self.sector_redefinitions_csv,
-            self._get_column_names,
-        )
-        order_dict: dict[str, pd.DataFrame] = {}
-        for sec in order_price_data[sector_name].unique():
-            df = order_price_data[order_price_data[sector_name] == sec].copy()
-            df = df.set_index([date_name, sector_col['銘柄コード']])
-            order_dict[sec] = df
-
         self.sector_index_dict = sector_dict
-        self.order_price_dict = order_dict
 
-        return sector_dict, order_dict
+        return sector_dict
 
-    def calc_marketcap(self, stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
+    def calculate_marketcap(self, stock_price: pd.DataFrame, stock_fin: pd.DataFrame) -> pd.DataFrame:
         """各銘柄の日次時価総額を計算する。
 
         Args:
@@ -216,13 +203,13 @@ if __name__ == '__main__':
         sector_index_parquet=f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/TOPIX1000_price.parquet',
     )
     # セクターインデックスを計算し、セクター別の辞書を取得
-    sector_price_df, order_price_df = sic.calc_sector_index()
-    index_dict, order_dict = sic.get_sector_index_dict()
+    sector_price_df = sic.calculate_sector_index()
+    index_dict = sic.get_sector_index_dict()
     #print(sector_price_df.index.get_level_values('Sector').unique())
     print(sector_price_df)
 
-    marketcap_df = sic.calc_marketcap(stock_dfs['price'], stock_dfs['fin'])
-    sector_index = sic.calc_sector_index_by_dict(sector_stock_dict={'JPY+': ['2413', '3141', '4587', '1835', '4684'],
+    marketcap_df = sic.calculate_marketcap(stock_dfs['price'], stock_dfs['fin'])
+    sector_index = sic.calculate_sector_index_by_dict(sector_stock_dict={'JPY+': ['2413', '3141', '4587', '1835', '4684'],
                                                                  'JPY-': ['7283', '7296', '5988', '8015', '7278']},
                                                                  stock_price_data=marketcap_df)
     

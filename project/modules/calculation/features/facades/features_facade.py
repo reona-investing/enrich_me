@@ -126,7 +126,7 @@ class FeaturesFacade:
         """セクターデータの準備"""
         print("セクターデータを準備中...")
         sic = SectorIndex()
-        sector_df, _ = sic.calc_sector_index(
+        sector_df = sic.calculate_sector_index(
             stock_dfs_dict, sector_redefinitions_csv, sector_index_parquet
         )
         sector_list_df = pd.read_csv(sector_redefinitions_csv)

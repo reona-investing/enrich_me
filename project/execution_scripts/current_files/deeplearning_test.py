@@ -12,7 +12,7 @@ from datetime import datetime
 
 from utils.paths import Paths #パス一覧
 from acquisition.jquants_api_operations import run_jquants_api_operations
-from calculation import SectorIndex
+from calculation import SectorIndex, OrderPriceCalculator
 from models import MLDataset
 import asyncio
 
@@ -43,7 +43,9 @@ async def main(ML_DATASET_PATH:str, NEW_SECTOR_LIST_CSV:str, NEW_SECTOR_PRICE_PK
     stock_dfs_dict = {'list': list_df, 'fin': fin_df, 'price': price_df}
 
     sic = SectorIndex()
-    new_sector_price_df, order_price_df = sic.calc_sector_index(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+    new_sector_price_df = sic.calculate_sector_index(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
+    opc = OrderPriceCalculator()
+    order_price_df = opc.calculate_order_price(stock_dfs_dict['price'], stock_dfs_dict['fin'], sic._get_column_names)
 
     '''リターン予測→ml_datasetの作成'''
     import torch

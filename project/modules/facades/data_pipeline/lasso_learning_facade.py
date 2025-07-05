@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from calculation import SectorIndex, TargetCalculator, FeaturesCalculator
+from calculation import SectorIndex, OrderPriceCalculator, TargetCalculator, FeaturesCalculator
 #from machine_learning.ml_dataset.core import MLDataset
 from machine_learning.ml_dataset import MLDataset
 from machine_learning.models import LassoTrainer
@@ -73,7 +73,13 @@ class LassoLearningFacade:
 
     def _get_necessary_dfs(self):
         sic = SectorIndex(self.stock_dfs_dict, self.sector_redef_csv_path, self.sector_index_parquet_path)
-        new_sector_price_df, order_price_df = sic.calc_sector_index()
+        new_sector_price_df = sic.calculate_sector_index()
+        opc = OrderPriceCalculator()
+        order_price_df = opc.calculate_order_price(
+            self.stock_dfs_dict['price'],
+            self.stock_dfs_dict['fin'],
+            sic._get_column_names,
+        )
         raw_returns_df, target_df = TargetCalculator.daytime_return_PCAresiduals(
             new_sector_price_df,
             reduce_components=1,

@@ -133,7 +133,7 @@ if __name__ == '__main__':
     saf = StockAcquisitionFacade(filter="(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))")
     stock_dfs = saf.get_stock_data_dict()
     sic = SectorIndex()
-    sector_df, _ = sic.calc_sector_index(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
+    sector_df = sic.calculate_sector_index(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
     sector_list_df = pd.read_csv(SECTOR_REDEFINITIONS_CSV)
 
     i_features = IndexFeatures()

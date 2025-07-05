@@ -11,8 +11,11 @@ SECTOR_REDEFINITIONS_CSV = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-
 SECTOR_INDEX_PARQUET = f'{Paths.SECTOR_PRICE_FOLDER}/New48sectors_price.parquet'
 
 from calculation.sector_index.sector_index import SectorIndex
+from calculation.order_price_calculator import OrderPriceCalculator
 sic = SectorIndex(stock_dfs, SECTOR_REDEFINITIONS_CSV, SECTOR_INDEX_PARQUET)
-sector_df, order_price_df = sic.calc_sector_index()
+sector_df = sic.calculate_sector_index()
+opc = OrderPriceCalculator()
+order_price_df = opc.calculate_order_price(stock_dfs['price'], stock_dfs['fin'], sic._get_column_names)
 
 
 print(sector_df)

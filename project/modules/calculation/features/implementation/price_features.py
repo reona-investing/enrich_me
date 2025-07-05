@@ -142,7 +142,7 @@ class PriceFeatures(BaseFeatures):
 
         new_sector_list['Code'] = new_sector_list['Code'].astype(str)
         sic = SectorIndex()
-        stock_price_cap = sic.calc_marketcap(
+        stock_price_cap = sic.calculate_marketcap(
             stock_dfs_dict['price'], stock_dfs_dict['fin']
         )
         

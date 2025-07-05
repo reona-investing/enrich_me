@@ -3,6 +3,7 @@ from utils.paths import Paths
 import pandas as pd
 from typing import Literal, Optional
 from calculation.sector_index import SectorIndex
+from calculation.order_price_calculator import OrderPriceCalculator
 from preprocessing import PreprocessingPipeline
 
 class FeaturesCalculator:
@@ -265,7 +266,7 @@ class FeaturesCalculator:
         if adopt_size_factor:
             new_sector_list['Code'] = new_sector_list['Code'].astype(str)
             sector_index = SectorIndex(stock_dfs_dict, None, None)
-            stock_price_cap = sector_index.calc_marketcap(stock_dfs_dict['price'], stock_dfs_dict['fin'])
+            stock_price_cap = sector_index.calculate_marketcap(stock_dfs_dict['price'], stock_dfs_dict['fin'])
             stock_price_cap = stock_price_cap[stock_price_cap['Code'].isin(new_sector_list['Code'])]
             stock_price_cap = pd.merge(stock_price_cap, new_sector_list[['Code', 'Sector']], on='Code', how='left')
             stock_price_cap = stock_price_cap[['Date', 'Code', 'Sector', 'MarketCapClose']]
@@ -328,8 +329,9 @@ if __name__ == '__main__':
         "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=='TOPIX Large70')|(ScaleCategory=='TOPIX Mid400'))" #現行のTOPIX500
     stock_dfs_dict = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()
     sector_index = SectorIndex(stock_dfs_dict, NEW_SECTOR_LIST_CSV, NEW_SECTOR_PRICE_PKLGZ)
-    new_sector_price_df, order_price_df = \
-        sector_index.calc_sector_index()
+    new_sector_price_df = sector_index.calculate_sector_index()
+    opc = OrderPriceCalculator()
+    order_price_df = opc.calculate_order_price(stock_dfs_dict['price'], stock_dfs_dict['fin'], sector_index._get_column_names)
     
     new_sector_list = pd.read_csv(NEW_SECTOR_LIST_CSV)
 

@@ -1,6 +1,7 @@
 import pandas as pd
 from typing import Literal, Optional, Tuple
 from calculation.sector_index.sector_index import SectorIndex
+from calculation.order_price_calculator import OrderPriceCalculator
 from calculation.features_calculator import FeaturesCalculator
 from preprocessing.pipeline import PreprocessingPipeline
 
@@ -75,10 +76,16 @@ class CalculatorFacade:
         
         # 1. セクターインデックスの計算
         sic = SectorIndex()
-        new_sector_price, order_price_df = sic.calc_sector_index(
+        new_sector_price = sic.calculate_sector_index(
             stock_dfs_dict=stock_dfs,
             SECTOR_REDEFINITIONS_CSV=sector_redefinitions_csv,
             SECTOR_INDEX_PARQUET=sector_index_parquet
+        )
+        opc = OrderPriceCalculator()
+        order_price_df = opc.calculate_order_price(
+            stock_dfs['price'],
+            stock_dfs['fin'],
+            sic._get_column_names,
         )
         
         # 2. セクター定義の読み込み（特徴量計算用）
