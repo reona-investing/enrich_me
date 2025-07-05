@@ -5,23 +5,23 @@ import json
 import pickle
 import pandas as pd
 
-from machine_learning.ml_dataset.components import MLModel
+from machine_learning.ml_dataset.components import MLModelAsset
 from machine_learning.models import BaseTrainer
 
 
 @dataclass
 class MLAssetsMetadata:
-    """MLModelの管理方針に関する設定"""
+    """MLModelAssetの管理方針に関する設定"""
 
     is_model_divided: bool
 
 
 @dataclass
-class MLAssetsContainer:
-    """MLModelの管理を担当するクラス"""
+class MLModelAssetCollection:
+    """MLModelAssetの管理を担当するクラス"""
 
     metadata: MLAssetsMetadata = field(repr=False)
-    assets: Union[MLModel, List[MLModel]] = field(default_factory=list)
+    assets: Union[MLModelAsset, List[MLModelAsset]] = field(default_factory=list)
 
     def train_models(
         self,
@@ -72,8 +72,8 @@ class MLAssetsContainer:
             return pd.concat([target_test, predictions], axis=1).sort_index()
 
 
-class MLAssetsContainerStorage:
-    """MLAssetsContainerインスタンスのセーブ・ロードを司るクラス"""
+class MLModelAssetCollectionStorage:
+    """MLModelAssetCollectionインスタンスのセーブ・ロードを司るクラス"""
 
     _ML_ASSETS_FILE = "ml_assets.pkl"
     _ASSETS_METADATA_FILE = "assets_metadata.json"
@@ -91,8 +91,8 @@ class MLAssetsContainerStorage:
             "metadata_old": self.base_path / self._OLD_METADATA_FILE,
         }
 
-    def load(self) -> MLAssetsContainer:
-        """外部ファイルをロードしてMLAssetsContainerを作成します。旧形式のmetadataにも対応します。"""
+    def load(self) -> MLModelAssetCollection:
+        """外部ファイルをロードしてMLModelAssetCollectionを作成します。旧形式のmetadataにも対応します。"""
         with self.path["ml_assets"].open("rb") as f:
             assets = pickle.load(f)
 
@@ -105,13 +105,13 @@ class MLAssetsContainerStorage:
 
         metadata = MLAssetsMetadata(**metadata_dict)
 
-        return MLAssetsContainer(
+        return MLModelAssetCollection(
             assets=assets,
             metadata=metadata,
         )
 
-    def save(self, ml_assets_container: MLAssetsContainer) -> None:
-        """MLAssetsContainerを外部ファイルに出力します。"""
+    def save(self, ml_assets_container: MLModelAssetCollection) -> None:
+        """MLModelAssetCollectionを外部ファイルに出力します。"""
         if ml_assets_container.assets is not None:
             tmp_path = self.path["ml_assets"].with_suffix(self.path["ml_assets"].suffix + ".tmp")
             with tmp_path.open("wb") as f:

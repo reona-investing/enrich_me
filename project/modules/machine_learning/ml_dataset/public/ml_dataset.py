@@ -3,15 +3,15 @@ from pathlib import Path
 from typing import Optional, Union, List
 import pandas as pd
 
-from machine_learning.ml_dataset.components import MLModel, TrainTestData
+from machine_learning.ml_dataset.components import MLModelAsset, TrainTestData
 from machine_learning.models import BaseTrainer
 
 from machine_learning.ml_dataset.resources import MLResource, MLResourceMetadata, MLResourceStorage
 from machine_learning.ml_dataset.outputs import MLOutputCollection, MLOutputCollectionStorage
 from machine_learning.ml_dataset.models import (
-    MLAssetsContainer,
+    MLModelAssetCollection,
     MLAssetsMetadata,
-    MLAssetsContainerStorage,
+    MLModelAssetCollectionStorage,
 )
 from utils.timeseries import Duration
 
@@ -23,7 +23,7 @@ class MLDataset:
     dataset_path: Path | str
     resource_data: MLResource = field(repr=False)
     output_collection: MLOutputCollection = field(repr=False)
-    ml_assets_container: MLAssetsContainer = field(repr=False)
+    ml_assets_container: MLModelAssetCollection = field(repr=False)
 
     def __post_init__(self):
         self.dataset_path = Path(self.dataset_path)
@@ -80,7 +80,7 @@ class MLDataset:
         return self.resource_data.metadata.no_shift_features
 
     @property
-    def ml_assets(self) -> Union[MLModel, List[MLModel]]:
+    def ml_assets(self) -> Union[MLModelAsset, List[MLModelAsset]]:
         return self.ml_assets_container.assets
 
     # ---------------------------------------------------------------------
@@ -105,7 +105,7 @@ class MLDataset:
         date_column: str,
         sector_column: str,
         is_model_divided: bool,
-        ml_assets: Union[MLModel, List[MLModel]],
+        ml_assets: Union[MLModelAsset, List[MLModelAsset]],
         outlier_threshold: int | float,
         no_shift_features: List[str],
         save: bool = True,
@@ -136,7 +136,7 @@ class MLDataset:
             is_model_divided=is_model_divided,
         )
 
-        ml_assets_container = MLAssetsContainer(
+        ml_assets_container = MLModelAssetCollection(
             assets=ml_assets,
             metadata=assets_metadata,
         )
@@ -246,7 +246,7 @@ class MLDatasetStorage:
         self.base_path.mkdir(parents=True, exist_ok=True)
         self.resource_storage = MLResourceStorage(self.base_path)
         self.output_storage = MLOutputCollectionStorage(self.base_path)
-        self.assets_storage = MLAssetsContainerStorage(self.base_path)
+        self.assets_storage = MLModelAssetCollectionStorage(self.base_path)
 
     def load(self) -> MLDataset:
         """外部ファイルをロードしてMLDatasetを作成します。"""

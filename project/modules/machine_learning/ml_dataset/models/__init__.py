@@ -1,1 +1,6 @@
-from .ml_assets_container import MLAssetsContainer, MLAssetsContainerStorage, MLAssetsMetadata
+from .ml_assets_container import (
+    MLModelAssetCollection,
+    MLModelAssetCollectionStorage,
+    MLAssetsMetadata,
+)
+
