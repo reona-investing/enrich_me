@@ -60,7 +60,6 @@ class MLResourceStorage:
     _TARGET_FILE = "target_df.parquet"
     _FEATURE_FILE = "features_df.parquet"
     _METADATA_FILE = "resource_metadata.json"
-    _OLD_METADATA_FILE = "metadata.json"
 
     def __init__(self, base_path: str | Path):
         self.base_path = Path(base_path)
@@ -72,14 +71,11 @@ class MLResourceStorage:
             "target_df": self.base_path / self._TARGET_FILE,
             "features_df": self.base_path / self._FEATURE_FILE,
             "metadata": self.base_path / self._METADATA_FILE,
-            "metadata_old": self.base_path / self._OLD_METADATA_FILE,
         }
 
     def load(self) -> MLResource:
         """外部ファイルをロードしてMLResourceを作成します。旧形式のmetadataにも対応します。"""
         metadata_path = self.path["metadata"]
-        if not metadata_path.exists() and self.path["metadata_old"].exists():
-            metadata_path = self.path["metadata_old"]
         with metadata_path.open(encoding="utf-8") as f:
             metadata_dict = json.load(f)
 

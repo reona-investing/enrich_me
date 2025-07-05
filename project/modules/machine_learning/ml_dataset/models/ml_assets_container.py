@@ -77,7 +77,6 @@ class MLModelAssetCollectionStorage:
 
     _ML_ASSETS_FILE = "ml_assets.pkl"
     _ASSETS_METADATA_FILE = "assets_metadata.json"
-    _OLD_METADATA_FILE = "metadata.json"
 
     def __init__(self, base_path: str | Path):
         self.base_path = Path(base_path)
@@ -88,7 +87,6 @@ class MLModelAssetCollectionStorage:
         return {
             "ml_assets": self.base_path / self._ML_ASSETS_FILE,
             "metadata": self.base_path / self._ASSETS_METADATA_FILE,
-            "metadata_old": self.base_path / self._OLD_METADATA_FILE,
         }
 
     def load(self) -> MLModelAssetCollection:
@@ -97,8 +95,6 @@ class MLModelAssetCollectionStorage:
             assets = pickle.load(f)
 
         metadata_path = self.path["metadata"]
-        if not metadata_path.exists() and self.path["metadata_old"].exists():
-            metadata_path = self.path["metadata_old"]
 
         with metadata_path.open(encoding="utf-8") as f:
             metadata_dict = json.load(f)

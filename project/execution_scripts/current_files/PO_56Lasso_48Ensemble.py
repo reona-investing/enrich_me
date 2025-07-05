@@ -56,7 +56,6 @@ async def main() -> None:
     try:
         modes = ModeForStrategy.generate_mode()
 
-
         # 1. データ更新
         data_facade = DataUpdateFacade(
             mode=modes.data_update_mode,
