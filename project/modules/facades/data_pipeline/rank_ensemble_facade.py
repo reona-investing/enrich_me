@@ -14,7 +14,8 @@ class RankEnsembleFacade:
 
     def execute(self) -> MLDataset | None:
         if self.mode == "train_and_predict" or self.mode == "predict_only":
-            pred_result_df = self.ensemble_method.ensemble(self.inputs)
+            pred_result_df = self.main_ml_dataset.pred_result_df.groupby('Date')[['Target']].rank(ascending=False)
+            pred_result_df['Pred'] = self.ensemble_method.ensemble(self.inputs)
             self.main_ml_dataset.output_collection.pred_result_df = pred_result_df
             self.main_ml_dataset.dataset_path = self.ensemble_dataset_path
             self.main_ml_dataset.save()

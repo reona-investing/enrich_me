@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import pandas as pd
-from models.machine_learning.loaders import DatasetLoader
+from machine_learning.ml_dataset import MLDataset
 
 class ReturnDataFrameBuilder:
     """Datasetからリターン計算用DataFrameを構築するクラス"""
@@ -14,9 +14,9 @@ class ReturnDataFrameBuilder:
 
     def build(self) -> pd.DataFrame:
         """予測値と生の目的変数を結合し期間で抽出したDataFrameを返す"""
-        loader = DatasetLoader(dataset_root=self.dataset_root)
-        pred_df = loader.load_pred_results()
-        raw_df = loader.load_raw_targets()
+        ml_dataset = MLDataset.from_files(dataset_path=self.dataset_root)
+        pred_df = ml_dataset.pred_result_df
+        raw_df = ml_dataset.raw_returns_df
         df = pd.merge(raw_df, pred_df[["Pred"]], how="right", left_index=True, right_index=True)
         df = df[(df.index.get_level_values("Date") >= self.start_date) &
                 (df.index.get_level_values("Date") <= self.end_date)]

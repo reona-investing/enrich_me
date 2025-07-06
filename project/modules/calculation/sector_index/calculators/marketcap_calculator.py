@@ -42,7 +42,6 @@ class MarketCapCalculator:
     @staticmethod
     def _find_next_business_day(date: pd.Timestamp, business_days: np.ndarray) -> pd.Timestamp:
         """与えられた日付以降で最初の営業日を返す。"""
-
         if pd.isna(date):
             return date
         while date not in business_days:

@@ -1,5 +1,4 @@
 import pandas as pd
-from utils.paths import Paths
 from typing import Literal
 from datetime import datetime
 import numpy as np
@@ -8,22 +7,8 @@ from machine_learning.evaluation import calculate_stats
 import ipywidgets as widgets
 from IPython.display import display
 
-class DatetimeManager:
-    def __init__(self, start_date: datetime, end_date: datetime):
-        '''
-        対象日を管理するサブモジュール
-        Args:
-            start_date (datetime): 評価開始日
-            end_date (datetim): 評価終了日
-        '''
-        self.start_date = start_date
-        self.end_date = end_date
-        pass
-    def extract_duration(self, df: pd.DataFrame):
-        '''
-        指定した日付のデータを抽出する。
-        '''
-        return df.loc[(self.start_date <= df.index.get_level_values('Date')) & (df.index.get_level_values('Date') <= self.end_date)]
+from utils.paths import Paths
+from utils.timeseries import Duration
 
 
 class LSControlHandler:
@@ -70,10 +55,10 @@ class LSDataHandler:
                  end_day: datetime = datetime.today(),
                  ls_control: LSControlHandler = LSControlHandler(),
                  ):
-        self.datetime_manager = DatetimeManager(start_day, end_day)
-        pred_result_df = self.datetime_manager.extract_duration(pred_result_df)
-        raw_target_df = self.datetime_manager.extract_duration(raw_target_df)
-        self.control_df = self.datetime_manager.extract_duration(ls_control.control_df)
+        self.duration = Duration(start=start_day, end=end_day)
+        pred_result_df = self.duration.extract_from_df(pred_result_df, 'Date')
+        raw_target_df = self.duration.extract_from_df(raw_target_df, 'Date')
+        self.control_df = self.duration.extract_from_df(ls_control.control_df, 'Date')
         self.control_type = ls_control.control_type
         self.original_column_names = pred_result_df.columns
         pred_result_df = self._append_rank_cols(pred_result_df)
@@ -139,7 +124,7 @@ class MetricsCalculator:
         for column in self.original_column_names:
             df[f'{column}_Bin'] = \
               df.groupby('Date')[f'{column}_Rank'].transform(lambda x: pd.qcut(x, q=self.quantile_bin_count, labels=False))
-        self.metrics_dfs['分位成績'] = df.groupby(['Date', 'Pred_Bin'])[['Target']].mean().unstack(-1)
+        self.metrics_dfs['分位成績'] = df.groupby(['Date', 'Pred_Bin'])[['RawTarget']].mean().unstack(-1)
         self.metrics_dfs['分位成績（集計）'] = self.metrics_dfs['分位成績'].stack(future_stack=True).groupby('Pred_Bin').describe().T
 
 
@@ -148,16 +133,16 @@ class MetricsCalculator:
         df = self.result_df.copy()
         short_positions = - df.loc[df['Pred_Rank'] <= self.sectors_to_trade_count]
         if self.sectors_to_trade_count > 1:
-            short_positions.loc[short_positions['Pred_Rank'] == short_positions['Pred_Rank'].min(), 'Target'] *= self.top_sector_weight
-            short_positions.loc[short_positions['Pred_Rank'] != short_positions['Pred_Rank'].min(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
-        short_positions_return = short_positions.groupby('Date')[['Target']].mean()
-        short_positions_return = short_positions_return.rename(columns={'Target':'Short'})
+            short_positions.loc[short_positions['Pred_Rank'] == short_positions['Pred_Rank'].min(), 'RawTarget'] *= self.top_sector_weight
+            short_positions.loc[short_positions['Pred_Rank'] != short_positions['Pred_Rank'].min(), 'RawTarget'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
+        short_positions_return = short_positions.groupby('Date')[['RawTarget']].mean()
+        short_positions_return = short_positions_return.rename(columns={'RawTarget':'Short'})
         long_positions = df.loc[df['Pred_Rank'] > max(df['Pred_Rank']) - self.sectors_to_trade_count]
         if self.sectors_to_trade_count > 1:
-            long_positions.loc[long_positions['Pred_Rank'] == long_positions['Pred_Rank'].max(), 'Target'] *= self.top_sector_weight
-            long_positions.loc[long_positions['Pred_Rank'] != long_positions['Pred_Rank'].max(), 'Target'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
-        long_positions_return = long_positions.groupby('Date')[['Target']].mean()
-        long_positions_return = long_positions_return.rename(columns={'Target':'Long'})
+            long_positions.loc[long_positions['Pred_Rank'] == long_positions['Pred_Rank'].max(), 'RawTarget'] *= self.top_sector_weight
+            long_positions.loc[long_positions['Pred_Rank'] != long_positions['Pred_Rank'].max(), 'RawTarget'] *= (1 - (self.top_sector_weight - 1) / (self.sectors_to_trade_count - 1))
+        long_positions_return = long_positions.groupby('Date')[['RawTarget']].mean()
+        long_positions_return = long_positions_return.rename(columns={'RawTarget':'Long'})
         performance_df = pd.concat([long_positions_return, short_positions_return], axis=1)
         performance_df['LS'] = (performance_df['Long'] + performance_df['Short']) / 2
 
@@ -247,17 +232,17 @@ class MetricsCalculator:
         short_sectors = self.short_sectors.copy()
         long_sectors = long_sectors.loc[long_sectors.index.get_level_values('Date') != long_sectors.index.get_level_values('Date')[-1]]
         short_sectors = short_sectors.loc[short_sectors.index.get_level_values('Date') != short_sectors.index.get_level_values('Date')[-1]]
-        long_sectors['Target'] += 1
-        short_sectors['Target'] -= 1
-        short_sectors['Target'] = short_sectors['Target'].abs()
+        long_sectors['RawTarget'] += 1
+        short_sectors['RawTarget'] -= 1
+        short_sectors['RawTarget'] = short_sectors['RawTarget'].abs()
         long_grouped  = long_sectors.groupby([pd.Grouper(level='Date', freq='ME'), 'Sector'])
         short_grouped = short_sectors.groupby([pd.Grouper(level='Date', freq='ME'), 'Sector'])
         # ①月ごとのデータの件数
         long_count = pd.DataFrame(long_grouped.size(), columns=['Long_Num'])
         short_count = pd.DataFrame(short_grouped.size(), columns=['Short_Num'])
         # ②月ごとの'Target'列のすべての値の積
-        long_return = long_grouped[['Target']].apply(np.prod)
-        short_return = short_grouped[['Target']].apply(np.prod)
+        long_return = long_grouped[['RawTarget']].apply(np.prod)
+        short_return = short_grouped[['RawTarget']].apply(np.prod)
 
         long_monthly = pd.concat([long_count, long_return], axis=1)
         short_monthly = pd.concat([short_count, short_return], axis=1)
@@ -388,7 +373,7 @@ class Visualizer:
 
 #%% デバッグ
 if __name__ == '__main__':
-    from models import MLDataset
+    from machine_learning.ml_dataset import MLDataset
     ML_DATASET_PATH = f'{Paths.ML_DATASETS_FOLDER}/48sectors_Ensembled_learned_in_250308'
     ml_dataset = MLDataset(ML_DATASET_PATH)
     ls_control_handler = LSControlHandler()
