@@ -38,7 +38,7 @@ class OneStopStockSelector:
         """
         # デフォルト値の設定
         if sector_definitions_path is None:
-            sector_definitions_path = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/48sectors_2024-2025.csv'
+            raise ValueError(f'引数"sector_definitions_path"が設定されていません。')
         
         # SBI関連のマネージャー
         self.browser_manager = browser_manager

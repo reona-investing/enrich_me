@@ -52,7 +52,7 @@ class UnitCalculator:
                     UpperLimitCost=float(row['UpperLimitCost']),
                     UpperLimitTotal=float(row['UpperLimitTotal']),
                     Direction=direction,
-                    isBorrowingStock=bool(row.get('isBorrowingStock', False))
+                    isBorrowingStock=bool(row.get('isBorrowingStock', True)) #買建（非貸借銘柄でも一般信用可）の場合、強制True
                 )
             )
         

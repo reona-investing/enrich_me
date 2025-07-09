@@ -15,4 +15,5 @@ class SectorProvider(ISectorProvider):
         """セクター定義情報を取得"""
         df = pd.read_csv(self.sector_definitions_csv)
         df['Code'] = df['Code'].astype(str)
+        df = df[df['Current']==1] #TODO ここの動作確認が必要
         return df

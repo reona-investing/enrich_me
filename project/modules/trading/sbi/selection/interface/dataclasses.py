@@ -31,4 +31,4 @@ class OrderUnit:
     UpperLimitCost: float
     UpperLimitTotal: float
     Direction: Literal['Long', 'Short']
-    isBorrowingStock: bool = False
+    isBorrowingStock: bool = True
