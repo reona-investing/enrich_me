@@ -1,5 +1,9 @@
 import pandas as pd
+from typing import Union, Optional
+from datetime import datetime
 from timeseries_data.calculation_method import CalculationMethodBase
+from timeseries_data.preprocessing import PreprocessingPipeline
+from utils.timeseries import Duration
 
 
 class StockReturnTimeseries:
@@ -26,27 +30,30 @@ class StockReturnTimeseries:
         """
         original_index = self._original_timeseries.index.names
 
-        original_timeseries = self._original_timeseries.copy()#.reset_index(drop=False)
+        original_timeseries = self._original_timeseries.copy()
         self._raw_return = \
             original_timeseries.groupby(self._sector_column, group_keys=False).apply(
                 lambda group: method.calculate(group),
                 ).reset_index(drop=False).set_index(original_index)
         
-
         self._processed_return = self._raw_return.copy() # processed_returnは初期状態ではraw_returnと同じ
     
-    def preprocess(self, pipeline):
+    def preprocess(self, pipeline: PreprocessingPipeline):
         """
         前処理パイプラインを実行します。
         
         Args:
-            pipeline (list): 前処理クラスのインスタンスのリスト
+            pipeline: PreprocessingPipelineのインスタンス
         """
         if self._processed_return is None:
             raise ValueError("calculate()メソッドを先に実行してください。")
+        if not isinstance(pipeline, PreprocessingPipeline):
+            raise ValueError("pipelineにはPreprocessingPipelineインスタンスを指定してください。")
         
-        for processor in pipeline:
-            self._processed_return = processor.calculate(self._processed_return)
+        pipeline.fit(self._processed_return) 
+
+        self._processed_return = pipeline.transform(self._processed_return)
+    
     
     @property
     def raw_return(self) -> pd.DataFrame:
