@@ -3,10 +3,16 @@ from timeseries_data.calculation_method import CalculationMethodBase
 
 
 class StockReturnTimeseries:
-    def __init__(self, original_timeseries: pd.DataFrame, date_column: str = 'Date', sector_column: str = 'Sector'):
-        self.original_timeseries = original_timeseries.copy()
-        self.date_column = date_column
-        self.sector_column = sector_column
+    def __init__(self, original_timeseries: pd.DataFrame, 
+                 date_column: str = 'Date', sector_column: str = 'Sector',
+                 open_column: str = 'Open', close_column: str = 'Close',
+                 target_column: str = 'Target'):
+        self._original_timeseries = original_timeseries.copy()
+        self._date_column = date_column
+        self._sector_column = sector_column
+        self._open_column = open_column
+        self._close_column = close_column
+        self._target_column = target_column
         self._raw_return = None
         self._processed_return = None
 
@@ -18,12 +24,15 @@ class StockReturnTimeseries:
             method: 計算メソッドのインスタンス
             *args, **kwargs: calculateメソッドに渡す追加引数
         """
-        original_index = self.original_timeseries.index.names
-        original_timeseries = self.original_timeseries.reset_index(drop=False)
+        original_index = self._original_timeseries.index.names
+
+        original_timeseries = self._original_timeseries.copy()#.reset_index(drop=False)
         self._raw_return = \
-            original_timeseries.groupby(self.sector_column).apply(
-                lambda group: method.calculate(group, *args, **kwargs)
-                ).reset_index(drop=True).set_index(original_index)
+            original_timeseries.groupby(self._sector_column, group_keys=False).apply(
+                lambda group: method.calculate(group),
+                ).reset_index(drop=False).set_index(original_index)
+        
+
         self._processed_return = self._raw_return.copy() # processed_returnは初期状態ではraw_returnと同じ
     
     def preprocess(self, pipeline):

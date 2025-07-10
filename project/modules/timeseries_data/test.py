@@ -11,18 +11,12 @@ universe_filter = "(Listing==1)&((ScaleCategory=='TOPIX Core30')|(ScaleCategory=
 sector_redef_path = f"{Paths.SECTOR_REDEFINITIONS_FOLDER}/56sectors_2024-2025.csv"
 sector_index_path = f"test.parquet"
 
-print('a')
-
 stock_dfs = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()
-
-print(len(stock_dfs))
 
 sector_index, _ = SectorIndex(stock_dfs, sector_redef_path, sector_index_path).calc_sector_index()
 
-print(sector_index)
-
 return_timeseries = StockReturnTimeseries(original_timeseries = sector_index, date_column = 'Date', sector_column = 'Sector')
-return_timeseries.calculate(method=IntradayReturn(), open_column = 'Open', close_column = 'Close')
+return_timeseries.calculate(method=IntradayReturn())
 
 #remove_pc1 = RemovingPC(components=1)
 #return_timeseries.preprocess(pipeline = [remove_pc1])
