@@ -19,8 +19,9 @@ class StockReturnTimeseries:
             *args, **kwargs: calculateメソッドに渡す追加引数
         """
         original_index = self.original_timeseries.index.names
+        original_timeseries = self.original_timeseries.reset_index(drop=False)
         self._raw_return = \
-            self.original_timeseries.groupby(self.sector_column).apply(
+            original_timeseries.groupby(self.sector_column).apply(
                 lambda group: method.calculate(group, *args, **kwargs)
                 ).reset_index(drop=True).set_index(original_index)
         self._processed_return = self._raw_return.copy() # processed_returnは初期状態ではraw_returnと同じ
