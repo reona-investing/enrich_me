@@ -6,7 +6,6 @@ import os
 from datetime import datetime
 
 from calculation import SectorIndex, TargetCalculator, FeaturesCalculator
-#from machine_learning.ml_dataset.core import MLDataset
 from machine_learning.ml_dataset import MLDataset
 from machine_learning.models import LassoTrainer
 from utils.notifier import SlackNotifier
@@ -79,8 +78,6 @@ class LassoLearningFacade:
             reduce_components=1,
             train_duration=self.train_duration,
         )
-        print(raw_returns_df)
-        print(target_df)
         self.target_df = target_df
         self.raw_returns_df = raw_returns_df
         self.order_price_df = order_price_df
