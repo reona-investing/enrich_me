@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import Optional, Union, List
+from utils.timeseries import Duration
 from sklearn.preprocessing import StandardScaler
 
 from .base_preprocessor import BasePreprocessor
@@ -23,11 +24,9 @@ class Standardizer(BasePreprocessor):
         標準化対象の列名。Noneの場合は全ての数値列を対象
     copy : bool, default=True
         データをコピーするかどうか
-    fit_start : str, pd.Timestamp, or None, default=None
-        fitに使用する開始日時
-    fit_end : str, pd.Timestamp, or None, default=None
-        fitに使用する終了日時
-    time_column : str or None, default='Date'
+    fit_duration : Duration or None, default=None
+        fitに使用する期間
+    time_column : str
         時間列の名前
         
     Attributes
@@ -44,26 +43,33 @@ class Standardizer(BasePreprocessor):
         fit期間の分散
     """
     
-    def __init__(self, 
+    def __init__(self,
+                 *,
                  with_mean: bool = True,
                  with_std: bool = True,
                  target_columns: Optional[List[str]] = None,
                  copy: bool = True,
-                 fit_start: Union[str, pd.Timestamp, None] = None,
-                 fit_end: Union[str, pd.Timestamp, None] = None,
-                 time_column: Optional[str] = 'Date'):
-        super().__init__(copy=copy, fit_start=fit_start, fit_end=fit_end, time_column=time_column)
+                 fit_duration: Optional[Duration] = None,
+                 time_column: str):
+        super().__init__(copy=copy, fit_duration=fit_duration, time_column=time_column)
         self.with_mean = with_mean
         self.with_std = with_std
         self.target_columns = target_columns
     
-    def fit(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[any] = None) -> 'Standardizer':
+    def fit(self, X: pd.DataFrame, y: Optional[any] = None) -> 'Standardizer':
         """標準化のパラメータを学習（指定期間のデータを使用）"""
         # 基本検証
         self._validate_input(X)
         
         # 指定期間でデータをフィルタリング
-        X_fit = self._filter_data_by_time(X, self.fit_start, self.fit_end)
+        if self.fit_duration is not None:
+            X_fit = self.fit_duration.extract_from_df(X, self.time_column)
+            if X_fit.empty:
+                raise ValueError(
+                    f"指定された期間({self.fit_duration.start}～{self.fit_duration.end})のデータが存在しません。"
+                )
+        else:
+            X_fit = X
 
         # 共通メタデータを保存（元のデータで）
         self._store_fit_metadata(X)

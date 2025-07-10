@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import Optional, List, Union
+from utils.timeseries import Duration
 import warnings
 
 from preprocessing.methods import PCAHandler
@@ -20,10 +21,8 @@ class PCAforMultiSectorTarget:
     ----------
     n_components : int
         抽出する主成分の数
-    fit_start : datetime, str, or None, optional
-        学習期間の開始日。Noneの場合は全期間を使用
-    fit_end : datetime, str, or None, optional
-        学習期間の終了日。Noneの場合は全期間を使用
+    fit_duration : Duration or None, optional
+        学習期間を表すDuration。Noneの場合は全期間を使用
     target_column : str, default='Target'
         対象となる列名
     mode : str, default='residuals'
@@ -38,8 +37,7 @@ class PCAforMultiSectorTarget:
     
     def __init__(self, 
                  n_components: int,
-                 fit_start: Union[datetime, str, None] = None,
-                 fit_end: Union[datetime, str, None] = None,
+                 fit_duration: Optional[Duration] = None,
                  target_column: str = 'Target',
                  mode: str = 'residuals',
                  copy: bool = True,
@@ -55,20 +53,19 @@ class PCAforMultiSectorTarget:
             mode=mode,
             copy=copy,
             random_state=random_state,
-            fit_start=fit_start,
-            fit_end=fit_end,
-            time_column='Date'  # インデックスを時間として使用
+            fit_duration=fit_duration,
+            time_column='Date'
         )
         
         # 内部状態管理
         self._original_sectors = None
         
         # パラメータ検証
-        if fit_start is not None and fit_end is not None:
-            start_dt = pd.to_datetime(fit_start)
-            end_dt = pd.to_datetime(fit_end)
+        if fit_duration is not None:
+            start_dt = pd.to_datetime(fit_duration.start)
+            end_dt = pd.to_datetime(fit_duration.end)
             if start_dt > end_dt:
-                raise ValueError("fit_start must be earlier than fit_end")
+                raise ValueError("fit_duration.start は fit_duration.end よりも前でなければなりません")
     
     def apply_pca(self, X: pd.DataFrame) -> pd.DataFrame:
         """
@@ -211,12 +208,16 @@ class PCAforMultiSectorTarget:
     @property
     def fit_start(self) -> Union[str, pd.Timestamp, None]:
         """fit開始日を取得"""
-        return self.pca_handler.fit_start
+        if self.pca_handler.fit_duration is None:
+            return None
+        return self.pca_handler.fit_duration.start
     
     @property
     def fit_end(self) -> Union[str, pd.Timestamp, None]:
         """fit終了日を取得"""
-        return self.pca_handler.fit_end
+        if self.pca_handler.fit_duration is None:
+            return None
+        return self.pca_handler.fit_duration.end
     
     # 新機能：PCAHandlerを直接操作したい場合のアクセサ
     @property
@@ -279,8 +280,7 @@ def test_pca_facade():
     # PCAファサードを初期化（2020-2022年でfit）
     pca_facade = PCAforMultiSectorTarget(
         n_components=3,
-        fit_start='2020-01-01',
-        fit_end='2022-12-31',
+        fit_duration=Duration(start='2020-01-01', end='2022-12-31'),
         mode='residuals',
         random_state=42
     )

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import Optional, Union
+from utils.timeseries import Duration
 from sklearn.decomposition import PCA
 
 from .base_preprocessor import BasePreprocessor
@@ -26,23 +27,21 @@ class PCAHandler(BasePreprocessor):
         データをコピーするかどうか
     random_state : int, optional
         乱数シード
-    fit_start : str, pd.Timestamp, or None, default=None
-        fitに使用する開始日時
-    fit_end : str, pd.Timestamp, or None, default=None
-        fitに使用する終了日時
-    time_column : str or None, default='Date'
+    fit_duration : Duration or None, default=None
+        fitに使用する期間
+    time_column : str
         時間列の名前
     """
     
-    def __init__(self, 
+    def __init__(self,
+                 *,
                  n_components: int,
                  mode: str = 'components',
                  copy: bool = True,
                  random_state: Optional[int] = None,
-                 fit_start: Union[str, pd.Timestamp, None] = None,
-                 fit_end: Union[str, pd.Timestamp, None] = None,
-                 time_column: Optional[str] = 'Date'):
-        super().__init__(copy=copy, fit_start=fit_start, fit_end=fit_end, time_column=time_column)
+                 fit_duration: Optional[Duration] = None,
+                 time_column: str):
+        super().__init__(copy=copy, fit_duration=fit_duration, time_column=time_column)
         self.n_components = n_components
         self.mode = mode
         self.random_state = random_state
@@ -55,13 +54,20 @@ class PCAHandler(BasePreprocessor):
         if self.mode not in ['components', 'residuals', 'transform']:
             raise ValueError("mode must be 'components', 'residuals', or 'transform'")
     
-    def fit(self, X: Union[np.ndarray, pd.DataFrame], y: Optional[any] = None) -> 'PCAHandler':
+    def fit(self, X: pd.DataFrame, y: Optional[any] = None) -> 'PCAHandler':
         """PCAのパラメータを学習（指定期間のデータを使用）"""
         # 基本検証
         self._validate_input(X)
         
         # 指定期間でデータをフィルタリング
-        X_fit = self._filter_data_by_time(X, self.fit_start, self.fit_end)
+        if self.fit_duration is not None:
+            X_fit = self.fit_duration.extract_from_df(X, self.time_column)
+            if X_fit.empty:
+                raise ValueError(
+                    f"指定された期間({self.fit_duration.start}～{self.fit_duration.end})のデータが存在しません。"
+                )
+        else:
+            X_fit = X
         
         # 共通メタデータを保存（元のデータで）
         self._store_fit_metadata(X)

@@ -1,6 +1,7 @@
 from datetime import datetime
 import pandas as pd
 from calculation.target.pca_for_sector_target import PCAforMultiSectorTarget
+from utils.timeseries import Duration
 
 class TargetCalculator:
     @staticmethod
@@ -19,15 +20,17 @@ class TargetCalculator:
     @staticmethod
     def daytime_return_PCAresiduals(df: pd.DataFrame,
                                      reduce_components: int,
-                                     train_start_day: datetime,
-                                     train_end_day: datetime) -> tuple[pd.DataFrame, pd.DataFrame]:
+                                     train_duration: Duration) -> tuple[pd.DataFrame, pd.DataFrame]:
         '''
         PCAで主成分を除去した日中リターンの残差を算出。
         Returns:
             tuple[pd.DataFrame, pd.DataFrame]: 生の日中リターン, PCA残差リターン
         '''
         raw_target_df = TargetCalculator.daytime_return(df)
-        pca_handler = PCAforMultiSectorTarget(n_components=reduce_components, fit_start=train_start_day, fit_end=train_end_day)
+        pca_handler = PCAforMultiSectorTarget(
+            n_components=reduce_components,
+            fit_duration=train_duration
+        )
         target_df = pca_handler.apply_pca(raw_target_df)
         return raw_target_df, target_df
 
@@ -38,5 +41,6 @@ if __name__ == '__main__':
     NEW_SECTOR_PRICE_PKLGZ = f'{Paths.SECTOR_REDEFINITIONS_FOLDER}/sector_price/New48sectors_price.parquet'
     df = pd.read_parquet(NEW_SECTOR_PRICE_PKLGZ)
     df = df.set_index(['Date', 'Sector'], drop=True)
-    raw_target_df, target_df = TargetCalculator.daytime_return_PCAresiduals(df, 1, datetime(2014,1,1), datetime(2021,12,31))
+    duration = Duration(start=datetime(2014,1,1), end=datetime(2021,12,31))
+    raw_target_df, target_df = TargetCalculator.daytime_return_PCAresiduals(df, 1, duration)
     print(target_df.tail(5))

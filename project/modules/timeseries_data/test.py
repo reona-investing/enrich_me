@@ -28,8 +28,8 @@ return_timeseries.calculate(method=DailyReturn())
 print(return_timeseries.raw_return)
 
 
-ppp = PreprocessingPipeline(steps = [
-    PCAHandler(n_components=1, mode='residuals', fit_start=train_duration.start, fit_end=train_duration.end)
+ppp = PreprocessingPipeline(steps=[
+    PCAHandler(n_components=1, mode='residuals', fit_duration=train_duration, time_column='Date')
     ])
 return_timeseries.preprocess(pipeline = ppp)
 
