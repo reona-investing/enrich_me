@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, Union, Any
 from preprocessing.methods.base_preprocessor import BasePreprocessor
+from utils.timeseries import Duration
 
 
 class YourPreprocessorName(BasePreprocessor):
@@ -17,26 +18,33 @@ class YourPreprocessorName(BasePreprocessor):
     """
 
     def __init__(self,
+                 *,
                  copy: bool = True,
-                 fit_start: Union[str, pd.Timestamp, None] = None,
-                 fit_end: Union[str, pd.Timestamp, None] = None,
-                 time_column: Optional[str] = 'Date'):
-        super().__init__(copy=copy, fit_start=fit_start, fit_end=fit_end, time_column=time_column)
+                 fit_duration: Optional[Duration] = None,
+                 time_column: str):
+        super().__init__(copy=copy, fit_duration=fit_duration, time_column=time_column)
         
         # 独自パラメータをここに定義
         # self.example_param = example_param
 
-    def fit(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[Any] = None) -> 'YourPreprocessorName':
+    def fit(self, X: pd.DataFrame, y: Optional[Any] = None) -> 'YourPreprocessorName':
         """
         fit処理：指定期間のデータでパラメータを学習
         [必須呼び出し]
             - self._validate_input(X)
-            - self._filter_data_by_time(X, self.fit_start, self.fit_end)
+            - self.fit_duration.extract_from_df(X, self.time_column)
             - self._store_fit_metadata(X)
             - self._mark_as_fitted(...)  # 必ず最後に
         """
         self._validate_input(X)
-        X_fit = self._filter_data_by_time(X, self.fit_start, self.fit_end)
+        if self.fit_duration is not None:
+            X_fit = self.fit_duration.extract_from_df(X, self.time_column)
+            if X_fit.empty:
+                raise ValueError(
+                    f"指定された期間({self.fit_duration.start}～{self.fit_duration.end})のデータが存在しません。"
+                )
+        else:
+            X_fit = X
         self._store_fit_metadata(X)
 
         # ここにfit用処理を書く

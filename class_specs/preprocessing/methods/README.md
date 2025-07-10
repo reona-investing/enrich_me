@@ -13,29 +13,12 @@ Parameters
 ----------
 copy : bool, default=True
     データをコピーするかどうか
-fit_start : str, pd.Timestamp, or None, default=None
-    fitに使用する開始日時。Noneの場合は全期間を使用
-fit_end : str, pd.Timestamp, or None, default=None
-    fitに使用する終了日時。Noneの場合は全期間を使用
-time_column : str or None, default='Date'
-    時間列の名前。Noneの場合はindexを時間として使用
+fit_duration : Duration or None, default=None
+    fitに使用する期間を表すDuration。Noneの場合は全期間を使用
+time_column : str
+    時間列の名前
 - __init__: 
-- _filter_data_by_time: 指定された期間でデータをフィルタリング
-
-Parameters
-----------
-X : pd.DataFrame or np.ndarray
-    入力データ
-start : str, pd.Timestamp, or None
-    開始日時
-end : str, pd.Timestamp, or None
-    終了日時
-    
-Returns
--------
-Union[pd.DataFrame, np.ndarray]
-    フィルタリングされたデータ
-- fit: 前処理のパラメータを学習
+ - fit: 前処理のパラメータを学習
 - transform: 学習したパラメータを使って変換を実行
 - fit_transform: fit と transform を同時に実行
 - _validate_input: 入力データの妥当性をチェック
@@ -82,10 +65,8 @@ copy : bool, default=True
     データをコピーするかどうか
 fit_intercept : bool, default=False
     線形回帰で切片を含めるかどうか
-fit_start : str, pd.Timestamp, or None, default=None
-    fitに使用する開始日時
-fit_end : str, pd.Timestamp, or None, default=None
-    fitに使用する終了日時
+fit_duration : Duration or None, default=None
+    fitに使用する期間
 time_column : str or None, default='Date'
     時間列の名前
 - __init__: 
@@ -119,11 +100,9 @@ copy : bool, default=True
     データをコピーするかどうか
 random_state : int, optional
     乱数シード
-fit_start : str, pd.Timestamp, or None, default=None
-    fitに使用する開始日時
-fit_end : str, pd.Timestamp, or None, default=None
-    fitに使用する終了日時
-time_column : str or None, default='Date'
+fit_duration : Duration or None, default=None
+    fitに使用する期間
+time_column : str
     時間列の名前
 - __init__: 
 - _validate_params: パラメータの妥当性をチェック
@@ -155,11 +134,9 @@ target_columns : list of str or None, default=None
     標準化対象の列名。Noneの場合は全ての数値列を対象
 copy : bool, default=True
     データをコピーするかどうか
-fit_start : str, pd.Timestamp, or None, default=None
-    fitに使用する開始日時
-fit_end : str, pd.Timestamp, or None, default=None
-    fitに使用する終了日時
-time_column : str or None, default='Date'
+fit_duration : Duration or None, default=None
+    fitに使用する期間
+time_column : str
     時間列の名前
     
 Attributes

@@ -13,10 +13,8 @@ Parameters
 ----------
 n_components : int
     抽出する主成分の数
-fit_start : datetime, str, or None, optional
-    学習期間の開始日。Noneの場合は全期間を使用
-fit_end : datetime, str, or None, optional
-    学習期間の終了日。Noneの場合は全期間を使用
+fit_duration : Duration or None, optional
+    学習期間を表すDuration。Noneの場合は全期間を使用
 target_column : str, default='Target'
     対象となる列名
 mode : str, default='residuals'

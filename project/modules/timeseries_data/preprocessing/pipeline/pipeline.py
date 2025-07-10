@@ -34,11 +34,11 @@ class PreprocessingPipeline:
 
     def _validate_input(self, X: Any) -> None:
         if not isinstance(X, pd.DataFrame):
-            raise ValueError("Input must be a pandas DataFrame")
+            raise ValueError("入力はpandas DataFrameである必要があります")
 
     def _check_is_fitted(self) -> None:
         if self.input_columns_ is None:
-            raise ValueError("PipelineWrapper is not fitted yet")
+            raise ValueError("PipelineWrapper はまだfitされていません")
 
     def get_pipeline(self) -> Pipeline:
         """内部のPipelineインスタンスを取得"""
