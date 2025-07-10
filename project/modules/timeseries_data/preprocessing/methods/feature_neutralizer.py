@@ -40,7 +40,7 @@ class FeatureNeutralizer(BasePreprocessor):
                  copy: bool = True,
                  fit_intercept: bool = False,
                  fit_duration: Optional[Duration] = None,
-                 time_column: str):
+                 time_column: str = 'Date'):
         super().__init__(copy=copy, fit_duration=fit_duration, time_column=time_column)
         self.target_features = target_features
         self.neutralize_features = neutralize_features

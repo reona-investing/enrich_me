@@ -28,13 +28,14 @@ class StockReturnTimeseries:
             method: 計算メソッドのインスタンス
             *args, **kwargs: calculateメソッドに渡す追加引数
         """
-        original_index = self._original_timeseries.index.names
-
-        original_timeseries = self._original_timeseries.copy()
+        original_timeseries = self._original_timeseries.reset_index().copy()
+        original_timeseries = original_timeseries[
+            [self._date_column, self._sector_column, self._open_column, self._close_column]
+            ].set_index([self._date_column, self._sector_column], drop=True)
         self._raw_return = \
             original_timeseries.groupby(self._sector_column, group_keys=False).apply(
                 lambda group: method.calculate(group),
-                ).reset_index(drop=False).set_index(original_index)
+                ).reset_index(drop=False).set_index([self._date_column, self._sector_column])
         
         self._processed_return = self._raw_return.copy() # processed_returnは初期状態ではraw_returnと同じ
     
@@ -50,10 +51,12 @@ class StockReturnTimeseries:
         if not isinstance(pipeline, PreprocessingPipeline):
             raise ValueError("pipelineにはPreprocessingPipelineインスタンスを指定してください。")
         
-        pipeline.fit(self._processed_return) 
+        processed_return = self._processed_return.unstack(-1)
 
-        self._processed_return = pipeline.transform(self._processed_return)
-    
+        pipeline.fit(processed_return) 
+        processed_return = pipeline.transform(processed_return)
+        processed_return.columns = pd.MultiIndex.from_tuples(processed_return.columns, names=['', self._sector_column])
+        self._processed_return = processed_return.stack(future_stack=True)
     
     @property
     def raw_return(self) -> pd.DataFrame:

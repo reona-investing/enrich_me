@@ -28,7 +28,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin, ABC):
                  *,
                  copy: bool = True,
                  fit_duration: Optional[Duration] = None,
-                 time_column: str):
+                 time_column: str = 'Date'):
         self.copy = copy
         self.fit_duration = fit_duration
         self.time_column = time_column

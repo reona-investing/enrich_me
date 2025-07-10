@@ -50,7 +50,7 @@ class Standardizer(BasePreprocessor):
                  target_columns: Optional[List[str]] = None,
                  copy: bool = True,
                  fit_duration: Optional[Duration] = None,
-                 time_column: str):
+                 time_column: str = 'Date'):
         super().__init__(copy=copy, fit_duration=fit_duration, time_column=time_column)
         self.with_mean = with_mean
         self.with_std = with_std

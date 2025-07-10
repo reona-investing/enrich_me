@@ -6,7 +6,7 @@ from typing import Optional, List, Union
 from utils.timeseries import Duration
 import warnings
 
-from preprocessing.methods import PCAHandler
+from timeseries_data.preprocessing.methods import PCAHandler
 
 
 class PCAforMultiSectorTarget:

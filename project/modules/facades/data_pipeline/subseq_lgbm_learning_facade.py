@@ -81,8 +81,7 @@ class SubseqLgbmLearningFacade:
         raw_returns_df, target_df = TargetCalculator.daytime_return_PCAresiduals(
             new_sector_price_df,
             reduce_components=1,
-            train_start_day=self.train_duration.start,
-            train_end_day=self.train_duration.end,
+            train_duration=self.train_duration,
         )
         self.target_df = target_df
         self.raw_returns_df = raw_returns_df

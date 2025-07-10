@@ -40,7 +40,7 @@ class PCAHandler(BasePreprocessor):
                  copy: bool = True,
                  random_state: Optional[int] = None,
                  fit_duration: Optional[Duration] = None,
-                 time_column: str):
+                 time_column: str = 'Date'):
         super().__init__(copy=copy, fit_duration=fit_duration, time_column=time_column)
         self.n_components = n_components
         self.mode = mode
