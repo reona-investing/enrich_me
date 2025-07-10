@@ -5,7 +5,8 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from calculation import SectorIndex, TargetCalculator, FeaturesCalculator
+from calculation import SectorIndex, FeaturesCalculator
+from timeseries_data.facades import Pc1RemovedIntradayReturn
 from machine_learning.ml_dataset import MLDataset
 from machine_learning.models import LassoTrainer
 from utils.notifier import SlackNotifier
@@ -73,11 +74,10 @@ class LassoLearningFacade:
     def _get_necessary_dfs(self):
         sic = SectorIndex(self.stock_dfs_dict, self.sector_redef_csv_path, self.sector_index_parquet_path)
         new_sector_price_df, order_price_df = sic.calc_sector_index()
-        raw_returns_df, target_df = TargetCalculator.daytime_return_PCAresiduals(
-            new_sector_price_df,
-            reduce_components=1,
-            train_duration=self.train_duration,
-        )
+        pc1_return = Pc1RemovedIntradayReturn(original_timeseries=new_sector_price_df)
+        pc1_return.calculate(fit_duration=self.train_duration)
+        raw_returns_df = pc1_return.raw_return
+        target_df = pc1_return.processed_return
         self.target_df = target_df
         self.raw_returns_df = raw_returns_df
         self.order_price_df = order_price_df
