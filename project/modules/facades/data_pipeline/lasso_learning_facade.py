@@ -19,14 +19,14 @@ class LassoLearningFacade:
     def __init__(
         self,
         mode: Literal["train_and_predict", "predict_only", "load_only", "none"],
-        stock_dfs_dict: Dict[pd.DataFrame],
+        stock_dfs_dict: Dict[str, pd.DataFrame],
         dataset_path: str,
         sector_redef_csv_path: str,
         sector_index_parquet_path: str,
-        train_start_day: datetime | None = None,
-        train_end_day: datetime | None = None,
-        test_start_day: datetime | None = None,
-        test_end_day: datetime | None = None,
+        train_start_day: datetime = datetime(1900, 1, 1),
+        train_end_day: datetime = datetime(2099, 12, 31),
+        test_start_day: datetime = datetime(1900, 1, 1),
+        test_end_day: datetime = datetime(2099, 12, 31),
     ) -> None:
             
         self.mode = mode
@@ -42,10 +42,10 @@ class LassoLearningFacade:
         self.slack = SlackNotifier(program_name=os.path.basename(__file__))
 
         #クラス内で計算するプロパティ
-        self.target_df = None
-        self.raw_returns_df = None
-        self.order_price_df = None
-        self.new_sector_price_df = None
+        self.target_df: pd.DataFrame = pd.DataFrame()
+        self.raw_returns_df: pd.DataFrame = pd.DataFrame()
+        self.order_price_df: pd.DataFrame = pd.DataFrame()
+        self.new_sector_price_df: pd.DataFrame = pd.DataFrame()
 
     def execute(self) -> MLDataset | None:
         if self.mode == "none":
@@ -85,8 +85,8 @@ class LassoLearningFacade:
 
     def _get_features_df(self, adopt_features_price: bool, adopt_size_factor: bool, adopt_eps_factor: bool,
                          adopt_sector_categorical: bool, add_rank: bool,
-                         mom_duration: List[int] | None = None, 
-                         vola_duration: List[int] | None = None) -> pd.DataFrame:
+                         mom_duration: List[int] = [], 
+                         vola_duration: List[int] = []):
         self.features_df = \
               FeaturesCalculator.calculate_features(
                 new_sector_price = self.new_sector_price_df,
@@ -94,8 +94,8 @@ class LassoLearningFacade:
                 stock_dfs_dict = self.stock_dfs_dict,
                 adopts_features_indices=True,
                 adopts_features_price=adopt_features_price, #TODO LASSO: False, LightGBM: True
-                groups_setting=None,
-                names_setting=None,
+                groups_setting={},
+                names_setting={},
                 currencies_type='relative',
                 adopt_1d_return=True,
                 mom_duration=mom_duration, #TODO LightGBM [5, 21]
@@ -113,13 +113,13 @@ class LassoLearningFacade:
                 features_df=self.features_df,
                 raw_returns_df=self.raw_returns_df,
                 order_price_df=self.order_price_df,
-                pred_return_df=None,
+                pred_return_df=pd.DataFrame(),
                 train_duration=self.train_duration,
                 test_duration=self.test_duration,
                 date_column='Date',
                 sector_column='Sector',
                 is_model_divided=True,
-                ml_assets=None,
+                ml_assets=[],
                 no_shift_features=[],
                 outlier_threshold=3
             )
@@ -132,10 +132,13 @@ class LassoLearningFacade:
         self.ml_dataset = MLDataset.from_files(self.dataset_path)
 
     def _train(self):
-        # 学習
+        if not isinstance(self.ml_dataset, MLDataset):
+            raise TypeError('MLDatasetオブジェクトが格納されていません。')
         self.ml_dataset.train(trainer=LassoTrainer())
     
     def _predict(self):
+        if not isinstance(self.ml_dataset, MLDataset):
+            raise TypeError('MLDatasetオブジェクトが格納されていません。')
         self.ml_dataset.predict()
 
     def _notify_latest_prediction_date(self, ml_dataset: MLDataset) -> None:

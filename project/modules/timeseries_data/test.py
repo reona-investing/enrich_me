@@ -5,8 +5,8 @@ from utils.timeseries import Duration
 from acquisition.jquants_api_operations import StockAcquisitionFacade
 from calculation import SectorIndex
 
-from timeseries_data.public import ReturnTimeseries
-from timeseries_data.calculation_method import IntradayReturn, OvernightReturn, DailyReturn
+from timeseries_data.public import ReturnTimeseries, ReturnTimeseriesCollection
+from timeseries_data.calculation_method import IntradayReturn
 from timeseries_data.preprocessing import PreprocessingPipeline, PCAHandler
 # from yyy import RemovingPC #前処理クラス群を定義（コンストラクタの引数にデータフレームを取り，calculateメソッドで同じ形のデータフレームを返す）
 
@@ -20,14 +20,23 @@ stock_dfs = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()
 
 sector_index, _ = SectorIndex(stock_dfs, sector_redef_path, sector_index_path).calc_sector_index()
 
-return_timeseries = ReturnTimeseries(original_timeseries = sector_index, calculated_column = 'Target', sector_column=None)
-return_timeseries.calculate(method=IntradayReturn())
+sectors: list[str] = sector_index.index.get_level_values('Sector').unique().tolist()
 
+sector_dfs = {sector: sector_index[sector_index.index.get_level_values('Sector')==sector].droplevel(1, axis=0) for sector in sectors}
+
+return_timeseries_collection = ReturnTimeseriesCollection()
+
+for sector, sector_df in sector_dfs.items():
+    return_timeseries = ReturnTimeseries(original_timeseries = sector_df, calculated_column = sector, sector_column=None)
+    return_timeseries.calculate(method=IntradayReturn(return_column=sector))
+    print(return_timeseries.raw_return)
+    return_timeseries_collection.append(return_timeseries)
+
+'''
 ppp = PreprocessingPipeline(steps = [
     ('remove_pc1', PCAHandler(n_components=1, mode='components', fit_duration=train_duration))
     ])
 return_timeseries.preprocess(pipeline = ppp)
+'''
 
-raw_return_df = return_timeseries.raw_return
-pc1_removed_intraday_return_df = return_timeseries.processed_return # 
-print(pc1_removed_intraday_return_df) # TODO 完成したので、既存のTargetCalculatorを置き換える！！
+print(return_timeseries_collection.raw_merged_df)

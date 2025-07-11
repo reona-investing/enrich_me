@@ -1,1 +1,2 @@
 from .return_timeseries import ReturnTimeseries
+from .return_timeseries_collection import ReturnTimeseriesCollection

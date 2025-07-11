@@ -237,8 +237,7 @@ class FeaturesCalculator:
             if add_rank:
                 features_price_df[f'1d_return_rank'] = features_price_df[f'1d_return'].groupby('Date').rank(ascending=False)
         # モメンタムの算出
-        if mom_duration is not None:
-            assert isinstance(mom_duration, list), "mom_durationにはリストまたはNoneを指定してください。"
+        if len(mom_duration) > 0:
             assert '1d_return' in features_price_df.columns, "momを算出するには、最低でも1day_returnを取得するようにしてください。"
             days_to_exclude = 1
             for n in mom_duration:
@@ -249,8 +248,7 @@ class FeaturesCalculator:
                 if add_rank:
                     features_price_df[f'{n}d_mom_rank'] = features_price_df[f'{n}d_mom'].groupby('Date').rank(ascending=False)
         # ボラティリティの算出
-        if vola_duration is not None:
-            assert isinstance(vola_duration, list), "vola_durationにはリストまたはNoneを指定してください。"
+        if len(vola_duration) > 0:
             assert '1d_return' in features_price_df.columns, "volaを算出するには、最低でも1day_returnを取得するようにしてください。"
             days_to_exclude = 1
             for n in vola_duration:

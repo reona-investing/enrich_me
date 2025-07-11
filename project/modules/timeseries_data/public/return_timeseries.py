@@ -13,6 +13,8 @@ class ReturnTimeseries:
         元となる時系列データ（行：日時 or (日時×セクター)）。
     calculated_column : str
         計算結果を格納する列名（例：'Return'）。
+    name: str, default ''
+        インスタンスの名前。空白の場合はcalculated_columnを流用。
     date_column : str, default 'Date'
         日時列の名称。
     sector_column : str | None, default 'Sector'
@@ -23,15 +25,19 @@ class ReturnTimeseries:
         終値列の名称。
     """
     def __init__(self, original_timeseries: pd.DataFrame,
-                 calculated_column: str,
+                 calculated_column: str, name: str = '',
                  date_column: str = 'Date', sector_column: str | None = 'Sector',
-                 open_column: str = 'Open', close_column: str = 'Close') -> None:   
+                 open_column: str = 'Open', close_column: str = 'Close') -> None: 
+        self._calculated_column = calculated_column  
         self._original_timeseries = original_timeseries.copy()
         self._date_column = date_column
         self._sector_column = sector_column
         self._open_column = open_column
         self._close_column = close_column
-        self._calculated_column = calculated_column
+        if name == '':
+            self._name = calculated_column
+        else:
+            self._name = name
         # 計算後にセットされる属性
         self._raw_return: pd.DataFrame = pd.DataFrame()
         self._processed_return: pd.DataFrame = pd.DataFrame()
@@ -59,6 +65,8 @@ class ReturnTimeseries:
                     ).reset_index(drop=False).set_index(index_cols)
         else:
             self._raw_return = method.calculate(original_timeseries)
+
+        self._raw_return.columns = [self._calculated_column]
 
         self._processed_return = self._raw_return.copy() # processed_returnは初期状態ではraw_returnと同じ
     
@@ -91,6 +99,11 @@ class ReturnTimeseries:
         self._processed_return = processed_return
     
     @property
+    def name(self) -> str:
+        """インスタンスの名称を兼ねます"""
+        return self._name
+
+    @property
     def raw_return(self) -> pd.DataFrame:
         """生のリターンデータを返します。"""
         if self._raw_return is None:
@@ -101,9 +114,14 @@ class ReturnTimeseries:
     def processed_return(self) -> pd.DataFrame:
         """前処理済みのリターンデータを返します。"""
         if self._processed_return is None:
-            raise ValueError("calculate()メソッドを先に実行してください。")
+            raise ValueError("calculate()およびprocessed()メソッドを先に実行してください。")
         return self._processed_return.copy()
 
-    def evaluate(self):
-        """評価メソッド（将来の実装用）"""
-        pass
+    @property
+    def statistic_data(self) -> pd.DataFrame:
+        """raw_targetとprocessed_targetそれぞれの統計量を返します。"""
+        if self._raw_return is None or self._processed_return is None:
+            raise ValueError("calculate()およびprocessed()メソッドを先に実行してください。")
+        raw_statistics = self._raw_return.describe().rename(columns={self._calculated_column: 'Raw'})
+        processed_statistics = self._processed_return.describe().rename(columns={self._calculated_column: 'Processed'})
+        return pd.concat([raw_statistics, processed_statistics], axis=1)
