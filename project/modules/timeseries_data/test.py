@@ -5,7 +5,7 @@ from utils.timeseries import Duration
 from acquisition.jquants_api_operations import StockAcquisitionFacade
 from calculation import SectorIndex
 
-from timeseries_data.public import StockReturnTimeseries
+from timeseries_data.public import ReturnTimeseries
 from timeseries_data.calculation_method import IntradayReturn, OvernightReturn, DailyReturn
 from timeseries_data.preprocessing import PreprocessingPipeline, PCAHandler
 # from yyy import RemovingPC #前処理クラス群を定義（コンストラクタの引数にデータフレームを取り，calculateメソッドで同じ形のデータフレームを返す）
@@ -20,7 +20,7 @@ stock_dfs = StockAcquisitionFacade(filter=universe_filter).get_stock_data_dict()
 
 sector_index, _ = SectorIndex(stock_dfs, sector_redef_path, sector_index_path).calc_sector_index()
 
-return_timeseries = StockReturnTimeseries(original_timeseries = sector_index, date_column = 'Date', sector_column = 'Sector')
+return_timeseries = ReturnTimeseries(original_timeseries = sector_index, calculated_column = 'Target', sector_column=None)
 return_timeseries.calculate(method=IntradayReturn())
 
 ppp = PreprocessingPipeline(steps = [

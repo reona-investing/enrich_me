@@ -1,7 +1,7 @@
 import pandas as pd
 
 from utils.timeseries import Duration
-from timeseries_data.public import StockReturnTimeseries
+from timeseries_data.public import ReturnTimeseries
 from timeseries_data.calculation_method import IntradayReturn
 from timeseries_data.preprocessing import PreprocessingPipeline, PCAHandler
 
@@ -11,10 +11,10 @@ class Pc1RemovedIntradayReturn:
                  date_column: str = 'Date', sector_column: str = 'Sector',
                  open_column: str = 'Open', close_column: str = 'Close',
                  target_column: str = 'Target'):
-        self._return_timeseries = StockReturnTimeseries(original_timeseries=original_timeseries,
-                                                       date_column=date_column, sector_column=sector_column,
-                                                       open_column=open_column, close_column=close_column,
-                                                       target_column=target_column)
+        self._return_timeseries = ReturnTimeseries(original_timeseries=original_timeseries,
+                                                   date_column=date_column, sector_column=sector_column,
+                                                   open_column=open_column, close_column=close_column,
+                                                   calculated_column=target_column)
         self._is_calculated = False
 
     def calculate(self, fit_duration: Duration):

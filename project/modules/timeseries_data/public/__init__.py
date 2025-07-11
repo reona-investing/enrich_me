@@ -1,1 +1,1 @@
-from .stock_return_timeseries import StockReturnTimeseries
+from .return_timeseries import ReturnTimeseries
