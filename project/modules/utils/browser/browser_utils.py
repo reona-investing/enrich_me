@@ -8,7 +8,6 @@ class BrowserUtils:
     """
     BROWSER_PATH = os.getenv('BROWSER_PATH')
     USER_DATA_DIR = os.getenv('USER_DATA_DIR')
-    PROFILE_DIR = os.getenv('PROFILE_DIR', 'Default')
     browser_instance = None
     _lock = asyncio.Lock()
 

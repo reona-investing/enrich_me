@@ -31,8 +31,9 @@ class SBIBrowserManager(BrowserManager):
     async def _sign_in(self, named_tab: NamedTab):
         await self._input_credentials(named_tab=named_tab)
         try:
-            await named_tab.tab.utils.wait_for('ログアウト', timeout=30)
+            await named_tab.tab.utils.wait_for('ログアウト', timeout=10)
         except:
+            await self._pass_random_string_check(named_tab)
             device_code = await auth_code_getter()
             await named_tab.tab.utils.send_keys_to_element('input[name="device_code"]', is_css=False, keys=device_code)
             await named_tab.tab.utils.click_element('input[value="登録"]', is_css=True)
@@ -59,7 +60,15 @@ class SBIBrowserManager(BrowserManager):
         login = await named_tab.tab.utils.wait_for('input[name="ACT_login"]')
         await login.click()
 
-
+    async def _pass_random_string_check(self, named_tab: NamedTab):
+        random_string_element = await named_tab.tab.utils.wait_for('p[id="randomString"]', is_css = True)
+        random_string = random_string_element.text
+        await named_tab.tab.utils.send_keys_to_element('input[name="userInput"]', is_css = True, keys = random_string)
+        await named_tab.tab.utils.wait(1)
+        await named_tab.tab.utils.click_element('input[name="device_string_checkbox"]', is_css=True)
+        await named_tab.tab.utils.wait(1)
+        await named_tab.tab.utils.click_element('input[value="送信"]', is_css=True)
+        
 
 if __name__ == '__main__':
     import asyncio

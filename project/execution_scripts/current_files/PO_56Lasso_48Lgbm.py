@@ -60,6 +60,8 @@ async def main() -> None:
         )
         stock_dict = await data_facade.execute()
 
+
+
         # 2. 機械学習
         ml_56_lasso = LassoLearningFacade(
             mode=modes.machine_learning_mode,
