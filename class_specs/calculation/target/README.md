@@ -13,10 +13,8 @@ Parameters
 ----------
 n_components : int
     抽出する主成分の数
-fit_start : datetime, str, or None, optional
-    学習期間の開始日。Noneの場合は全期間を使用
-fit_end : datetime, str, or None, optional
-    学習期間の終了日。Noneの場合は全期間を使用
+fit_duration : Duration or None, optional
+    学習期間を表すDuration。Noneの場合は全期間を使用
 target_column : str, default='Target'
     対象となる列名
 mode : str, default='residuals'
@@ -62,7 +60,10 @@ Args:
     df (pd.DataFrame): 元データ（Open, Closeの各列が必須）
 Returns:
     pd.DataFrame: 日中リターン（Target列）を含むDataFrame
-- daytime_return_PCAresiduals: PCAで主成分を除去した日中リターンの残差を算出。
-Returns:
-    tuple[pd.DataFrame, pd.DataFrame]: 生の日中リターン, PCA残差リターン
+
+### class Pc1RemovedIntradayReturn
+PC1 を除去した日内リターンを計算するファサード。
+ - `calculate(fit_duration: Duration)`: PCA の学習期間を指定して計算を実行。
+ - `processed_return`: PCA 適用後のリターンを取得。
+ - `raw_return`: PCA 適用前の生リターンを取得。
 

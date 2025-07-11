@@ -4,7 +4,7 @@ from acquisition.jquants_api_operations import StockAcquisitionFacade
 from calculation.sector_index.sector_index import SectorIndex
 from calculation.features.implementation import IndexFeatures, PriceFeatures
 from calculation.features.integration.features_set import FeaturesSet
-from preprocessing import PreprocessingPipeline
+from timeseries_data.preprocessing import PreprocessingPipeline
 
 
 class FeaturesFacade:

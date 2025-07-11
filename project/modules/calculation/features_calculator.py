@@ -3,7 +3,7 @@ from utils.paths import Paths
 import pandas as pd
 from typing import Literal, Optional
 from calculation.sector_index import SectorIndex
-from preprocessing import PreprocessingPipeline
+from timeseries_data.preprocessing import PreprocessingPipeline
 
 class FeaturesCalculator:
     @staticmethod

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 import pandas as pd
-from preprocessing import PreprocessingPipeline
+from timeseries_data.preprocessing import PreprocessingPipeline
 
 
 class BaseFeatures(ABC):

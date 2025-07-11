@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Literal
 import pandas as pd
-from preprocessing import PreprocessingPipeline
+from timeseries_data.preprocessing import PreprocessingPipeline
 from calculation.features.base import BaseFeatures
 from utils.paths import Paths
 
