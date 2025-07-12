@@ -58,6 +58,9 @@ class TrainTestData:
         target_df = self._append_next_business_day_row(target_df)
         if not reuse_features_df:
             features_df = self._append_next_business_day_row(features_df)
+        
+        target_df = target_df[~target_df.index.duplicated(keep='first')]
+        features_df = features_df[~features_df.index.duplicated(keep='first')]
 
         features_df = self._shift_features(features_df, no_shift_features)
         features_df = self._align_index(features_df, target_df)
