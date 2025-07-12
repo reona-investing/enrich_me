@@ -45,6 +45,7 @@ class DatasetPeriodCombiner:
 
         return combined_pred
 
+
     @property
     def metadata(self) -> List[Dict[str, object]]:
         """結合に利用した期間とモデル名のメタデータを返す"""
@@ -123,7 +124,6 @@ class DatasetCombinePipeline:
             return pd.DataFrame()
 
         return pred_df
-
     @property
     def metadata(self) -> List[List[Dict[str, object]]]:
         """各ステップで生成されたメタデータの一覧を返す"""
