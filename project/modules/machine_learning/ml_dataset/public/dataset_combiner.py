@@ -1,24 +1,17 @@
 from dataclasses import dataclass, field
-from typing import Iterable, Tuple, List, Dict
+from typing import Iterable, List, Dict
 import pandas as pd
 
-from .ml_dataset import MLDataset
 from utils.timeseries import Duration
 
 
 @dataclass
 class DatasetPeriodInfo:
-    """データセットと適用期間、およびモデル名を保持するメタデータ"""
+    """予測結果DataFrameと期間、モデル名を保持するメタデータ"""
 
-    dataset: MLDataset
+    pred_df: pd.DataFrame
     period: Duration
-
-    @property
-    def model_names(self) -> List[str]:
-        assets = self.dataset.ml_assets
-        if isinstance(assets, list):
-            return [asset.name for asset in assets]
-        return [assets.name]
+    model_names: List[str]
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -30,52 +23,42 @@ class DatasetPeriodInfo:
 
 @dataclass
 class DatasetPeriodCombiner:
-    """期間ごとに ``MLDataset`` を結合しメタデータも保持するクラス"""
+    """期間ごとに ``DataFrame`` を結合しメタデータも保持するクラス"""
 
-    dataset_periods: Iterable[Tuple[MLDataset, Duration]] = field(default_factory=list)
+    dataset_periods: Iterable[DatasetPeriodInfo] = field(default_factory=list)
 
-    def combine(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """登録済みデータセットを結合して ``DataFrame`` を返す
+    def combine(self) -> pd.DataFrame:
+        """登録済みデータセットを結合して ``DataFrame`` を返す"""
 
-        Returns:
-            Tuple[pd.DataFrame, pd.DataFrame]:
-                0番目に ``pred_result_df``、1番目に ``raw_returns_df`` を
-                それぞれ時系列順に結合した ``DataFrame`` のタプル
-        """
         pred_list = []
-        raw_list = []
 
-        for ds, period in self.dataset_periods:
-            pred_df = period.extract_from_df(ds.pred_result_df, ds.date_column)
-            pred_list.append(pred_df)
+        for info in self.dataset_periods:
+            df = info.pred_df.copy()
+            df.index = pd.to_datetime(df.index)
+            filtered = df.loc[(df.index >= info.period.start) & (df.index <= info.period.end)]
+            pred_list.append(filtered)
 
-            raw_df = period.extract_from_df(ds.raw_returns_df, ds.date_column)
-            raw_list.append(raw_df)
+        if not pred_list:
+            return pd.DataFrame()
 
         combined_pred = pd.concat(pred_list).sort_index()
-        combined_raw = pd.concat(raw_list).sort_index()
 
-        return combined_pred, combined_raw
+        return combined_pred
+
 
     @property
     def metadata(self) -> List[Dict[str, object]]:
         """結合に利用した期間とモデル名のメタデータを返す"""
-        return [DatasetPeriodInfo(ds, period).to_dict() for ds, period in self.dataset_periods]
+        return [info.to_dict() for info in self.dataset_periods]
 
 
 @dataclass
 class WeightedDatasetInfo:
     """重み付き平均に利用するデータセットと重みを保持するメタデータ"""
 
-    dataset: MLDataset
+    pred_df: pd.DataFrame
     weight: float
-
-    @property
-    def model_names(self) -> List[str]:
-        assets = self.dataset.ml_assets
-        if isinstance(assets, list):
-            return [asset.name for asset in assets]
-        return [assets.name]
+    model_names: List[str]
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -86,44 +69,33 @@ class WeightedDatasetInfo:
 
 @dataclass
 class WeightedDatasetCombiner:
-    """複数の ``MLDataset`` を割合で平均して結合するクラス"""
+    """複数の ``DataFrame`` を割合で平均して結合するクラス"""
 
     dataset_weights: Iterable[WeightedDatasetInfo] = field(default_factory=list)
 
-    def combine(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """登録済みデータセットを重み付き平均で結合して ``DataFrame`` を返す
-
-        Returns:
-            Tuple[pd.DataFrame, pd.DataFrame]:
-                0番目に ``pred_result_df``、1番目に ``raw_returns_df`` を
-                それぞれ重み付き平均した ``DataFrame`` のタプル
-        """
+    def combine(self) -> pd.DataFrame:
+        """登録済みデータセットを重み付き平均で結合して ``DataFrame`` を返す"""
 
         weighted_pred: pd.DataFrame | None = None
-        weighted_raw: pd.DataFrame | None = None
         total = 0.0
 
         for info in self.dataset_weights:
             w = info.weight
-            pred_df = info.dataset.pred_result_df * w
-            raw_df = info.dataset.raw_returns_df * w
+            pred_df = info.pred_df * w
 
             if weighted_pred is None:
                 weighted_pred = pred_df
-                weighted_raw = raw_df
             else:
                 weighted_pred = weighted_pred.add(pred_df, fill_value=0)
-                weighted_raw = weighted_raw.add(raw_df, fill_value=0)
 
             total += w
 
         if weighted_pred is None:
-            return pd.DataFrame(), pd.DataFrame()
+            return pd.DataFrame()
 
         combined_pred = (weighted_pred / total).sort_index()
-        combined_raw = (weighted_raw / total).sort_index()
 
-        return combined_pred, combined_raw
+        return combined_pred
 
     @property
     def metadata(self) -> List[Dict[str, object]]:
@@ -138,22 +110,20 @@ class DatasetCombinePipeline:
     steps: Iterable[object] = field(default_factory=list)
     _metadata: List[List[Dict[str, object]]] = field(init=False, default_factory=list)
 
-    def combine(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def combine(self) -> pd.DataFrame:
         """登録された各ステップを順に実行して ``DataFrame`` を返す"""
 
         pred_df: pd.DataFrame | None = None
-        raw_df: pd.DataFrame | None = None
         self._metadata = []
 
         for step in self.steps:
-            pred_df, raw_df = step.combine()
+            pred_df = step.combine()
             self._metadata.append(step.metadata)
 
-        if pred_df is None or raw_df is None:
-            return pd.DataFrame(), pd.DataFrame()
+        if pred_df is None:
+            return pd.DataFrame()
 
-        return pred_df, raw_df
-
+        return pred_df
     @property
     def metadata(self) -> List[List[Dict[str, object]]]:
         """各ステップで生成されたメタデータの一覧を返す"""
