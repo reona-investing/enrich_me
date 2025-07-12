@@ -9,16 +9,14 @@ class Pc1RemovedIntradayReturn:
 
     def __init__(self, original_timeseries: pd.DataFrame,
                  date_column: str = 'Date', sector_column: str = 'Sector',
-                 open_column: str = 'Open', close_column: str = 'Close',
-                 target_column: str = 'Target'):
+                 open_column: str = 'Open', close_column: str = 'Close'):
         self._return_timeseries = ReturnTimeseries(original_timeseries=original_timeseries,
                                                    date_column=date_column, sector_column=sector_column,
-                                                   open_column=open_column, close_column=close_column,
-                                                   calculated_column=target_column)
+                                                   open_column=open_column, close_column=close_column)
         self._is_calculated = False
 
     def calculate(self, fit_duration: Duration):
-        self._return_timeseries.calculate(IntradayReturn())
+        self._return_timeseries.calculate(IntradayReturn(return_column='Target'))
         ppp = PreprocessingPipeline([
             ('remove_pc1', PCAHandler(n_components=1, mode='residuals', fit_duration=fit_duration))
         ])

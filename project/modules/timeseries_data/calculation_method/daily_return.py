@@ -2,7 +2,7 @@ from timeseries_data.calculation_method.base import CalculationMethodBase
 import pandas as pd
 
 class DailyReturn(CalculationMethodBase):
-    def __init__(self, return_column: str = 'Target', close_column: str = 'Close'):
+    def __init__(self, return_column: str, close_column: str = 'Close'):
         '''
         Args:
             return_column (str): 目的変数をどのようなカラム名で返すか

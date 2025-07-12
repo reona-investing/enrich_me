@@ -4,7 +4,7 @@ import pandas as pd
 class BondDailyReturn(CalculationMethodBase):
     """債券利回りの日次変化量を計算するクラス"""
 
-    def __init__(self, return_column: str = 'Target', close_column: str = 'Close'):
+    def __init__(self, return_column: str, close_column: str = 'Close'):
         """
         Args:
             return_column (str): 返り値のカラム名
